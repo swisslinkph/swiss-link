@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swiss Club — Member Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SIDEBAR NAVIGATION
+═══════════════════════════════════════════════════════════════ -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <span class="brand-flag">🇨🇭</span>
+    <div>
+      <div class="brand-name">Swiss Club</div>
+      <div class="brand-sub">Admin Portal</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="nav-item" data-route="dashboard">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Dashboard</span>
+    </a>
+    <a class="nav-item" data-route="members">
+      <span class="nav-icon">👥</span>
+      <span class="nav-label">Members</span>
+    </a>
+    <a class="nav-item" data-route="events">
+      <span class="nav-icon">📅</span>
+      <span class="nav-label">Events</span>
+    </a>
+    <a class="nav-item" data-route="frontdesk">
+      <span class="nav-icon">🎫</span>
+      <span class="nav-label">Front Desk</span>
+    </a>
+    <a class="nav-item" data-route="email">
+      <span class="nav-icon">📧</span>
+      <span class="nav-label">Send Invites</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar" id="nav-user-avatar">?</div>
+      <div>
+        <div class="user-name" id="nav-user-name">Loading…</div>
+        <div class="user-email" id="nav-user-email"></div>
+      </div>
+    </div>
+    <button class="btn-signout" onclick="Auth.signOut()">Sign Out</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN CONTENT AREA
+═══════════════════════════════════════════════════════════════ -->
+<main class="main-content">
+
+
+  <!-- ── DASHBOARD ───────────────────────────────────────────── -->
+  <div class="view" id="view-dashboard">
+    <div class="page-header">
+      <h1 class="page-title">Dashboard</h1>
+    </div>
+    <div class="page-body">
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Members</div>
+          <div class="kpi-value" id="kpi-total-members">—</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Active Members</div>
+          <div class="kpi-value" id="kpi-active-members">—</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Total Revenue YTD</div>
+          <div class="kpi-value" id="kpi-total-revenue">—</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Upcoming Events</div>
+          <div class="kpi-value" id="kpi-upcoming-events">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Dues Collected</div>
+          <div class="kpi-value" id="kpi-dues-revenue">—</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Event Revenue</div>
+          <div class="kpi-value" id="kpi-event-revenue">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Revenue by Month</h3>
+          <div class="chart-wrap">
+            <canvas id="revenue-chart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Membership Status</h3>
+          <div class="chart-wrap">
+            <canvas id="membership-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom lists -->
+      <div class="dash-bottom-grid">
+        <div class="card">
+          <h3>Upcoming Events</h3>
+          <div id="upcoming-events-list"></div>
+        </div>
+        <div class="card">
+          <h3>Recent Transactions</h3>
+          <div id="recent-txns-list"></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-dashboard -->
+
+
+  <!-- ── MEMBERS ─────────────────────────────────────────────── -->
+  <div class="view" id="view-members">
+    <div class="page-header">
+      <h1 class="page-title">Members</h1>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="search" id="member-search" class="search-input" placeholder="Search name, email, key…">
+        <span class="record-count" id="member-count"></span>
+        <button class="btn btn-outline btn-sm" id="member-export-btn">⬇ Export CSV</button>
+        <button class="btn btn-primary btn-sm" id="add-member-btn">+ Add Member</button>
+      </div>
+    </div>
+    <div class="page-body" style="padding-top:16px;">
+      <table class="data-table" id="members-table">
+        <thead>
+          <tr>
+            <th data-sort="Full Name">Member</th>
+            <th data-sort="Email">Email</th>
+            <th data-sort="Location (Metro Manila/Province)">Location</th>
+            <th data-sort="2026 Membership Status (Member, Exempt, Non-member, TBC)">Status</th>
+            <th data-sort="Membership Type">Type</th>
+            <th data-sort="Family Group">Family</th>
+            <th>YTD Paid</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="8" class="empty-state">Loading members…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /view-members -->
+
+
+  <!-- ── EVENTS ──────────────────────────────────────────────── -->
+  <div class="view" id="view-events">
+    <div class="page-header">
+      <h1 class="page-title">Events</h1>
+      <button class="btn btn-primary btn-sm" id="add-event-btn">+ Add Event</button>
+    </div>
+    <div class="page-body">
+      <div id="events-list">
+        <p class="empty-state">Loading events…</p>
+      </div>
+    </div>
+  </div><!-- /view-events -->
+
+
+  <!-- ── FRONT DESK ──────────────────────────────────────────── -->
+  <div class="view" id="view-frontdesk">
+    <div class="page-header">
+      <h1 class="page-title">Front Desk</h1>
+    </div>
+    <div class="page-body">
+      <div id="fd-content">
+        <p class="empty-state">Loading…</p>
+      </div>
+    </div>
+  </div><!-- /view-frontdesk -->
+
+
+  <!-- ── EMAIL / INVITES ─────────────────────────────────────── -->
+  <div class="view" id="view-email">
+    <div class="page-header">
+      <h1 class="page-title">Send Invites</h1>
+    </div>
+    <div class="page-body">
+      <div class="email-layout">
+        <!-- Controls column -->
+        <div class="email-controls">
+          <h3>Settings</h3>
+
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label" for="email-event-select">Event</label>
+            <select id="email-event-select" class="form-control">
+              <option value="">— Select an event —</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label" for="email-filter-status">Filter by Status</label>
+            <select id="email-filter-status" class="form-control">
+              <option value="">All members with email</option>
+              <option value="Member">Member</option>
+              <option value="Exempt">Exempt</option>
+              <option value="Non-member">Non-member</option>
+              <option value="TBC">TBC</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label" for="email-search">Search</label>
+            <input type="search" id="email-search" class="form-control" placeholder="Name or email…">
+          </div>
+
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">
+            <strong id="email-recipient-count">0 recipients</strong> will receive this invite.
+          </p>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-outline" id="email-preview-btn">👁 Preview Email</button>
+            <button class="btn btn-primary" id="email-send-btn">📨 Send Invites</button>
+          </div>
+        </div>
+
+        <!-- Recipient list column -->
+        <div class="email-recipients">
+          <h3>Recipients</h3>
+          <div id="email-recipient-list">
+            <p class="empty-state">Select an event to see recipients.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-email -->
+
+
+</main><!-- /main-content -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     GLOBAL OVERLAYS
+═══════════════════════════════════════════════════════════════ -->
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay" hidden>
+  <div class="spinner"></div>
+  <div class="loading-msg">Loading…</div>
+</div>
+
+<!-- Single toast element -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-body" style="text-align:center;padding:28px;">
+      <p id="confirm-message" style="font-size:15px;line-height:1.5;"></p>
+    </div>
+    <div class="modal-footer" style="justify-content:center;gap:12px;">
+      <button class="btn btn-outline" id="confirm-no">Cancel</button>
+      <button class="btn btn-primary" id="confirm-yes">Confirm</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MEMBER MODAL — Add / Edit
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="member-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="member-modal-title">Add Member</h2>
+      <button class="modal-close" id="member-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="member-form" onsubmit="return false">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="mf-key">Member Key</label>
+            <input type="text" id="mf-key" class="form-control" placeholder="lastname|firstname (auto if blank)">
+          </div>
+          <div class="form-group">
+            <label for="mf-name">Full Name</label>
+            <input type="text" id="mf-name" class="form-control" placeholder="e.g. Müller, Hans">
+          </div>
+          <div class="form-group">
+            <label for="mf-first">First Name</label>
+            <input type="text" id="mf-first" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="mf-last">Last Name</label>
+            <input type="text" id="mf-last" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="mf-alt">Alternative Name</label>
+            <input type="text" id="mf-alt" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="mf-email">Email</label>
+            <input type="email" id="mf-email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="mf-loc">Location</label>
+            <select id="mf-loc" class="form-control">
+              <option value="">— Select —</option>
+              <option value="Metro Manila">Metro Manila</option>
+              <option value="Province">Province</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="mf-status">2026 Membership Status</label>
+            <select id="mf-status" class="form-control">
+              <option value="">— Select —</option>
+              <option value="Member">Member</option>
+              <option value="Exempt">Exempt</option>
+              <option value="Non-member">Non-member</option>
+              <option value="TBC">TBC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="mf-type">Membership Type</label>
+            <select id="mf-type" class="form-control">
+              <option value="">— Select —</option>
+              <option value="Family">Family</option>
+              <option value="Individual">Individual</option>
+              <option value="Single">Single</option>
+              <option value="Honorary">Honorary</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="mf-fam">Family Group</label>
+            <input type="text" id="mf-fam" class="form-control" placeholder="e.g. Müller Family">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('member-modal')">Cancel</button>
+      <button class="btn btn-primary" id="member-save-btn">Save Member</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EVENT MODAL — Add / Edit
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="event-modal-title">New Event</h2>
+      <button class="modal-close" id="event-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="event-form" onsubmit="return false">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="ef-title">Event Title <span style="color:var(--red)">*</span></label>
+            <input type="text" id="ef-title" class="form-control" placeholder="e.g. Swiss National Day Dinner" required>
+          </div>
+          <div class="form-group">
+            <label for="ef-date">Date <span style="color:var(--red)">*</span></label>
+            <input type="date" id="ef-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="ef-location">Location</label>
+            <input type="text" id="ef-location" class="form-control" placeholder="e.g. Makati Shangri-La">
+          </div>
+          <div class="form-group">
+            <label for="ef-member-fee">Member Fee (₱)</label>
+            <input type="number" id="ef-member-fee" class="form-control" placeholder="0" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="ef-guest-fee">Guest Fee (₱)</label>
+            <input type="number" id="ef-guest-fee" class="form-control" placeholder="0" min="0" step="0.01">
+          </div>
+          <div class="form-group full">
+            <label for="ef-desc">Description</label>
+            <textarea id="ef-desc" class="form-control" rows="3" placeholder="Event details, dress code, etc."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('event-modal')">Cancel</button>
+      <button class="btn btn-primary" id="event-save-btn">Save Event</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ATTENDEE MODAL — View-only attendee list
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="attendee-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="attendee-modal-title">Attendees</h2>
+      <button class="modal-close" id="attendee-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="attendee-list">
+        <p class="empty-state">No attendees recorded yet.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('attendee-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     CHECK-IN MODAL — Front desk payment
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="checkin-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>Check In</h2>
+      <button class="modal-close" id="checkin-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Member + event banner -->
+      <div class="checkin-summary">
+        <h3 id="checkin-member-name">—</h3>
+        <p id="checkin-event-name">—</p>
+      </div>
+
+      <!-- Exempt notice -->
+      <div class="exempt-note" id="checkin-exempt-note" style="display:none">
+        ✅ This member is <strong>exempt</strong> — fee set to ₱0
+      </div>
+
+      <input type="hidden" id="checkin-member-key">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Default Member Fee</label>
+          <div class="form-control" id="checkin-default-fee" style="background:#f9f9f9;cursor:default;">—</div>
+        </div>
+        <div class="form-group">
+          <label for="checkin-amount">Amount Paid (₱)</label>
+          <input type="number" id="checkin-amount" class="form-control" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="checkin-guests">Extra Guests</label>
+          <input type="number" id="checkin-guests" class="form-control" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label>Guest Fee (each)</label>
+          <div class="form-control" id="checkin-guest-fee" style="background:#f9f9f9;cursor:default;">—</div>
+        </div>
+        <div class="form-group">
+          <label for="checkin-mode">Payment Method</label>
+          <select id="checkin-mode" class="form-control">
+            <option>Cash</option>
+            <option>GCash</option>
+            <option>BDO</option>
+            <option>PayPal</option>
+            <option>Bank Transfer</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="checkin-notes">Notes</label>
+          <input type="text" id="checkin-notes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="checkin-total-row">
+        <span>Total to collect:</span>
+        <strong id="checkin-total">₱0</strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('checkin-modal')">Cancel</button>
+      <button class="btn btn-primary" id="checkin-submit-btn">✅ Confirm Check-In</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EMAIL PREVIEW MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="email-preview-modal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h2>Email Preview</h2>
+      <button class="modal-close" id="email-preview-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;overflow:hidden;">
+      <iframe id="email-preview-frame" style="width:100%;height:100%;border:none;min-height:500px;" title="Email Preview"></iframe>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('email-preview-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCRIPTS — loaded in dependency order
+═══════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/demo-data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/router.js"></script>
+<script src="js/gmail.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/members.js"></script>
+<script src="js/events.js"></script>
+<script src="js/frontdesk.js"></script>
+<script src="js/email.js"></script>
+
+<script>
+  // ── Demo mode bypass (add ?demo=true to URL) ─────────────────────
+  const _isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+
+  if (_isDemo) {
+    // Patch Auth so the rest of the app thinks someone is signed in
+    Auth.isAuthenticated = () => true;
+    Auth.getUserName     = () => 'Demo Admin';
+    Auth.getUserEmail    = () => 'demo@swissclub.ph';
+    Auth.getToken        = () => 'DEMO_TOKEN';
+    Auth.signOut         = () => { window.location.href = 'index.html'; };
+
+    // Patch Sheets so all reads return local demo data instead of calling the API
+    const _sheetMap = {
+      [CONFIG.SHEETS.MEMBERS]:      () => DEMO_DATA.members,
+      [CONFIG.SHEETS.EVENTS]:       () => DEMO_DATA.events,
+      [CONFIG.SHEETS.TRANSACTIONS]: () => DEMO_DATA.transactions,
+    };
+    Sheets.getAll = async (sheet) => {
+      const fn = _sheetMap[sheet];
+      return fn ? JSON.parse(JSON.stringify(fn())) : [];
+    };
+    // Make writes silent no-ops so nothing actually saves (it's a demo)
+    Sheets.append     = async () => ({ updates: {} });
+    Sheets.update     = async () => ({});
+    Sheets.deleteRow  = async () => ({});
+    Sheets.nextId     = async (sheet, prefix) => prefix + '-DEMO-' + Date.now();
+    Sheets.ensureSheets = async () => {};
+
+    _boot();
+  } else {
+    Auth.handleCallback().catch(err => {
+      alert('Sign-in error: ' + err.message);
+      window.location.href = 'index.html';
+    }).finally(() => {
+      if (!Auth.isAuthenticated()) { window.location.href = 'index.html'; return; }
+      _boot();
+    });
+  }
+
+  function _boot() {
+    // Populate sidebar user info
+    const userName  = Auth.getUserName();
+    const userEmail = Auth.getUserEmail();
+    const initials  = (userName || userEmail || '?')
+      .split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+    document.getElementById('nav-user-avatar').textContent = initials || '?';
+    document.getElementById('nav-user-name').textContent   = userName;
+    document.getElementById('nav-user-email').textContent  = userEmail;
+
+    // Ensure Events + Transactions sheet tabs exist (skipped silently in demo)
+    if (!_isDemo) Sheets.ensureSheets().catch(e => console.warn('ensureSheets:', e.message));
+
+    // Register routes
+    Router.register('dashboard', Dashboard.render);
+    Router.register('members',   Members.render);
+    Router.register('events',    Events.render);
+    Router.register('frontdesk', FrontDesk.render);
+    Router.register('email',     Email.render);
+
+    // Wire up all module event listeners
+    [Dashboard, Members, Events, FrontDesk, Email].forEach(m => m.init());
+
+    // Start routing → navigates to #dashboard by default
+    Router.init();
+  }
+</script>
+</body>
+</html>

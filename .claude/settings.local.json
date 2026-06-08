@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/Sean/Documents/Work/Consulting Work/Swiss Club/Club App and Database/**)",
+      "Bash(python3 -c \":*)",
+      "Bash(python3:*)",
+      "Bash(open \"/Users/Sean/Documents/Work/Consulting Work/Swiss Club/Club App and Database/TSC Member Data — Conflict Review.xlsx\")",
+      "mcp__Claude_Preview__preview_start",
+      "Read(//private/tmp/**)",
+      "Bash(cp \"/tmp/demo_data_output.js\" \"/Users/Sean/Documents/Work/Consulting Work/Swiss Club/Club App and Database/Claude App/js/demo-data.js\" *)",
+      "Bash(gh --version)",
+      "Bash(git --version)"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+# Config file contains Client ID, Sheet ID, and allowed email addresses.
+# Keep out of version control to prevent leaking member email addresses.
+js/config.js
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+*.swo

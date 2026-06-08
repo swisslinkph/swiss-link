@@ -1,0 +1,46 @@
+/**
+ * config.js.template — Copy this file to config.js and fill in your values.
+ * config.js is listed in .gitignore and will NOT be committed to GitHub.
+ */
+
+const CONFIG = {
+  // OAuth 2.0 Client ID from Google Cloud Console
+  // (Credentials → OAuth 2.0 Client IDs → Web application)
+  CLIENT_ID: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+
+  // Optional: API key for unauthenticated reads (e.g. public RSVP page)
+  // Leave empty if not needed.
+  API_KEY: '',
+
+  // Spreadsheet ID from the Google Sheets URL:
+  // https://docs.google.com/spreadsheets/d/THIS_PART/edit
+  SHEET_ID: '15C9IbCYjvkOW5USab3CraK0t1sX1LOYf',
+
+  // Sheet tab names (must match exactly)
+  SHEETS: {
+    MEMBERS:      'Members',
+    EVENTS:       'Events',
+    TRANSACTIONS: 'Transactions',
+  },
+
+  // Email addresses authorised to access the admin portal
+  // Must match Google account email addresses exactly (lowercase)
+  ALLOWED_EMAILS: [
+    'admin@example.com',
+  ],
+
+  // Google Apps Script Web App URL (from scripts/rsvp-relay.gs deployment)
+  RSVP_RELAY_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec',
+
+  // Base URL for this app (no trailing slash)
+  // Used to generate RSVP links in invite emails
+  APP_BASE_URL: 'https://YOUR_GITHUB_USERNAME.github.io/swiss-club-app',
+
+  // OAuth scopes (do not change unless you know what you're doing)
+  SCOPES: [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+  ].join(' '),
+};

@@ -8,6 +8,7 @@
 const CONFIG = {
   // Google OAuth 2.0 client ID (from Google Cloud Console → Credentials)
   CLIENT_ID: '778046723349-5mbg3pj5ed1vognpbi0i4b5cmm3ebc50.apps.googleusercontent.com',
+  CLIENT_SECRET: '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',
 
   // Google Spreadsheet ID (from the sheet URL)
   SHEET_ID: '1xOs_Gii-7N-y97wdaR5sr-5ancGQqz7BA2YNF85UauA',

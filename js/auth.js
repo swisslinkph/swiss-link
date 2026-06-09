@@ -71,6 +71,7 @@ const Auth = (() => {
     // Exchange code for token
     const body = new URLSearchParams({
       client_id:     CONFIG.CLIENT_ID,
+      client_secret: CONFIG.CLIENT_SECRET,
       code,
       code_verifier: verifier,
       grant_type:    'authorization_code',

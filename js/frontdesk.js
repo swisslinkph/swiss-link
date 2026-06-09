@@ -140,7 +140,7 @@ const FrontDesk = (() => {
     if (!query.trim()) { results.innerHTML = ''; return; }
 
     const found = Utils.filterRows(_members, query, [
-      'Full Name','First Name','Last Name','Member Key','Family Group',
+      'First Name','Last Name','Alternative Name','Member Key','Family Group',
     ]).slice(0, 8);
 
     if (!found.length) {
@@ -150,7 +150,7 @@ const FrontDesk = (() => {
 
     results.innerHTML = found.map(m => {
       const key       = m['Member Key'];
-      const name      = m['Full Name'] || `${m['First Name']} ${m['Last Name']}`;
+      const name      = `${m['First Name']} ${m['Last Name']}`.trim();
       const status    = m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] || 'TBC';
       const type      = m['Membership Type'] || '';
       const fam       = m['Family Group'] || '';
@@ -182,7 +182,7 @@ const FrontDesk = (() => {
     const member = _members.find(m => m['Member Key'] === memberKey);
     if (!member) return;
 
-    const name        = member['Full Name'] || `${member['First Name']} ${member['Last Name']}`;
+    const name        = `${member['First Name']} ${member['Last Name']}`.trim();
     const defaultAmt  = Utils.parsePHP(_event.MemberFee) || 0;
     const isExempt    = (member['2026 Membership Status (Member, Exempt, Non-member, TBC)'] || '').toLowerCase() === 'exempt';
 
@@ -217,7 +217,7 @@ const FrontDesk = (() => {
       const memberKey = document.getElementById('checkin-member-key')?.value;
       const member    = _members.find(m => m['Member Key'] === memberKey);
       const name      = member
-        ? (member['Full Name'] || `${member['First Name']} ${member['Last Name']}`)
+        ? `${member['First Name']} ${member['Last Name']}`.trim()
         : memberKey;
       const amount    = Utils.parsePHP(document.getElementById('checkin-amount')?.value || 0);
       const guests    = parseInt(document.getElementById('checkin-guests')?.value || 0, 10);

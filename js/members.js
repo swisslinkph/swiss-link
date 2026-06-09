@@ -7,14 +7,13 @@ const Members = (() => {
   let _all      = [];   // all member rows from sheet
   let _txns     = [];   // all transactions (for YTD totals)
   let _filtered = [];
-  let _sortKey  = 'Full Name';
+  let _sortKey  = 'Last Name';
   let _sortDir  = 'asc';
   let _editingRow = null; // row index being edited (null = new member)
 
   // Column name constants (must match sheet headers exactly)
   const C = {
     KEY:    'Member Key',
-    NAME:   'Full Name',
     LAST:   'Last Name',
     ALT:    'Alternative Name',
     FIRST:  'First Name',
@@ -46,7 +45,7 @@ const Members = (() => {
 
   // ── Filter + sort ─────────────────────────────────────────────────────────
   function _applyFilter(query) {
-    _filtered = Utils.filterRows(_all, query, [C.NAME, C.FIRST, C.LAST, C.EMAIL, C.FAM, C.KEY]);
+    _filtered = Utils.filterRows(_all, query, [C.FIRST, C.LAST, C.ALT, C.EMAIL, C.FAM, C.KEY]);
     _filtered = Utils.sortTable(_filtered, _sortKey, _sortDir);
   }
 
@@ -67,13 +66,14 @@ const Members = (() => {
 
     tbody.innerHTML = _filtered.map(m => {
       const ytd    = Utils.totalPaidYTD(m[C.KEY], _txns);
-      const initials = Utils.initials(m[C.NAME] || m[C.FIRST] || '?');
+      const fullName = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
+      const initials = Utils.initials(m[C.FIRST] || m[C.LAST] || '?');
       return `<tr data-key="${Utils.escape(m[C.KEY])}">
         <td>
           <div class="member-cell">
             <div class="avatar">${initials}</div>
             <div>
-              <div class="member-name">${Utils.escape(m[C.NAME] || `${m[C.FIRST]} ${m[C.LAST]}`)}</div>
+              <div class="member-name">${Utils.escape(fullName)}</div>
               <div class="member-key">${Utils.escape(m[C.KEY])}</div>
             </div>
           </div>
@@ -133,7 +133,6 @@ const Members = (() => {
   function _populateForm(m) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
     set('mf-key',    m[C.KEY]);
-    set('mf-name',   m[C.NAME]);
     set('mf-last',   m[C.LAST]);
     set('mf-first',  m[C.FIRST]);
     set('mf-alt',    m[C.ALT]);
@@ -150,12 +149,10 @@ const Members = (() => {
     btn.disabled = true;
     try {
       const get = id => document.getElementById(id)?.value?.trim() || '';
-      const name  = `${get('mf-first')} ${get('mf-last')}`.trim().toUpperCase();
-      const key   = get('mf-key')   || `${get('mf-last').toLowerCase()}|${get('mf-first').toLowerCase()}`.replace(/\s+/g, '-');
+      const key = get('mf-key') || `${get('mf-last').toLowerCase()}|${get('mf-first').toLowerCase()}`.replace(/\s+/g, '-');
 
       const obj = {
         [C.KEY]:    key,
-        [C.NAME]:   name,
         [C.LAST]:   get('mf-last'),
         [C.ALT]:    get('mf-alt'),
         [C.FIRST]:  get('mf-first'),
@@ -196,7 +193,7 @@ const Members = (() => {
   async function confirmDelete(key) {
     const member = _all.find(m => m[C.KEY] === key);
     if (!member) return;
-    const ok = await Utils.confirm(`Delete member "${member[C.NAME] || key}"? This cannot be undone.`);
+    const ok = await Utils.confirm(`Delete member "${`${member[C.FIRST]} ${member[C.LAST]}`.trim() || key}"? This cannot be undone.`);
     if (!ok) return;
     Utils.setLoading(true, 'Deleting…');
     try {
@@ -212,7 +209,7 @@ const Members = (() => {
 
   // ── Export CSV ────────────────────────────────────────────────────────────
   function exportCSV() {
-    const cols   = [C.KEY, C.NAME, C.EMAIL, C.LOC, C.STATUS, C.TYPE, C.FAM];
+    const cols   = [C.KEY, C.LAST, C.FIRST, C.EMAIL, C.LOC, C.STATUS, C.TYPE, C.FAM];
     const header = cols.join(',');
     const rows   = _filtered.map(m =>
       cols.map(c => `"${(m[c] || '').replace(/"/g, '""')}"`).join(',')

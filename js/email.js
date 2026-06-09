@@ -48,7 +48,7 @@ const Email = (() => {
 
     _selectedMembers = _members
       .filter(m => !filter || m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] === filter)
-      .filter(m => !query || [m['Full Name'],m['First Name'],m['Email']].some(
+      .filter(m => !query || [m['First Name'],m['Last Name'],m['Email']].some(
         v => (v||'').toLowerCase().includes(query.toLowerCase())));
 
     document.getElementById('email-recipient-count')
@@ -59,7 +59,7 @@ const Email = (() => {
            <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
            <tbody>
              ${_selectedMembers.map(m => `<tr>
-               <td>${Utils.escape(m['Full Name'] || m['First Name'])}</td>
+               <td>${Utils.escape(`${m['First Name']} ${m['Last Name']}`.trim())}</td>
                <td>${Utils.escape(m['Email'])}</td>
                <td>${Utils.statusBadge(m['2026 Membership Status (Member, Exempt, Non-member, TBC)'])}</td>
              </tr>`).join('')}
@@ -112,7 +112,7 @@ const Email = (() => {
         // Small delay to avoid hitting Gmail rate limits
         await new Promise(r => setTimeout(r, 200));
       } catch (e) {
-        failed.push(`${member['Full Name'] || member['Email']}: ${e.message}`);
+        failed.push(`${`${member['First Name']} ${member['Last Name']}`.trim() || member['Email']}: ${e.message}`);
       }
     }
 

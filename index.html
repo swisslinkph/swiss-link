@@ -30,12 +30,21 @@
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    // Handle OAuth callback return (code in URL) or redirect if already authenticated
-    Auth.handleCallback();
-    if (Auth.isAuthenticated()) {
-      window.location.href = 'app.html';
-    }
-    document.getElementById('signin-btn').addEventListener('click', Auth.signIn);
+    (async () => {
+      // If there's a ?code= in the URL, exchange it for a token first (async!)
+      try {
+        await Auth.handleCallback();
+      } catch (err) {
+        alert('Sign-in error: ' + err.message);
+      }
+      // Now check — token will be in sessionStorage if callback succeeded
+      if (Auth.isAuthenticated()) {
+        window.location.href = 'app.html';
+        return;
+      }
+      // No active session — show the sign-in button
+      document.getElementById('signin-btn').addEventListener('click', Auth.signIn);
+    })();
   </script>
 </body>
 </html>

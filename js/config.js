@@ -24,6 +24,7 @@ const CONFIG = {
   ALLOWED_EMAILS: [
     'seandedios@gmail.com',
     'swisslinkph@gmail.com',
+    'jleperala@gmail.com',
   ],
 
   // Google Apps Script RSVP relay URL (set after deploying rsvp-relay.gs)

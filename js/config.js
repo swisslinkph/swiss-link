@@ -10,7 +10,7 @@ const CONFIG = {
   CLIENT_ID: '778046723349-5mbg3pj5ed1vognpbi0i4b5cmm3ebc50.apps.googleusercontent.com',
 
   // Google Spreadsheet ID (from the sheet URL)
-  SHEET_ID: '15C9IbCYjvkOW5USab3CraK0t1sX1LOYf',
+  SHEET_ID: '1xOs_Gii-7N-y97wdaR5sr-5ancGQqz7BA2YNF85UauA',
 
   // Sheet tab names (must match exactly)
   SHEETS: {

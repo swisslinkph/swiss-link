@@ -14,7 +14,7 @@ const CONFIG = {
 
   // Sheet tab names (must match exactly)
   SHEETS: {
-    MEMBERS:      'Masterlist_Combined',
+    MEMBERS:      'Members',
     EVENTS:       'Events',
     TRANSACTIONS: 'Transactions',
   },

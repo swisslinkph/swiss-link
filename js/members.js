@@ -150,7 +150,7 @@ const Members = (() => {
     btn.disabled = true;
     try {
       const get = id => document.getElementById(id)?.value?.trim() || '';
-      const name  = get('mf-name')  || `${get('mf-first')} ${get('mf-last')}`.trim();
+      const name  = `${get('mf-first')} ${get('mf-last')}`.trim().toUpperCase();
       const key   = get('mf-key')   || `${get('mf-last').toLowerCase()}|${get('mf-first').toLowerCase()}`.replace(/\s+/g, '-');
 
       const obj = {

@@ -1,6 +1,7 @@
-# Config file contains Client ID, Sheet ID, and allowed email addresses.
-# Keep out of version control to prevent leaking member email addresses.
-js/config.js
+# config.js must be in the repo for GitHub Pages to serve it.
+# It contains no secrets — Client ID is public by design, access is
+# protected by Google OAuth + the ALLOWED_EMAILS whitelist.
+# js/config.js
 
 # OS / editor noise
 .DS_Store

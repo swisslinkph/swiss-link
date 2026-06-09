@@ -45,11 +45,21 @@ body {
 .login-card {
   background: var(--white);
   border-radius: 16px;
-  padding: 48px 40px;
   width: 100%;
-  max-width: 400px;
+  max-width: 480px;
   text-align: center;
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.login-banner {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.login-card-body {
+  padding: 28px 40px 36px;
 }
 
 .login-logo {

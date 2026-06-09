@@ -24,7 +24,6 @@ const CONFIG = {
   ALLOWED_EMAILS: [
     'seandedios@gmail.com',
     'swisslinkph@gmail.com',
-    'jleperala@gmail.com',
     'jleperalta@gmail.com',
     'jonas.oberle@gmail.com',
     'klegifam@gmail.com',

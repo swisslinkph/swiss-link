@@ -78,7 +78,9 @@ const Sheets = (() => {
   async function append(sheetName, obj) {
     const headers = await getHeaders(sheetName);
     const row     = objToRow(headers, obj);
-    const range   = encodeURIComponent(`${sheetName}!A1`);
+    // Use A2 so the API searches from below the header row and appends
+    // after the last data row, never before the headers.
+    const range   = encodeURIComponent(`${sheetName}!A2`);
     await request(`/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
       method: 'POST',
       body: JSON.stringify({ values: [row] }),

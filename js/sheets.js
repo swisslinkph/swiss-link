@@ -140,25 +140,32 @@ const Sheets = (() => {
 
   // ── ENSURE required sheets exist ─────────────────────────────────────────
   async function ensureSheets() {
-    const meta   = await request('');
+    const meta     = await request('');
     const existing = meta.sheets.map(s => s.properties.title);
     const needed   = Object.values(CONFIG.SHEETS).filter(n => !existing.includes(n));
 
-    if (!needed.length) return;
+    if (needed.length) {
+      await request('/batchUpdate', {
+        method: 'POST',
+        body: JSON.stringify({
+          requests: needed.map(title => ({
+            addSheet: { properties: { title } },
+          })),
+        }),
+      });
+    }
 
-    await request('/batchUpdate', {
-      method: 'POST',
-      body: JSON.stringify({
-        requests: needed.map(title => ({
-          addSheet: { properties: { title } },
-        })),
-      }),
-    });
-
-    // Write headers for new sheets
-    for (const name of needed) {
-      if (name === CONFIG.SHEETS.EVENTS)       await _writeEventsHeaders();
-      if (name === CONFIG.SHEETS.TRANSACTIONS) await _writeTxHeaders();
+    // Write headers for any sheet that exists but is empty
+    const allSheets = [...needed, ...existing];
+    for (const name of allSheets) {
+      if (name === CONFIG.SHEETS.EVENTS) {
+        const h = await getHeaders(name);
+        if (!h.length) await _writeEventsHeaders();
+      }
+      if (name === CONFIG.SHEETS.TRANSACTIONS) {
+        const h = await getHeaders(name);
+        if (!h.length) await _writeTxHeaders();
+      }
     }
   }
 

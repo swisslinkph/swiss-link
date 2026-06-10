@@ -30,7 +30,7 @@ const Members = (() => {
     try {
       [_all, _txns] = await Promise.all([
         Sheets.getAll(CONFIG.SHEETS.MEMBERS),
-        Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS),
+        Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []),
       ]);
       _all = _all.filter(m => m[C.KEY]?.trim()); // skip empty / header rows
       _applyFilter(document.getElementById('member-search')?.value || '');

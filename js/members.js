@@ -198,13 +198,22 @@ const Members = (() => {
     Utils.setLoading(true, 'Deleting…');
     try {
       await Sheets.deleteRow(CONFIG.SHEETS.MEMBERS, member._rowIndex);
-      Utils.toast('Member deleted.');
-      await render();
     } catch (e) {
-      Utils.toast(e.message, 'error');
-    } finally {
+      Utils.toast('Delete failed: ' + e.message, 'error');
       Utils.setLoading(false);
+      return;
     }
+
+    // Immediately update UI without waiting for a server round-trip
+    _all = _all.filter(m => m[C.KEY] !== key);
+    _applyFilter(document.getElementById('member-search')?.value || '');
+    _renderTable();
+    _updateCount();
+    Utils.setLoading(false);
+    Utils.toast('Member deleted.');
+
+    // Reload from server in background to sync row indices
+    render().catch(() => {});
   }
 
   // ── Export CSV ────────────────────────────────────────────────────────────

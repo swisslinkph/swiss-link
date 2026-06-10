@@ -7,104 +7,267 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      color: #1a1a1a;
+    }
+
+    .rsvp-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .rsvp-header {
+      background: #CC0000;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .rsvp-flag { font-size: 40px; margin-bottom: 10px; }
+    .rsvp-club-name {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      opacity: 0.95;
+    }
+
+    /* ── Body ── */
+    .rsvp-body { padding: 28px 28px 32px; }
+
+    .rsvp-greeting {
+      font-size: 17px;
+      margin-bottom: 4px;
+    }
+    .rsvp-greeting strong { color: #CC0000; }
+
+    .rsvp-invite-text {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    /* ── Event block ── */
+    .rsvp-event-block {
+      background: #fafafa;
+      border: 1px solid #e8e8e8;
+      border-left: 4px solid #CC0000;
+      border-radius: 0 10px 10px 0;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+    }
+    .rsvp-event-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+    .rsvp-event-details { display: flex; flex-direction: column; gap: 6px; }
+    .rsvp-event-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 14px;
+      color: #444;
+    }
+    .rsvp-event-row .icon { flex-shrink: 0; width: 20px; text-align: center; }
+    .rsvp-event-desc {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e8e8e8;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    /* ── Question + buttons ── */
+    .rsvp-question {
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 14px;
+      color: #333;
+    }
+    .rsvp-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .rsvp-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .rsvp-btn:hover  { opacity: 0.88; }
+    .rsvp-btn:active { transform: scale(0.98); }
+    .rsvp-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .rsvp-btn-yes { background: #16a34a; color: #fff; }
+    .rsvp-btn-no  { background: #fff; color: #555; border: 1.5px solid #ddd; }
+
+    /* ── States ── */
+    .rsvp-loading-text {
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+      padding: 16px 0 8px;
+    }
+
+    .rsvp-error-block {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .rsvp-error-icon { font-size: 36px; margin-bottom: 10px; }
+    .rsvp-error-text { font-size: 15px; color: #cc0000; font-weight: 600; margin-bottom: 6px; }
+    .rsvp-error-sub  { font-size: 13px; color: #888; }
+
+    .rsvp-done-block {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .rsvp-done-icon { font-size: 48px; margin-bottom: 12px; }
+    .rsvp-done-msg  { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .rsvp-done-sub  { font-size: 14px; color: #666; line-height: 1.5; }
+
+    /* ── Footer ── */
+    .rsvp-page-footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .rsvp-body { padding: 22px 20px 26px; }
+    }
+  </style>
 </head>
-<body class="rsvp-page">
+<body>
 
-  <div class="rsvp-card" id="rsvp-card">
-    <div class="rsvp-logo">🇨🇭</div>
-    <h1 class="rsvp-title">Swiss Club Event RSVP</h1>
-
-    <!-- Loading state -->
-    <div id="rsvp-loading">
-      <p class="rsvp-sub">Loading event details…</p>
+  <div class="rsvp-card">
+    <div class="rsvp-header">
+      <div class="rsvp-flag">🇨🇭</div>
+      <div class="rsvp-club-name">Swiss Club of the Philippines</div>
     </div>
 
-    <!-- Error state -->
-    <div id="rsvp-error" style="display:none">
-      <p class="rsvp-error-msg">This RSVP link is invalid or has expired.</p>
-    </div>
+    <div class="rsvp-body">
 
-    <!-- Event details + buttons -->
-    <div id="rsvp-content" style="display:none">
-      <p class="rsvp-greeting">Hi <strong id="rsvp-member-name"></strong>,</p>
-      <p class="rsvp-sub">You're invited to:</p>
+      <!-- Loading -->
+      <div id="rsvp-loading">
+        <p class="rsvp-loading-text">Loading event details…</p>
+      </div>
 
-      <div class="rsvp-event-card">
-        <div class="rsvp-event-title" id="rsvp-event-title"></div>
-        <div class="rsvp-event-meta">
-          <span>📅 <span id="rsvp-event-date"></span></span>
-          <span>📍 <span id="rsvp-event-location"></span></span>
-          <span>💰 Member fee: <span id="rsvp-event-fee"></span></span>
+      <!-- Error -->
+      <div id="rsvp-error" style="display:none">
+        <div class="rsvp-error-block">
+          <div class="rsvp-error-icon">⚠️</div>
+          <p class="rsvp-error-text" id="rsvp-error-msg">This RSVP link is invalid or has expired.</p>
+          <p class="rsvp-error-sub">Please contact the club administrator if you believe this is an error.</p>
         </div>
-        <div class="rsvp-event-desc" id="rsvp-event-desc"></div>
       </div>
 
-      <p class="rsvp-question">Will you attend?</p>
-      <div class="rsvp-btn-row">
-        <button class="btn btn-primary btn-lg" id="rsvp-yes-btn">✅ Yes, I'll be there!</button>
-        <button class="btn btn-outline btn-lg" id="rsvp-no-btn">❌ Sorry, can't make it</button>
-      </div>
-    </div>
+      <!-- Content -->
+      <div id="rsvp-content" style="display:none">
+        <p class="rsvp-greeting">Hi <strong id="rsvp-member-name"></strong>,</p>
+        <p class="rsvp-invite-text">You are cordially invited to:</p>
 
-    <!-- Confirmation state -->
-    <div id="rsvp-done" style="display:none">
-      <div class="rsvp-done-icon" id="rsvp-done-icon"></div>
-      <p class="rsvp-done-msg" id="rsvp-done-msg"></p>
-      <p class="rsvp-done-sub">Thank you for your response. We look forward to seeing you!</p>
-    </div>
-  </div>
+        <div class="rsvp-event-block">
+          <div class="rsvp-event-title" id="rsvp-event-title"></div>
+          <div class="rsvp-event-details">
+            <div class="rsvp-event-row" id="rsvp-row-date" style="display:none">
+              <span class="icon">📅</span><span id="rsvp-event-date"></span>
+            </div>
+            <div class="rsvp-event-row" id="rsvp-row-loc" style="display:none">
+              <span class="icon">📍</span><span id="rsvp-event-location"></span>
+            </div>
+            <div class="rsvp-event-row" id="rsvp-row-fee" style="display:none">
+              <span class="icon">💰</span><span>Member fee: <strong id="rsvp-event-fee"></strong></span>
+            </div>
+          </div>
+          <div class="rsvp-event-desc" id="rsvp-event-desc" style="display:none"></div>
+        </div>
+
+        <p class="rsvp-question">Will you attend?</p>
+        <div class="rsvp-actions">
+          <button class="rsvp-btn rsvp-btn-yes" id="rsvp-yes-btn">✅&nbsp; Yes, I'll be there!</button>
+          <button class="rsvp-btn rsvp-btn-no"  id="rsvp-no-btn">✕&nbsp; Sorry, can't make it</button>
+        </div>
+      </div>
+
+      <!-- Done -->
+      <div id="rsvp-done" style="display:none">
+        <div class="rsvp-done-block">
+          <div class="rsvp-done-icon" id="rsvp-done-icon"></div>
+          <p class="rsvp-done-msg"  id="rsvp-done-msg"></p>
+          <p class="rsvp-done-sub"  id="rsvp-done-sub"></p>
+        </div>
+      </div>
+
+    </div><!-- /rsvp-body -->
+  </div><!-- /rsvp-card -->
+
+  <p class="rsvp-page-footer">Swiss Club of the Philippines &middot; Swiss Link Portal</p>
 
   <script src="js/config.js"></script>
   <script>
-    // ── Parse URL params ─────────────────────────────────────────
-    const params   = new URLSearchParams(window.location.search);
-    const eventId  = params.get('event')  || '';
+    const params    = new URLSearchParams(window.location.search);
+    const eventId   = params.get('event')   || '';
     const memberKey = decodeURIComponent(params.get('member') || '');
-    const token    = params.get('token')  || '';
-    const preResp  = params.get('response'); // 'yes' or 'no' — pre-answer from email link
+    const token     = params.get('token')   || '';
+    const preResp   = params.get('response');
+    const nameParam = decodeURIComponent(params.get('name') || '');
 
-    // ── Verify token ─────────────────────────────────────────────
     function expectedToken(evtId, mKey) {
       return btoa(evtId + ':' + mKey + ':' + CONFIG.SHEET_ID.slice(0, 8)).replace(/=/g, '');
     }
 
     function showError(msg) {
       document.getElementById('rsvp-loading').style.display = 'none';
-      const el = document.getElementById('rsvp-error');
-      if (msg) el.querySelector('.rsvp-error-msg').textContent = msg;
-      el.style.display = 'block';
+      if (msg) document.getElementById('rsvp-error-msg').textContent = msg;
+      document.getElementById('rsvp-error').style.display = 'block';
     }
 
     function showDone(yes) {
       document.getElementById('rsvp-content').style.display = 'none';
       document.getElementById('rsvp-done-icon').textContent = yes ? '🎉' : '😔';
       document.getElementById('rsvp-done-msg').textContent  = yes
-        ? "Great! We've recorded your RSVP."
+        ? "You're on the list!"
         : "No problem — we've noted that you can't make it.";
+      document.getElementById('rsvp-done-sub').textContent  = yes
+        ? "We've recorded your RSVP. Looking forward to seeing you!"
+        : "Thank you for letting us know. We hope to see you next time.";
       document.getElementById('rsvp-done').style.display = 'block';
     }
 
     async function submitRsvp(response) {
       document.getElementById('rsvp-yes-btn').disabled = true;
       document.getElementById('rsvp-no-btn').disabled  = true;
-
       try {
-        const body = JSON.stringify({
-          eventId,
-          memberKey,
-          token,
-          response,
-          timestamp: new Date().toISOString(),
-        });
-
-        // POST to Apps Script relay (public endpoint, no auth)
         const res = await fetch(CONFIG.RSVP_RELAY_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body,
+          body: JSON.stringify({ eventId, memberKey, token, response, timestamp: new Date().toISOString() }),
         });
-
         if (!res.ok) throw new Error('Server error ' + res.status);
         showDone(response === 'yes');
       } catch (e) {
@@ -114,21 +277,28 @@
       }
     }
 
-    // ── Fetch event + member details from Sheets API (read-only) ─
+    function setRow(rowId, spanId, val) {
+      if (val) {
+        document.getElementById(spanId).textContent  = val;
+        document.getElementById(rowId).style.display = 'flex';
+      }
+    }
+
     async function loadDetails() {
       if (!eventId || !memberKey || !token) { showError('Missing RSVP parameters.'); return; }
       if (token !== expectedToken(eventId, memberKey)) { showError('Invalid or expired RSVP link.'); return; }
 
+      // Show member name immediately from URL param (no API call needed)
+      document.getElementById('rsvp-member-name').textContent = nameParam || memberKey;
+
       try {
         const apiBase = 'https://sheets.googleapis.com/v4/spreadsheets/' + CONFIG.SHEET_ID + '/values/';
-
-        // Helper: GET values range (public read via API key if sheet is published, otherwise needs auth)
-        // Since members data is private, we fetch only the Events sheet (less sensitive)
-        const evtRes = await fetch(
-          apiBase + encodeURIComponent(CONFIG.SHEETS.EVENTS + '!A:Z') +
-          '?key=' + (CONFIG.API_KEY || ''),
+        const evtRes  = await fetch(
+          apiBase + encodeURIComponent(CONFIG.SHEETS.EVENTS + '!A:Z') + '?key=' + (CONFIG.API_KEY || ''),
           { cache: 'no-store' }
         );
+
+        document.getElementById('rsvp-loading').style.display = 'none';
 
         let eventObj = null;
         if (evtRes.ok) {
@@ -140,42 +310,25 @@
           }
         }
 
-        document.getElementById('rsvp-loading').style.display = 'none';
+        document.getElementById('rsvp-event-title').textContent = eventObj?.Title || 'Swiss Club Event';
+        setRow('rsvp-row-date', 'rsvp-event-date',     eventObj?.Date || '');
+        setRow('rsvp-row-loc',  'rsvp-event-location', eventObj?.Location || '');
 
-        if (!eventObj) {
-          // Event not found via API — show minimal UI without details
-          document.getElementById('rsvp-event-title').textContent    = 'Swiss Club Event';
-          document.getElementById('rsvp-event-date').textContent     = '';
-          document.getElementById('rsvp-event-location').textContent = '';
-          document.getElementById('rsvp-event-fee').textContent      = '';
-          document.getElementById('rsvp-event-desc').textContent     = '';
-        } else {
-          document.getElementById('rsvp-event-title').textContent    = eventObj.Title     || '';
-          document.getElementById('rsvp-event-date').textContent     = eventObj.Date      || '';
-          document.getElementById('rsvp-event-location').textContent = eventObj.Location  || '';
-          document.getElementById('rsvp-event-fee').textContent      = eventObj.MemberFee ? '₱' + eventObj.MemberFee : '—';
+        if (eventObj?.MemberFee) {
+          document.getElementById('rsvp-event-fee').textContent = '₱' + eventObj.MemberFee;
+          document.getElementById('rsvp-row-fee').style.display = 'flex';
+        }
+        if (eventObj?.Description) {
           const desc = document.getElementById('rsvp-event-desc');
-          desc.textContent = eventObj.Description || '';
-          desc.style.display = eventObj.Description ? 'block' : 'none';
+          desc.textContent    = eventObj.Description;
+          desc.style.display  = 'block';
         }
 
-        // Show member name from key (format: "lastname|firstname")
-        const parts = memberKey.split('|');
-        const displayName = parts.length >= 2
-          ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1)
-          : memberKey;
-        document.getElementById('rsvp-member-name').textContent = displayName;
-
         document.getElementById('rsvp-content').style.display = 'block';
-
-        // Wire up buttons
         document.getElementById('rsvp-yes-btn').addEventListener('click', () => submitRsvp('yes'));
         document.getElementById('rsvp-no-btn').addEventListener('click',  () => submitRsvp('no'));
 
-        // Auto-submit if response was pre-set in URL (clicked from email link directly)
-        if (preResp === 'yes' || preResp === 'no') {
-          submitRsvp(preResp);
-        }
+        if (preResp === 'yes' || preResp === 'no') submitRsvp(preResp);
 
       } catch (e) {
         showError('Could not load event details: ' + e.message);

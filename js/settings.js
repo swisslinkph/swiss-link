@@ -10,10 +10,15 @@ const Settings = (() => {
     Utils.setLoading(true, 'Loading settings…');
     try {
       _admins = await Sheets.getAll(CONFIG.SHEETS.ADMINS);
-      _renderList();
     } catch (e) {
-      Utils.toast(e.message, 'error');
+      if (e.message && e.message.toLowerCase().includes('unable to parse range')) {
+        // Admins sheet doesn't exist yet — ensureSheets() will create it
+        _admins = [];
+      } else {
+        Utils.toast(e.message, 'error');
+      }
     } finally {
+      _renderList();
       Utils.setLoading(false);
     }
   }

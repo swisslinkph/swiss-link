@@ -20,6 +20,7 @@ const Members = (() => {
     ALT:    'Alternative Name',
     FIRST:  'First Name',
     EMAIL:  'Email',
+    MOBILE: 'Mobile',
     LOC:    'Location (Metro Manila/Province)',
     STATUS: 'Membership Status',
     TYPE:   'Membership Type',
@@ -431,7 +432,7 @@ const Members = (() => {
         <div class="member-detail-info">
           <h2 class="member-detail-name">${Utils.escape(fullName)}</h2>
           <div class="member-detail-meta">
-            ${[member[C.EMAIL], member[C.LOC]].filter(Boolean).map(Utils.escape).join('<span class="meta-sep">·</span>')}
+            ${[member[C.EMAIL], member[C.MOBILE], member[C.LOC]].filter(Boolean).map(Utils.escape).join('<span class="meta-sep">·</span>')}
           </div>
           <div class="member-detail-badges">
             ${Utils.statusBadge(member[C.STATUS])}
@@ -655,6 +656,7 @@ const Members = (() => {
     set('mf-first',  m[C.FIRST]);
     set('mf-alt',    m[C.ALT]);
     set('mf-email',  m[C.EMAIL]);
+    set('mf-mobile', m[C.MOBILE]);
     set('mf-loc',    m[C.LOC]);
     set('mf-status', m[C.STATUS]);
     set('mf-type',   m[C.TYPE]);
@@ -677,6 +679,7 @@ const Members = (() => {
         [C.ALT]:    get('mf-alt'),
         [C.FIRST]:  first,
         [C.EMAIL]:  get('mf-email'),
+        [C.MOBILE]: get('mf-mobile'),
         [C.LOC]:    get('mf-loc'),
         [C.STATUS]: get('mf-status'),
         [C.TYPE]:   get('mf-type'),

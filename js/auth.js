@@ -12,6 +12,8 @@ const Auth = (() => {
   const KEY_USER_PIC    = 'sc_user_pic';
   const KEY_CODE_VERIF  = 'sc_code_verifier';
 
+  let _dynamicAdmins = []; // emails loaded from Admins sheet at login
+
   // ── Internal helpers ─────────────────────────────────────────────────────
   function b64url(buf) {
     return btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -34,8 +36,25 @@ const Auth = (() => {
   }
 
   function isAllowed(email) {
-    if (!CONFIG.ALLOWED_EMAILS.length) return true; // open mode if list empty
-    return CONFIG.ALLOWED_EMAILS.includes(email.toLowerCase());
+    const e = email.toLowerCase();
+    if (!CONFIG.ALLOWED_EMAILS.length && !_dynamicAdmins.length) return true;
+    return CONFIG.ALLOWED_EMAILS.includes(e) || _dynamicAdmins.includes(e);
+  }
+
+  async function _fetchAdminEmails(token) {
+    try {
+      const sheet = (CONFIG.SHEETS && CONFIG.SHEETS.ADMINS) || 'Admins';
+      const range = encodeURIComponent(`${sheet}!A:A`);
+      const url   = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
+      const res   = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return [];
+      const data  = await res.json();
+      return (data.values || []).slice(1)
+        .map(r => (r[0] || '').toLowerCase().trim())
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -90,6 +109,7 @@ const Auth = (() => {
     // Get user profile
     const profile = await fetchUserInfo(data.access_token);
 
+    _dynamicAdmins = await _fetchAdminEmails(data.access_token);
     if (!isAllowed(profile.email)) {
       throw new Error(`Access denied: ${profile.email} is not an authorised admin.`);
     }
@@ -126,6 +146,10 @@ const Auth = (() => {
     window.location.href = 'index.html';
   }
 
+  function setAdminEmails(emails) {
+    _dynamicAdmins = emails.map(e => (e || '').toLowerCase().trim()).filter(Boolean);
+  }
+
   return { signIn, handleCallback, isAuthenticated, getToken,
-           getUserEmail, getUserName, getUserPic, signOut };
+           getUserEmail, getUserName, getUserPic, signOut, setAdminEmails };
 })();

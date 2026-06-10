@@ -166,7 +166,21 @@ const Sheets = (() => {
         const h = await getHeaders(name);
         if (!h.length) await _writeTxHeaders();
       }
+      if (name === CONFIG.SHEETS.ADMINS) {
+        const h = await getHeaders(name);
+        if (!h.length) await _writeAdminsHeaders();
+      }
     }
+  }
+
+  async function _writeAdminsHeaders() {
+    const headers = ['Email', 'Name', 'Added Date', 'Added By'];
+    const range   = encodeURIComponent(`${CONFIG.SHEETS.ADMINS}!A1`);
+    await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      body: JSON.stringify({ values: [headers] }),
+    });
+    clearHeaderCache(CONFIG.SHEETS.ADMINS);
   }
 
   async function _writeEventsHeaders() {

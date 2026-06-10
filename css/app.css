@@ -1033,3 +1033,23 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 .member-cell-link { cursor: pointer; }
 .member-cell-link:hover .member-name { color: var(--navy); text-decoration: underline; }
+
+/* ── Settings ──────────────────────────────────────────────────────────── */
+.settings-section { max-width: 780px; }
+.settings-section-title {
+  font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px;
+}
+.settings-section-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+.settings-builtin-row td { color: var(--text-muted); }
+.settings-add-form {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.settings-add-title { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 12px; }
+.settings-add-row {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.settings-add-row .form-control { min-width: 180px; }
+.settings-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; margin-bottom: 0; }

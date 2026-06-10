@@ -44,6 +44,10 @@
       <span class="nav-icon">📧</span>
       <span class="nav-label">Send Invites</span>
     </a>
+    <a class="nav-item" data-route="settings">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </a>
   </nav>
 
   <div class="sidebar-footer">
@@ -280,6 +284,53 @@
       </div>
     </div>
   </div><!-- /view-email -->
+
+  <!-- ── Settings ─────────────────────────────────────────────────────── -->
+  <div class="view" id="view-settings">
+    <div class="page-header">
+      <h1 class="page-title">Settings</h1>
+    </div>
+    <div class="page-body">
+
+      <div class="settings-section">
+        <h2 class="settings-section-title">Admin Access</h2>
+        <p class="settings-section-desc">
+          These Google accounts can sign in to Swiss Link. Built-in admins are
+          defined in config and cannot be removed here.
+        </p>
+
+        <table class="data-table" style="margin-bottom:24px;">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Date Added</th>
+              <th>Type</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody id="settings-admin-tbody">
+            <tr><td colspan="5" class="text-muted" style="text-align:center;padding:16px;">Loading…</td></tr>
+          </tbody>
+        </table>
+
+        <div class="settings-add-form">
+          <h3 class="settings-add-title">Add Admin</h3>
+          <div class="settings-add-row">
+            <input type="email" id="settings-new-email" class="form-control"
+                   placeholder="Google email address" style="flex:2;">
+            <input type="text"  id="settings-new-name"  class="form-control"
+                   placeholder="Name (optional)" style="flex:1;">
+            <button class="btn btn-primary" id="settings-add-btn">Add Admin</button>
+          </div>
+          <p class="settings-hint">
+            The new admin will need to sign out and back in if they are already logged in.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /view-settings -->
 
 
 </main><!-- /main-content -->
@@ -744,6 +795,7 @@
 <script src="js/events.js"></script>
 <script src="js/frontdesk.js"></script>
 <script src="js/email.js"></script>
+<script src="js/settings.js"></script>
 
 <script>
   // ── Demo mode bypass (add ?demo=true to URL) ─────────────────────
@@ -804,9 +856,10 @@
     Router.register('events',    Events.render);
     Router.register('frontdesk', FrontDesk.render);
     Router.register('email',     Email.render);
+    Router.register('settings',  Settings.render);
 
     // Wire up all module event listeners
-    [Dashboard, Members, Events, FrontDesk, Email].forEach(m => m.init());
+    [Dashboard, Members, Events, FrontDesk, Email, Settings].forEach(m => m.init());
 
     // Start routing → navigates to #dashboard by default
     Router.init();

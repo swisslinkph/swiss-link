@@ -112,6 +112,7 @@ const Members = (() => {
         <td>${m[C.FAM] ? `<span class="badge badge-fam" title="${Utils.escape(m[C.FAM])}">👨‍👩‍👧 ${Utils.escape(m[C.FAM])}</span>` : ''}</td>
         <td class="amount">${Utils.formatPHP(ytd)}</td>
         <td class="actions">
+          <button class="btn-icon" title="View profile" onclick="Members.openDetail('${Utils.escape(m[C.KEY])}')">👤</button>
           <button class="btn-icon" title="Edit" onclick="Members.openEdit('${Utils.escape(m[C.KEY])}')">✏️</button>
           <button class="btn-icon btn-danger" title="Delete" onclick="Members.confirmDelete('${Utils.escape(m[C.KEY])}')">🗑️</button>
         </td>

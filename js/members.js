@@ -11,7 +11,8 @@ const Members = (() => {
   let _sortKey  = 'Last Name';
   let _sortDir  = 'asc';
   let _editingRow = null;
-  let _view     = 'list'; // 'list' | 'families'
+  let _view       = 'list'; // 'list' | 'families'
+  let _detailKey  = null;
 
   const C = {
     KEY:    'Member Key',
@@ -96,7 +97,7 @@ const Members = (() => {
       const initials = Utils.initials(m[C.FIRST] || m[C.LAST] || '?');
       return `<tr data-key="${Utils.escape(m[C.KEY])}">
         <td>
-          <div class="member-cell">
+          <div class="member-cell member-cell-link" onclick="Members.openDetail('${Utils.escape(m[C.KEY])}')">
             <div class="avatar">${initials}</div>
             <div>
               <div class="member-name">${Utils.escape(fullName)}</div>
@@ -309,6 +310,95 @@ const Members = (() => {
     dl.innerHTML = groups.map(g => `<option value="${Utils.escape(g)}">`).join('');
   }
 
+  // ── Member Detail view ────────────────────────────────────────────────────
+  function openDetail(key) {
+    _detailKey = key;
+    document.getElementById('members-page-header').style.display = 'none';
+    document.getElementById('members-list-view').style.display   = 'none';
+    document.getElementById('members-family-view').style.display = 'none';
+    document.getElementById('member-detail-view').style.display  = '';
+    _renderDetail(key);
+  }
+
+  function closeDetail() {
+    _detailKey = null;
+    document.getElementById('members-page-header').style.display = '';
+    document.getElementById('member-detail-view').style.display  = 'none';
+    switchView(_view);
+  }
+
+  function _renderDetail(key) {
+    const member = _all.find(m => m[C.KEY] === key);
+    if (!member) return;
+
+    const memberTxns = _txns
+      .filter(t => t['MemberKey'] === key)
+      .sort((a, b) => new Date(b['Timestamp']) - new Date(a['Timestamp']));
+
+    const totalPaid  = memberTxns.reduce((s, t) => s + (parseFloat(t['AmountPaid']) || 0), 0);
+    const year       = Utils.currentYear();
+    const yearPaid   = memberTxns
+      .filter(t => String(t['Year']) === String(year))
+      .reduce((s, t) => s + (parseFloat(t['AmountPaid']) || 0), 0);
+    const fullName   = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
+
+    const txnRows = memberTxns.length
+      ? memberTxns.map(t => {
+          const date  = t['Timestamp'] ? Utils.formatDate(t['Timestamp']) : '—';
+          const desc  = Utils.escape(t['EventName'] || t['Category'] || '—');
+          const notes = t['Notes'] ? `<div class="txn-notes">${Utils.escape(t['Notes'])}</div>` : '';
+          return `<tr>
+            <td>${date}</td>
+            <td>${desc}${notes}</td>
+            <td>${_categoryBadge(t['Category'])}</td>
+            <td>${Utils.escape(t['PaymentMode'] || '—')}</td>
+            <td class="amount">${Utils.formatPHP(t['AmountPaid'])}</td>
+          </tr>`;
+        }).join('')
+      : `<tr><td colspan="5" class="empty-state">No transactions recorded yet.</td></tr>`;
+
+    document.getElementById('member-detail-content').innerHTML = `
+      <div class="member-detail-header">
+        <div class="avatar lg">${Utils.initials(fullName)}</div>
+        <div class="member-detail-info">
+          <h2 class="member-detail-name">${Utils.escape(fullName)}</h2>
+          <div class="member-detail-meta">
+            ${[member[C.EMAIL], member[C.LOC]].filter(Boolean).map(Utils.escape).join('<span class="meta-sep">·</span>')}
+          </div>
+          <div class="member-detail-badges">
+            ${Utils.statusBadge(member[C.STATUS])}
+            ${Utils.typeBadge(member[C.TYPE])}
+            ${member[C.FAM] ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(member[C.FAM])}</span>` : ''}
+            <span class="badge badge-key">${Utils.escape(member[C.KEY])}</span>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="Members.openEdit('${Utils.escape(key)}')">✏️ Edit</button>
+      </div>
+
+      <div class="member-detail-stats">
+        <div class="stat-box"><span class="stat-num">${Utils.formatPHP(totalPaid)}</span><span class="stat-label">Total Paid (All Time)</span></div>
+        <div class="stat-box"><span class="stat-num">${Utils.formatPHP(yearPaid)}</span><span class="stat-label">${year} Paid</span></div>
+        <div class="stat-box"><span class="stat-num">${memberTxns.length}</span><span class="stat-label">Transactions</span></div>
+      </div>
+
+      <div class="member-detail-transactions">
+        <h3 class="section-title">Transaction History</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>${txnRows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function _categoryBadge(cat) {
+    const map = { Membership: 'badge-dues', Event: 'badge-event', RSVP: 'badge-upcoming' };
+    return cat ? `<span class="badge ${map[cat] || 'badge-tbc'}">${Utils.escape(cat)}</span>` : '';
+  }
+
   // ── Generate next MBR-NNNN key ────────────────────────────────────────────
   function _nextMemberId() {
     const nums = _all
@@ -463,6 +553,7 @@ const Members = (() => {
 
   return {
     render, init, switchView,
+    openDetail, closeDetail,
     openAdd, openEdit, confirmDelete, exportCSV,
     assignToGroup, removeFromGroup, openFamilyStatusModal,
   };

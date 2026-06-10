@@ -132,7 +132,7 @@
 
   <!-- ── MEMBERS ─────────────────────────────────────────────── -->
   <div class="view" id="view-members">
-    <div class="page-header">
+    <div class="page-header" id="members-page-header">
       <div style="display:flex;align-items:center;gap:14px;">
         <h1 class="page-title">Members</h1>
         <div class="view-toggle">
@@ -180,6 +180,14 @@
           <h3 class="unassigned-title">Unassigned Members (0)</h3>
           <div id="unassigned-list"></div>
         </div>
+      </div>
+
+      <!-- Member Detail view -->
+      <div id="member-detail-view" style="display:none">
+        <div class="member-detail-back">
+          <button class="btn btn-outline btn-sm" onclick="Members.closeDetail()">← Back to Members</button>
+        </div>
+        <div id="member-detail-content"></div>
       </div>
 
     </div>

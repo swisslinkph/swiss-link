@@ -32,7 +32,7 @@ const CONFIG = {
   ],
 
   // Google Apps Script RSVP relay URL (set after deploying rsvp-relay.gs)
-  RSVP_RELAY_URL: '',
+  RSVP_RELAY_URL: 'https://script.google.com/macros/s/AKfycbzUBdL9ASOANUEAib_3XXXlp97y381pyKh4Ap2xyndmaxRJGTeOwjg9hBLVNnaKaBXw/exec',
 
   // Base URL of your GitHub Pages site (no trailing slash)
   APP_BASE_URL: 'https://swisslinkph.github.io/swiss-link',

@@ -192,7 +192,7 @@ const Members = (() => {
     const memberKeys = members.map(m => m[C.KEY]);
     const year       = Utils.currentYear();
     const yearPaid   = _txns
-      .filter(t => memberKeys.includes(t['MemberKey']) && String(t['Year']) === String(year))
+      .filter(t => memberKeys.includes(t['MemberKey']) && String(t['Year']) === String(year) && t['Category'] === 'Membership')
       .reduce((s, t) => s + (parseFloat(t['AmountPaid']) || 0), 0);
     const grp = Utils.escape(groupName);
 

@@ -753,6 +753,120 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .row-unchecked td { opacity: 0.4; }
 #email-recipient-list input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; }
 
+/* ── View toggle (Members page) ────────────────────────────────────────── */
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.view-toggle-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--white);
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.view-toggle-btn + .view-toggle-btn { border-left: 1px solid var(--border); }
+.view-toggle-btn.active { background: var(--navy); color: #fff; }
+.view-toggle-btn:not(.active):hover { background: var(--bg); }
+
+/* ── Family Groups grid ────────────────────────────────────────────────── */
+.family-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.family-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.family-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.family-card-name { font-weight: 700; font-size: 14px; color: var(--navy); }
+.family-card-count { font-size: 12px; color: var(--text-muted); }
+.family-card-members { padding: 8px 0; flex: 1; }
+.fam-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  gap: 8px;
+}
+.fam-member-row:hover { background: var(--bg); }
+.fam-member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.fam-member-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fam-remove-btn { opacity: 0; transition: opacity 0.15s; font-size: 12px; flex-shrink: 0; }
+.fam-member-row:hover .fam-remove-btn { opacity: 1; }
+.family-card-footer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Unassigned section ────────────────────────────────────────────────── */
+.unassigned-section { margin-top: 8px; }
+.unassigned-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.unassigned-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.unassigned-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.unassigned-select { max-width: 220px; font-size: 13px; padding: 5px 8px; }
+
+/* ── Family status modal member list ───────────────────────────────────── */
+.fsm-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.fsm-member-row:last-child { border-bottom: none; }
+
 /* ── Toast ────────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed;

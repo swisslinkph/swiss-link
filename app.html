@@ -133,32 +133,55 @@
   <!-- ── MEMBERS ─────────────────────────────────────────────── -->
   <div class="view" id="view-members">
     <div class="page-header">
-      <h1 class="page-title">Members</h1>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input type="search" id="member-search" class="search-input" placeholder="Search name, email, key…">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <h1 class="page-title">Members</h1>
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" data-view="list" onclick="Members.switchView('list')">All Members</button>
+          <button class="view-toggle-btn" data-view="families" onclick="Members.switchView('families')">👨‍👩‍👧 Family Groups</button>
+        </div>
+      </div>
+      <div id="members-list-controls" style="display:flex;align-items:center;gap:10px;">
+        <input type="search" id="member-search" class="search-input" placeholder="Search name, email…">
         <span class="record-count" id="member-count"></span>
         <button class="btn btn-outline btn-sm" id="member-export-btn">⬇ Export CSV</button>
         <button class="btn btn-primary btn-sm" id="add-member-btn">+ Add Member</button>
       </div>
+      <div id="families-list-controls" style="display:none;align-items:center;gap:10px;">
+        <button class="btn btn-primary btn-sm" id="add-member-btn-fam">+ Add Member</button>
+      </div>
     </div>
     <div class="page-body" style="padding-top:16px;">
-      <table class="data-table" id="members-table">
-        <thead>
-          <tr>
-            <th data-sort="Full Name">Member</th>
-            <th data-sort="Email">Email</th>
-            <th data-sort="Location (Metro Manila/Province)">Location</th>
-            <th data-sort="2026 Membership Status (Member, Exempt, Non-member, TBC)">Status</th>
-            <th data-sort="Membership Type">Type</th>
-            <th data-sort="Family Group">Family</th>
-            <th>YTD Paid</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="8" class="empty-state">Loading members…</td></tr>
-        </tbody>
-      </table>
+
+      <!-- All Members list -->
+      <div id="members-list-view">
+        <table class="data-table" id="members-table">
+          <thead>
+            <tr>
+              <th data-sort="Full Name">Member</th>
+              <th data-sort="Email">Email</th>
+              <th data-sort="Location (Metro Manila/Province)">Location</th>
+              <th data-sort="2026 Membership Status (Member, Exempt, Non-member, TBC)">Status</th>
+              <th data-sort="Membership Type">Type</th>
+              <th data-sort="Family Group">Family</th>
+              <th>YTD Paid</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="8" class="empty-state">Loading members…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Family Groups view -->
+      <div id="members-family-view" style="display:none">
+        <div class="family-grid" id="family-grid"></div>
+        <div class="unassigned-section" id="unassigned-section">
+          <h3 class="unassigned-title">Unassigned Members (0)</h3>
+          <div id="unassigned-list"></div>
+        </div>
+      </div>
+
     </div>
   </div><!-- /view-members -->
 
@@ -288,10 +311,7 @@
     <div class="modal-body">
       <form id="member-form" onsubmit="return false">
         <div class="form-grid">
-          <div class="form-group">
-            <label for="mf-key">Member Key</label>
-            <input type="text" id="mf-key" class="form-control" placeholder="lastname|firstname (auto if blank)">
-          </div>
+          <input type="hidden" id="mf-key">
           <input type="hidden" id="mf-name">
           <div class="form-group">
             <label for="mf-first">First Name</label>
@@ -339,7 +359,9 @@
           </div>
           <div class="form-group">
             <label for="mf-fam">Family Group</label>
-            <input type="text" id="mf-fam" class="form-control" placeholder="e.g. Müller Family">
+            <input type="text" id="mf-fam" class="form-control" list="family-groups-list"
+                   placeholder="Type or select a group…" autocomplete="off">
+            <datalist id="family-groups-list"></datalist>
           </div>
         </div>
       </form>
@@ -347,6 +369,35 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Utils.hideModal('member-modal')">Cancel</button>
       <button class="btn btn-primary" id="member-save-btn">Save Member</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FAMILY STATUS MODAL -->
+<div class="modal-overlay" id="family-status-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2 id="fsm-title">Update Family Status</h2>
+      <button class="modal-close" id="fsm-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="fsm-desc" style="color:var(--text-muted);font-size:14px;margin-bottom:16px"></p>
+      <div class="form-group">
+        <label for="fsm-status">New 2026 Membership Status</label>
+        <select id="fsm-status" class="form-control">
+          <option value="Member">Member</option>
+          <option value="Exempt">Exempt</option>
+          <option value="Non-member">Non-member</option>
+          <option value="TBC">TBC</option>
+        </select>
+      </div>
+      <div id="fsm-members-list" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('family-status-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fsm-save-btn">Update All</button>
     </div>
   </div>
 </div>

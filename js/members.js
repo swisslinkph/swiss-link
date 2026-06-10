@@ -209,7 +209,7 @@ const Members = (() => {
       <div class="family-card-footer">
         <div class="family-card-paid">
           <span class="family-paid-amount">${Utils.formatPHP(yearPaid)}</span>
-          <span class="family-paid-label">${year} total</span>
+          <span class="family-paid-label">${year} membership dues</span>
         </div>
         <button class="btn btn-sm btn-outline"
                 onclick="Members.openFamilyStatusModal('${grp}')">

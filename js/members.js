@@ -7,6 +7,7 @@
 const Members = (() => {
   let _all      = [];
   let _txns     = [];
+  let _events   = [];
   let _filtered = [];
   let _sortKey  = 'Last Name';
   let _sortDir  = 'asc';
@@ -543,72 +544,111 @@ const Members = (() => {
     }
   }
 
-  // ── Record Dues modal ─────────────────────────────────────────────────────
-  function openRecordDues(key) {
+  // ── Record Payment modal ──────────────────────────────────────────────────
+  async function openRecordDues(key) {
     const member = _all.find(m => m[C.KEY] === key);
     if (!member) return;
     const fullName = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
+
     document.getElementById('dues-member-name').textContent        = fullName;
     document.getElementById('dues-member-key-display').textContent = member[C.KEY];
     document.getElementById('dues-member-key').value               = key;
+    document.getElementById('dues-category').value                 = 'Membership';
     document.getElementById('dues-year').value                     = Utils.currentYear();
     document.getElementById('dues-amount').value                   = '';
     document.getElementById('dues-mode').value                     = 'Cash';
     document.getElementById('dues-date').value                     = Utils.today();
     document.getElementById('dues-notes').value                    = '';
+    document.getElementById('dues-headcount').value                = '1';
+    document.getElementById('dues-description').value              = '';
     document.getElementById('dues-mark-member').checked            = true;
+    onDuesCategoryChange();
+
+    // Populate event dropdown (lazy-load once)
+    if (!_events.length) {
+      _events = await Sheets.getAll(CONFIG.SHEETS.EVENTS).catch(() => []);
+    }
+    const sel = document.getElementById('dues-event-select');
+    sel.innerHTML = '<option value="">— Select event —</option>' +
+      _events.map(e => `<option value="${Utils.escape(e.EventID)}" data-name="${Utils.escape(e.Title)}">
+        ${Utils.escape(e.Title)} (${Utils.formatDate(e.Date)})
+      </option>`).join('');
+
     Utils.showModal('dues-modal');
   }
 
-  async function saveRecordDues() {
-    const btn    = document.getElementById('dues-save-btn');
-    const key    = document.getElementById('dues-member-key').value;
-    const year   = parseInt(document.getElementById('dues-year').value, 10);
-    const amount = parseFloat(document.getElementById('dues-amount').value);
+  function onDuesCategoryChange() {
+    const cat = document.getElementById('dues-category').value;
+    document.getElementById('dues-membership-fields').style.display  = cat === 'Membership' ? '' : 'none';
+    document.getElementById('dues-event-fields').style.display       = cat === 'Event'      ? '' : 'none';
+    document.getElementById('dues-other-fields').style.display       = cat === 'Other'      ? '' : 'none';
+    document.getElementById('dues-mark-member-row').style.display    = cat === 'Membership' ? '' : 'none';
+  }
 
-    if (!amount || amount <= 0) {
-      Utils.toast('Please enter a valid amount.', 'error');
-      return;
-    }
+  async function saveRecordDues() {
+    const btn      = document.getElementById('dues-save-btn');
+    const key      = document.getElementById('dues-member-key').value;
+    const category = document.getElementById('dues-category').value;
+    const amount   = parseFloat(document.getElementById('dues-amount').value);
+
+    if (!amount || amount <= 0) { Utils.toast('Please enter a valid amount.', 'error'); return; }
 
     const member = _all.find(m => m[C.KEY] === key);
     if (!member) return;
 
+    // Category-specific validation
+    let eventId = '', eventName = '', headCount = 1, txnPrefix = 'TXN';
+    if (category === 'Membership') {
+      txnPrefix = 'MEM';
+      const year = parseInt(document.getElementById('dues-year').value, 10);
+      if (!year) { Utils.toast('Please enter a membership year.', 'error'); return; }
+      eventName = `${year} Membership Dues`;
+    } else if (category === 'Event') {
+      const sel = document.getElementById('dues-event-select');
+      eventId   = sel.value;
+      eventName = sel.options[sel.selectedIndex]?.dataset?.name || '';
+      headCount = parseInt(document.getElementById('dues-headcount').value, 10) || 1;
+      if (!eventId) { Utils.toast('Please select an event.', 'error'); return; }
+      txnPrefix = 'TXN';
+    } else {
+      eventName = document.getElementById('dues-description').value.trim();
+      if (!eventName) { Utils.toast('Please enter a description.', 'error'); return; }
+    }
+
     btn.disabled = true;
     Utils.setLoading(true, 'Recording payment…');
     try {
-      const txnId    = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'MEM');
+      const txnId    = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, txnPrefix);
       const fullName = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
       const date     = document.getElementById('dues-date').value;
       const mode     = document.getElementById('dues-mode').value;
       const notes    = document.getElementById('dues-notes').value.trim();
-      const markMember = document.getElementById('dues-mark-member').checked;
+      const dateObj  = date ? new Date(date + 'T00:00:00') : new Date();
 
       await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
         TransactionID: txnId,
-        Timestamp:     date ? new Date(date + 'T00:00:00').toISOString() : new Date().toISOString(),
+        Timestamp:     dateObj.toISOString(),
         MemberKey:     key,
         MemberName:    fullName,
-        EventID:       '',
-        EventName:     `${year} Membership Dues`,
+        EventID:       eventId,
+        EventName:     eventName,
         AmountPaid:    amount,
         PaymentMode:   mode,
-        Category:      'Membership',
-        Year:          year,
-        Month:         date ? parseInt(date.split('-')[1], 10) : new Date().getMonth() + 1,
-        HeadCount:     1,
+        Category:      category,
+        Year:          dateObj.getFullYear(),
+        Month:         date ? parseInt(date.split('-')[1], 10) : dateObj.getMonth() + 1,
+        HeadCount:     headCount,
         Notes:         notes,
         RecordedBy:    Auth.getUserEmail(),
       });
 
-      if (markMember) {
+      if (category === 'Membership' && document.getElementById('dues-mark-member').checked) {
         await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.STATUS]: 'Member' });
         member[C.STATUS] = 'Member';
       }
 
       Utils.hideModal('dues-modal');
       Utils.toast(`Payment recorded: ${txnId}`);
-
       _txns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => _txns);
       if (_detailKey === key) _renderDetail(key);
     } catch (e) {
@@ -789,7 +829,7 @@ const Members = (() => {
     render, init, switchView,
     openDetail, closeDetail,
     openAdd, openEdit, confirmDelete, exportCSV,
-    openRecordDues,
+    openRecordDues, onDuesCategoryChange,
     openEditTxn, confirmDeleteTxn,
     assignToGroup, removeFromGroup, openFamilyStatusModal, openRenameGroup,
   };

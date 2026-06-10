@@ -309,6 +309,16 @@ const Members = (() => {
     dl.innerHTML = groups.map(g => `<option value="${Utils.escape(g)}">`).join('');
   }
 
+  // ── Generate next MBR-NNNN key ────────────────────────────────────────────
+  function _nextMemberId() {
+    const nums = _all
+      .map(m => m[C.KEY])
+      .filter(k => /^MBR-\d+$/.test(k))
+      .map(k => parseInt(k.slice(4), 10));
+    const max = nums.length ? Math.max(...nums) : 0;
+    return `MBR-${String(max + 1).padStart(4, '0')}`;
+  }
+
   // ── Add modal ─────────────────────────────────────────────────────────────
   function openAdd() {
     _editingRow = null;
@@ -351,7 +361,7 @@ const Members = (() => {
       const get = id => document.getElementById(id)?.value?.trim() || '';
       const first = get('mf-first');
       const last  = get('mf-last');
-      const key   = get('mf-key') || `${last.toLowerCase()}|${first.toLowerCase()}`.replace(/\s+/g, '-');
+      const key   = get('mf-key') || _nextMemberId();
 
       const obj = {
         [C.KEY]:    key,

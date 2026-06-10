@@ -444,7 +444,7 @@ const Members = (() => {
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
-          <button class="btn btn-primary btn-sm" onclick="Members.openRecordDues('${Utils.escape(key)}')">💰 Record Dues</button>
+          <button class="btn btn-primary btn-sm" onclick="Members.openRecordDues('${Utils.escape(key)}')">💰 Record Transaction</button>
           <button class="btn btn-outline btn-sm" onclick="Members.openEdit('${Utils.escape(key)}')">✏️ Edit</button>
         </div>
       </div>

@@ -30,12 +30,14 @@ const Dashboard = (() => {
   function _drawKPIs(members, events, txns) {
     const year       = Utils.currentYear();
     const realMembers = members.filter(m => m['Member Key'] && m['Member Key'] !== 'Member Key');
-    const active     = realMembers.filter(m => (m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] || '').toLowerCase().includes('member') ||
-                                               m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] === 'Exempt').length;
+    const active     = realMembers.filter(m => {
+      const s = m['Membership Status'] || '';
+      return s === 'Member' || s === 'Exempt';
+    }).length;
     const totalMembers = realMembers.length;
 
     const yearTxns   = txns.filter(t => String(t.Year || t.Timestamp || '').includes(String(year)));
-    const duesRev    = yearTxns.filter(t => t.Category === 'Dues').reduce((s,t) => s + Utils.parsePHP(t.AmountPaid), 0);
+    const duesRev    = yearTxns.filter(t => t.Category === 'Membership').reduce((s,t) => s + Utils.parsePHP(t.AmountPaid), 0);
     const eventRev   = yearTxns.filter(t => t.Category === 'Event').reduce((s,t) => s + Utils.parsePHP(t.AmountPaid), 0);
     const totalRev   = duesRev + eventRev;
     const upcoming   = events.filter(e => e.Status === 'Upcoming' || new Date(e.Date) >= new Date()).length;
@@ -66,8 +68,8 @@ const Dashboard = (() => {
       const month = new Date(ts).getMonth();
       if (isNaN(month)) return;
       const amount = Utils.parsePHP(t.AmountPaid);
-      if (t.Category === 'Dues')  dues[month]   += amount;
-      if (t.Category === 'Event') events[month] += amount;
+      if (t.Category === 'Membership') dues[month]   += amount;
+      if (t.Category === 'Event')      events[month] += amount;
     });
 
     const ctx = document.getElementById('revenue-chart');
@@ -99,7 +101,7 @@ const Dashboard = (() => {
     const realMembers = members.filter(m => m['Member Key'] && m['Member Key'] !== 'Member Key');
     const counts = { Member: 0, Exempt: 0, 'Non-member': 0, TBC: 0 };
     realMembers.forEach(m => {
-      const s = m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] || 'TBC';
+      const s = m['Membership Status'] || 'TBC';
       const key = s.includes('Non') ? 'Non-member' : (counts[s] !== undefined ? s : 'TBC');
       counts[key] = (counts[key] || 0) + 1;
     });

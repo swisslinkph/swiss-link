@@ -20,7 +20,7 @@ const Members = (() => {
     FIRST:  'First Name',
     EMAIL:  'Email',
     LOC:    'Location (Metro Manila/Province)',
-    STATUS: '2026 Membership Status (Member, Exempt, Non-member, TBC)',
+    STATUS: 'Membership Status',
     TYPE:   'Membership Type',
     FAM:    'Family Group',
     NAME:   'Full Name',

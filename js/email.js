@@ -49,7 +49,7 @@ const Email = (() => {
     const filter = document.getElementById('email-filter-status')?.value || '';
 
     _selectedMembers = _members
-      .filter(m => !filter || m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] === filter)
+      .filter(m => !filter || m['Membership Status'] === filter)
       .filter(m => !query || [m['First Name'],m['Last Name'],m['Email']].some(
         v => (v||'').toLowerCase().includes(query.toLowerCase())));
 
@@ -91,7 +91,7 @@ const Email = (() => {
               <td><input type="checkbox" class="email-row-check" data-key="${key}" ${checked}></td>
               <td>${Utils.escape(`${m['First Name']} ${m['Last Name']}`.trim())}</td>
               <td>${Utils.escape(m['Email'])}</td>
-              <td>${Utils.statusBadge(m['2026 Membership Status (Member, Exempt, Non-member, TBC)'])}</td>
+              <td>${Utils.statusBadge(m['Membership Status'])}</td>
             </tr>`;
           }).join('')}
         </tbody>

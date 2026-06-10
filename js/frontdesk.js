@@ -151,7 +151,7 @@ const FrontDesk = (() => {
     results.innerHTML = found.map(m => {
       const key       = m['Member Key'];
       const name      = `${m['First Name']} ${m['Last Name']}`.trim();
-      const status    = m['2026 Membership Status (Member, Exempt, Non-member, TBC)'] || 'TBC';
+      const status    = m['Membership Status'] || 'TBC';
       const type      = m['Membership Type'] || '';
       const fam       = m['Family Group'] || '';
       const alreadyIn = _checkedIn.has(key);
@@ -184,7 +184,7 @@ const FrontDesk = (() => {
 
     const name        = `${member['First Name']} ${member['Last Name']}`.trim();
     const defaultAmt  = Utils.parsePHP(_event.MemberFee) || 0;
-    const isExempt    = (member['2026 Membership Status (Member, Exempt, Non-member, TBC)'] || '').toLowerCase() === 'exempt';
+    const isExempt    = (member['Membership Status'] || '').toLowerCase() === 'exempt';
 
     document.getElementById('checkin-member-name').textContent  = name;
     document.getElementById('checkin-event-name').textContent   = _event.Title;

@@ -550,6 +550,73 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
+     EDIT TRANSACTION MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="txn-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>Edit Transaction</h2>
+      <button class="modal-close" id="txn-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="txn-id-display" style="font-size:12px;color:var(--text-muted);font-family:monospace;margin-bottom:16px;"></p>
+      <input type="hidden" id="txn-id">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="txn-event-name">Description</label>
+          <input type="text" id="txn-event-name" class="form-control" placeholder="e.g. 2026 Membership Dues">
+        </div>
+        <div class="form-group">
+          <label for="txn-category">Category</label>
+          <select id="txn-category" class="form-control">
+            <option value="Membership">Membership</option>
+            <option value="Event">Event</option>
+            <option value="RSVP">RSVP</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="txn-year">Year</label>
+          <input type="number" id="txn-year" class="form-control" min="2000" max="2099">
+        </div>
+        <div class="form-group">
+          <label for="txn-amount">Amount Paid (₱)</label>
+          <input type="number" id="txn-amount" class="form-control" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="txn-mode">Payment Method</label>
+          <select id="txn-mode" class="form-control">
+            <option>Cash</option>
+            <option>GCash</option>
+            <option>BDO</option>
+            <option>PayPal</option>
+            <option>Bank Transfer</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="txn-date">Payment Date</label>
+          <input type="date" id="txn-date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="txn-headcount">Head Count</label>
+          <input type="number" id="txn-headcount" class="form-control" min="0" value="1">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="txn-notes">Notes</label>
+          <input type="text" id="txn-notes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('txn-modal')">Cancel</button>
+      <button class="btn btn-primary" id="txn-save-btn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
      RECORD DUES MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="dues-modal">

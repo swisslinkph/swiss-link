@@ -347,15 +347,20 @@ const Members = (() => {
           const date  = t['Timestamp'] ? Utils.formatDate(t['Timestamp']) : '—';
           const desc  = Utils.escape(t['EventName'] || t['Category'] || '—');
           const notes = t['Notes'] ? `<div class="txn-notes">${Utils.escape(t['Notes'])}</div>` : '';
+          const tid   = Utils.escape(t['TransactionID']);
           return `<tr>
             <td>${date}</td>
             <td>${desc}${notes}</td>
             <td>${_categoryBadge(t['Category'])}</td>
             <td>${Utils.escape(t['PaymentMode'] || '—')}</td>
             <td class="amount">${Utils.formatPHP(t['AmountPaid'])}</td>
+            <td class="actions">
+              <button class="btn-icon" title="Edit" onclick="Members.openEditTxn('${tid}')">✏️</button>
+              <button class="btn-icon btn-danger" title="Delete" onclick="Members.confirmDeleteTxn('${tid}')">🗑️</button>
+            </td>
           </tr>`;
         }).join('')
-      : `<tr><td colspan="5" class="empty-state">No transactions recorded yet.</td></tr>`;
+      : `<tr><td colspan="6" class="empty-state">No transactions recorded yet.</td></tr>`;
 
     document.getElementById('member-detail-content').innerHTML = `
       <div class="member-detail-header">
@@ -389,7 +394,7 @@ const Members = (() => {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Date</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th>
+              <th>Date</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th><th></th>
             </tr>
           </thead>
           <tbody>${txnRows}</tbody>
@@ -400,6 +405,76 @@ const Members = (() => {
   function _categoryBadge(cat) {
     const map = { Membership: 'badge-dues', Event: 'badge-event', RSVP: 'badge-upcoming' };
     return cat ? `<span class="badge ${map[cat] || 'badge-tbc'}">${Utils.escape(cat)}</span>` : '';
+  }
+
+  // ── Edit / Delete transaction ─────────────────────────────────────────────
+  function openEditTxn(txnId) {
+    const t = _txns.find(x => x['TransactionID'] === txnId);
+    if (!t) return;
+    document.getElementById('txn-id-display').textContent = txnId;
+    document.getElementById('txn-id').value               = txnId;
+    document.getElementById('txn-event-name').value       = t['EventName']   || '';
+    document.getElementById('txn-category').value         = t['Category']    || 'Membership';
+    document.getElementById('txn-year').value             = t['Year']        || Utils.currentYear();
+    document.getElementById('txn-amount').value           = t['AmountPaid']  || '';
+    document.getElementById('txn-mode').value             = t['PaymentMode'] || 'Cash';
+    document.getElementById('txn-date').value             = Utils.toISODate(t['Timestamp']);
+    document.getElementById('txn-headcount').value        = t['HeadCount']   || 1;
+    document.getElementById('txn-notes').value            = t['Notes']       || '';
+    Utils.showModal('txn-modal');
+  }
+
+  async function saveTxn() {
+    const btn   = document.getElementById('txn-save-btn');
+    const txnId = document.getElementById('txn-id').value;
+    const t     = _txns.find(x => x['TransactionID'] === txnId);
+    if (!t) return;
+
+    btn.disabled = true;
+    Utils.setLoading(true, 'Saving…');
+    try {
+      const date    = document.getElementById('txn-date').value;
+      const updated = {
+        ...t,
+        EventName:   document.getElementById('txn-event-name').value.trim(),
+        Category:    document.getElementById('txn-category').value,
+        Year:        parseInt(document.getElementById('txn-year').value, 10),
+        AmountPaid:  parseFloat(document.getElementById('txn-amount').value) || 0,
+        PaymentMode: document.getElementById('txn-mode').value,
+        Timestamp:   date ? new Date(date + 'T00:00:00').toISOString() : t['Timestamp'],
+        HeadCount:   parseInt(document.getElementById('txn-headcount').value, 10) || 1,
+        Notes:       document.getElementById('txn-notes').value.trim(),
+      };
+      await Sheets.update(CONFIG.SHEETS.TRANSACTIONS, t._rowIndex, updated);
+      Object.assign(t, updated);
+      Utils.hideModal('txn-modal');
+      Utils.toast('Transaction updated.');
+      if (_detailKey) _renderDetail(_detailKey);
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      Utils.setLoading(false);
+    }
+  }
+
+  async function confirmDeleteTxn(txnId) {
+    const t = _txns.find(x => x['TransactionID'] === txnId);
+    if (!t) return;
+    const desc = t['EventName'] || t['Category'] || txnId;
+    const ok   = await Utils.confirm(`Delete transaction "${desc}" (${txnId})? This cannot be undone.`);
+    if (!ok) return;
+    Utils.setLoading(true, 'Deleting…');
+    try {
+      await Sheets.deleteRow(CONFIG.SHEETS.TRANSACTIONS, t._rowIndex);
+      _txns = _txns.filter(x => x['TransactionID'] !== txnId);
+      Utils.toast('Transaction deleted.');
+      if (_detailKey) _renderDetail(_detailKey);
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      Utils.setLoading(false);
+    }
   }
 
   // ── Record Dues modal ─────────────────────────────────────────────────────
@@ -629,6 +704,10 @@ const Members = (() => {
       ?.addEventListener('click', () => Utils.hideModal('dues-modal'));
     document.getElementById('dues-save-btn')
       ?.addEventListener('click', saveRecordDues);
+    document.getElementById('txn-modal-close')
+      ?.addEventListener('click', () => Utils.hideModal('txn-modal'));
+    document.getElementById('txn-save-btn')
+      ?.addEventListener('click', saveTxn);
     document.querySelectorAll('#members-table th[data-sort]').forEach(th => {
       th.addEventListener('click', () => sort(th.dataset.sort));
     });
@@ -639,6 +718,7 @@ const Members = (() => {
     openDetail, closeDetail,
     openAdd, openEdit, confirmDelete, exportCSV,
     openRecordDues,
+    openEditTxn, confirmDeleteTxn,
     assignToGroup, removeFromGroup, openFamilyStatusModal,
   };
 })();

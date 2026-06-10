@@ -372,7 +372,10 @@ const Members = (() => {
             <span class="badge badge-key">${Utils.escape(member[C.KEY])}</span>
           </div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="Members.openEdit('${Utils.escape(key)}')">✏️ Edit</button>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <button class="btn btn-primary btn-sm" onclick="Members.openRecordDues('${Utils.escape(key)}')">💰 Record Dues</button>
+          <button class="btn btn-outline btn-sm" onclick="Members.openEdit('${Utils.escape(key)}')">✏️ Edit</button>
+        </div>
       </div>
 
       <div class="member-detail-stats">
@@ -397,6 +400,81 @@ const Members = (() => {
   function _categoryBadge(cat) {
     const map = { Membership: 'badge-dues', Event: 'badge-event', RSVP: 'badge-upcoming' };
     return cat ? `<span class="badge ${map[cat] || 'badge-tbc'}">${Utils.escape(cat)}</span>` : '';
+  }
+
+  // ── Record Dues modal ─────────────────────────────────────────────────────
+  function openRecordDues(key) {
+    const member = _all.find(m => m[C.KEY] === key);
+    if (!member) return;
+    const fullName = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
+    document.getElementById('dues-member-name').textContent        = fullName;
+    document.getElementById('dues-member-key-display').textContent = member[C.KEY];
+    document.getElementById('dues-member-key').value               = key;
+    document.getElementById('dues-year').value                     = Utils.currentYear();
+    document.getElementById('dues-amount').value                   = '';
+    document.getElementById('dues-mode').value                     = 'Cash';
+    document.getElementById('dues-date').value                     = Utils.today();
+    document.getElementById('dues-notes').value                    = '';
+    document.getElementById('dues-mark-member').checked            = true;
+    Utils.showModal('dues-modal');
+  }
+
+  async function saveRecordDues() {
+    const btn    = document.getElementById('dues-save-btn');
+    const key    = document.getElementById('dues-member-key').value;
+    const year   = parseInt(document.getElementById('dues-year').value, 10);
+    const amount = parseFloat(document.getElementById('dues-amount').value);
+
+    if (!amount || amount <= 0) {
+      Utils.toast('Please enter a valid amount.', 'error');
+      return;
+    }
+
+    const member = _all.find(m => m[C.KEY] === key);
+    if (!member) return;
+
+    btn.disabled = true;
+    Utils.setLoading(true, 'Recording payment…');
+    try {
+      const txnId    = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'MEM');
+      const fullName = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
+      const date     = document.getElementById('dues-date').value;
+      const mode     = document.getElementById('dues-mode').value;
+      const notes    = document.getElementById('dues-notes').value.trim();
+      const markMember = document.getElementById('dues-mark-member').checked;
+
+      await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+        TransactionID: txnId,
+        Timestamp:     date ? new Date(date + 'T00:00:00').toISOString() : new Date().toISOString(),
+        MemberKey:     key,
+        MemberName:    fullName,
+        EventID:       '',
+        EventName:     `${year} Membership Dues`,
+        AmountPaid:    amount,
+        PaymentMode:   mode,
+        Category:      'Membership',
+        Year:          year,
+        HeadCount:     1,
+        Notes:         notes,
+        RecordedBy:    Auth.getUserEmail(),
+      });
+
+      if (markMember) {
+        await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.STATUS]: 'Member' });
+        member[C.STATUS] = 'Member';
+      }
+
+      Utils.hideModal('dues-modal');
+      Utils.toast(`Payment recorded: ${txnId}`);
+
+      _txns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => _txns);
+      if (_detailKey === key) _renderDetail(key);
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      Utils.setLoading(false);
+    }
   }
 
   // ── Generate next MBR-NNNN key ────────────────────────────────────────────
@@ -483,6 +561,7 @@ const Members = (() => {
 
       Utils.hideModal('member-modal');
       await render();
+      if (_detailKey) _renderDetail(_detailKey);
     } catch (e) {
       Utils.toast(e.message, 'error');
     } finally {
@@ -546,6 +625,10 @@ const Members = (() => {
       ?.addEventListener('click', saveFamilyStatus);
     document.getElementById('fsm-close')
       ?.addEventListener('click', () => Utils.hideModal('family-status-modal'));
+    document.getElementById('dues-modal-close')
+      ?.addEventListener('click', () => Utils.hideModal('dues-modal'));
+    document.getElementById('dues-save-btn')
+      ?.addEventListener('click', saveRecordDues);
     document.querySelectorAll('#members-table th[data-sort]').forEach(th => {
       th.addEventListener('click', () => sort(th.dataset.sort));
     });
@@ -555,6 +638,7 @@ const Members = (() => {
     render, init, switchView,
     openDetail, closeDetail,
     openAdd, openEdit, confirmDelete, exportCSV,
+    openRecordDues,
     assignToGroup, removeFromGroup, openFamilyStatusModal,
   };
 })();

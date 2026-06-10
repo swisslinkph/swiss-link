@@ -265,7 +265,6 @@
       try {
         const res = await fetch(CONFIG.RSVP_RELAY_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ eventId, memberKey, token, response, timestamp: new Date().toISOString() }),
         });
         if (!res.ok) throw new Error('Server error ' + res.status);

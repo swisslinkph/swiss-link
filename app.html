@@ -69,6 +69,11 @@
   <div class="view" id="view-dashboard">
     <div class="page-header">
       <h1 class="page-title">Dashboard</h1>
+      <div class="year-selector">
+        <button class="year-btn" id="dash-year-prev" onclick="Dashboard.prevYear()">&#8249;</button>
+        <span class="year-label" id="dash-year-label">—</span>
+        <button class="year-btn" id="dash-year-next" onclick="Dashboard.nextYear()">&#8250;</button>
+      </div>
     </div>
     <div class="page-body">
       <!-- KPI Cards -->

@@ -231,6 +231,37 @@ body {
 
 .page-title { font-size: 18px; font-weight: 700; color: var(--navy); }
 
+/* ── Year selector ─────────────────────────────────────────────────────── */
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+.year-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--navy);
+  padding: 0 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.year-btn:hover:not(:disabled) { background: var(--border); }
+.year-btn:disabled { opacity: 0.3; cursor: default; }
+.year-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  min-width: 44px;
+  text-align: center;
+}
+
 .page-body {
   padding: 24px 28px;
   flex: 1;

@@ -4,7 +4,11 @@
  */
 
 const Dashboard = (() => {
-  let _charts = {};
+  let _charts  = {};
+  let _cache   = null;   // { members, events, txns }
+  let _year    = Utils.currentYear();
+  let _minYear = Utils.currentYear();
+  let _maxYear = Utils.currentYear();
 
   async function render() {
     Utils.setLoading(true, 'Loading dashboard…');
@@ -14,11 +18,16 @@ const Dashboard = (() => {
         Sheets.getAll(CONFIG.SHEETS.EVENTS),
         Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS),
       ]);
-      _drawKPIs(members, events, txns);
-      _drawRevenueChart(txns);
-      _drawMembershipChart(members);
-      _drawUpcomingEvents(events);
-      _drawRecentTxns(txns, members);
+      _cache = { members, events, txns };
+
+      // Detect year range from transactions
+      const years = txns.map(t => parseInt(t.Year || '')).filter(y => !isNaN(y));
+      if (years.length) {
+        _minYear = Math.min(...years);
+        _maxYear = Math.max(Math.max(...years), Utils.currentYear());
+      }
+      _year = _maxYear;
+      _redraw();
     } catch (e) {
       Utils.toast(e.message, 'error');
     } finally {
@@ -26,9 +35,32 @@ const Dashboard = (() => {
     }
   }
 
+  function _redraw() {
+    if (!_cache) return;
+    const { members, events, txns } = _cache;
+    _updateYearSelector();
+    _drawKPIs(members, events, txns);
+    _drawRevenueChart(txns);
+    _drawMembershipChart(members);
+    _drawUpcomingEvents(events);
+    _drawRecentTxns(txns, members);
+  }
+
+  function _updateYearSelector() {
+    const label = document.getElementById('dash-year-label');
+    const prev  = document.getElementById('dash-year-prev');
+    const next  = document.getElementById('dash-year-next');
+    if (label) label.textContent = _year;
+    if (prev)  prev.disabled  = _year <= _minYear;
+    if (next)  next.disabled  = _year >= _maxYear;
+  }
+
+  function prevYear() { if (_year > _minYear) { _year--; _redraw(); } }
+  function nextYear() { if (_year < _maxYear) { _year++; _redraw(); } }
+
   // ── KPI Cards ─────────────────────────────────────────────────────────────
   function _drawKPIs(members, events, txns) {
-    const year       = Utils.currentYear();
+    const year       = _year;
     const realMembers = members.filter(m => m['Member Key'] && m['Member Key'] !== 'Member Key');
     const active     = realMembers.filter(m => {
       const s = m['Membership Status'] || '';
@@ -57,14 +89,14 @@ const Dashboard = (() => {
 
   // ── Monthly Revenue Chart ─────────────────────────────────────────────────
   function _drawRevenueChart(txns) {
-    const year   = Utils.currentYear();
+    const year   = _year;
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const dues   = Array(12).fill(0);
     const events = Array(12).fill(0);
 
     txns.forEach(t => {
+      if (String(t.Year || '') !== String(year)) return;
       const ts = t.Timestamp || '';
-      if (!ts.includes(String(year))) return;
       const month = new Date(ts).getMonth();
       if (isNaN(month)) return;
       const amount = Utils.parsePHP(t.AmountPaid);
@@ -180,7 +212,7 @@ const Dashboard = (() => {
       </table>`;
   }
 
-  function init() {} // no listeners needed — render() is called by router
+  function init() {}
 
-  return { render, init };
+  return { render, init, prevYear, nextYear };
 })();

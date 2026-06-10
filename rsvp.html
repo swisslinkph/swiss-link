@@ -66,7 +66,7 @@
 
     // ── Verify token ─────────────────────────────────────────────
     function expectedToken(evtId, mKey) {
-      return btoa(evtId + ':' + mKey + ':' + CONFIG.SHEET_ID.slice(0, 8));
+      return btoa(evtId + ':' + mKey + ':' + CONFIG.SHEET_ID.slice(0, 8)).replace(/=/g, '');
     }
 
     function showError(msg) {

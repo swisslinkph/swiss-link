@@ -6,12 +6,18 @@
 const Gmail = (() => {
   const API = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
 
+  // Encode non-ASCII subject lines per RFC 2047 (required by email spec)
+  function _encodeSubject(text) {
+    if (/^[\x00-\x7F]*$/.test(text)) return text;
+    return `=?UTF-8?B?${btoa(unescape(encodeURIComponent(text)))}?=`;
+  }
+
   function _makeEmail({ to, subject, htmlBody }) {
     const from    = Auth.getUserEmail();
     const headers = [
-      `From: ${Auth.getUserName()} <${from}>`,
+      `From: Swiss Club of the Philippines <${from}>`,
       `To: ${to}`,
-      `Subject: ${subject}`,
+      `Subject: ${_encodeSubject(subject)}`,
       'MIME-Version: 1.0',
       'Content-Type: text/html; charset=UTF-8',
     ].join('\r\n');
@@ -57,7 +63,7 @@ const Gmail = (() => {
     <h1 style="color:#fff;margin:10px 0 0;font-size:22px">Swiss Club of the Philippines</h1>
   </div>
   <div style="background:#fff;border:1px solid #ddd;border-top:none;padding:30px;border-radius:0 0 8px 8px">
-    <p>Dear ${Utils.escape(member.FirstName || member.FullName)},</p>
+    <p>Dear ${Utils.escape(member['First Name'] || member['Last Name'] || '')},</p>
     <p>You are cordially invited to <strong>${Utils.escape(event.Title)}</strong>.</p>
 
     <table style="width:100%;border-collapse:collapse;margin:20px 0;background:#f9f9f9;border-radius:6px">

@@ -146,7 +146,10 @@ const Utils = (() => {
   function filterRows(rows, query, fields) {
     if (!query.trim()) return rows;
     const q = query.toLowerCase();
-    return rows.filter(r => fields.some(f => (r[f] || '').toLowerCase().includes(q)));
+    return rows.filter(r =>
+      fields.some(f => (r[f] || '').toLowerCase().includes(q)) ||
+      fields.map(f => r[f] || '').join(' ').toLowerCase().includes(q)
+    );
   }
 
   // ── Computed: total paid YTD from Transactions ────────────────────────────

@@ -826,6 +826,24 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .family-card-footer {
   padding: 10px 16px 14px;
   border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.family-card-paid {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.family-paid-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.family-paid-label {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* ── Unassigned section ────────────────────────────────────────────────── */

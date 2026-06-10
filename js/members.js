@@ -189,15 +189,30 @@ const Members = (() => {
       </div>`;
     }).join('');
 
+    const memberKeys = members.map(m => m[C.KEY]);
+    const year       = Utils.currentYear();
+    const yearPaid   = _txns
+      .filter(t => memberKeys.includes(t['MemberKey']) && String(t['Year']) === String(year))
+      .reduce((s, t) => s + (parseFloat(t['AmountPaid']) || 0), 0);
+    const grp = Utils.escape(groupName);
+
     return `<div class="family-card">
       <div class="family-card-header">
-        <span class="family-card-name">👨‍👩‍👧 ${Utils.escape(groupName)}</span>
-        <span class="family-card-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
+        <span class="family-card-name">👨‍👩‍👧 ${grp}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="family-card-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
+          <button class="btn-icon" title="Rename group"
+                  onclick="Members.openRenameGroup('${grp}')">✏️</button>
+        </div>
       </div>
       <div class="family-card-members">${memberRows}</div>
       <div class="family-card-footer">
+        <div class="family-card-paid">
+          <span class="family-paid-amount">${Utils.formatPHP(yearPaid)}</span>
+          <span class="family-paid-label">${year} total</span>
+        </div>
         <button class="btn btn-sm btn-outline"
-                onclick="Members.openFamilyStatusModal('${Utils.escape(groupName)}')">
+                onclick="Members.openFamilyStatusModal('${grp}')">
           Update Status
         </button>
       </div>
@@ -237,6 +252,54 @@ const Members = (() => {
     } catch (e) {
       Utils.toast('Error: ' + e.message, 'error');
     } finally {
+      Utils.setLoading(false);
+    }
+  }
+
+  // ── Rename group modal ────────────────────────────────────────────────────
+  function openRenameGroup(groupName) {
+    document.getElementById('rename-group-old').value            = groupName;
+    document.getElementById('rename-group-current-display').textContent = groupName;
+    document.getElementById('rename-group-input').value          = groupName;
+    Utils.showModal('rename-group-modal');
+    setTimeout(() => {
+      const inp = document.getElementById('rename-group-input');
+      inp.focus();
+      inp.select();
+    }, 50);
+  }
+
+  async function saveRenameGroup() {
+    const oldName = document.getElementById('rename-group-old').value.trim();
+    const newName = document.getElementById('rename-group-input').value.trim();
+
+    if (!newName)             { Utils.toast('Please enter a new group name.', 'error'); return; }
+    if (newName === oldName)  { Utils.hideModal('rename-group-modal'); return; }
+
+    const affected = _all.filter(m => m[C.FAM] === oldName);
+    if (!affected.length) { Utils.toast('No members found in this group.', 'error'); return; }
+
+    const ok = await Utils.confirm(
+      `Rename group "${oldName}" → "${newName}"?\n${affected.length} member(s) will be updated.`
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById('rename-group-save-btn');
+    btn.disabled = true;
+    Utils.setLoading(true, 'Renaming group…');
+
+    try {
+      for (const m of affected) {
+        await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, { ...m, [C.FAM]: newName });
+        m[C.FAM] = newName;
+      }
+      Utils.hideModal('rename-group-modal');
+      Utils.toast(`Group renamed to "${newName}"`);
+      _renderFamilyGroups();
+    } catch (e) {
+      Utils.toast('Save failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
       Utils.setLoading(false);
     }
   }
@@ -707,6 +770,10 @@ const Members = (() => {
       ?.addEventListener('click', () => Utils.hideModal('txn-modal'));
     document.getElementById('txn-save-btn')
       ?.addEventListener('click', saveTxn);
+    document.getElementById('rename-group-close')
+      ?.addEventListener('click', () => Utils.hideModal('rename-group-modal'));
+    document.getElementById('rename-group-save-btn')
+      ?.addEventListener('click', saveRenameGroup);
     document.querySelectorAll('#members-table th[data-sort]').forEach(th => {
       th.addEventListener('click', () => sort(th.dataset.sort));
     });
@@ -718,6 +785,6 @@ const Members = (() => {
     openAdd, openEdit, confirmDelete, exportCSV,
     openRecordDues,
     openEditTxn, confirmDeleteTxn,
-    assignToGroup, removeFromGroup, openFamilyStatusModal,
+    assignToGroup, removeFromGroup, openFamilyStatusModal, openRenameGroup,
   };
 })();

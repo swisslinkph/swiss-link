@@ -384,6 +384,35 @@
 
 <!-- ═══════════════════════════════════════════════════════════════
      FAMILY STATUS MODAL -->
+<!-- ═══════════════════════════════════════════════════════════════
+     RENAME FAMILY GROUP MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="rename-group-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>Rename Family Group</h2>
+      <button class="modal-close" id="rename-group-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rename-group-old">
+      <div class="form-group">
+        <label>Current name</label>
+        <div class="form-control" id="rename-group-current-display"
+             style="background:#f9f9f9;cursor:default;"></div>
+      </div>
+      <div class="form-group">
+        <label for="rename-group-input">New name</label>
+        <input type="text" id="rename-group-input" class="form-control" placeholder="Enter new group name">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('rename-group-modal')">Cancel</button>
+      <button class="btn btn-primary" id="rename-group-save-btn">Rename Group</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="family-status-modal">
   <div class="modal" style="max-width:420px">
     <div class="modal-header">

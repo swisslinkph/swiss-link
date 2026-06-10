@@ -76,13 +76,16 @@ const Sheets = (() => {
 
   // ── APPEND a new row ──────────────────────────────────────────────────────
   async function append(sheetName, obj) {
-    const headers = await getHeaders(sheetName);
-    const row     = objToRow(headers, obj);
-    // Use A2 so the API searches from below the header row and appends
-    // after the last data row, never before the headers.
-    const range   = encodeURIComponent(`${sheetName}!A2`);
-    await request(`/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-      method: 'POST',
+    const headers  = await getHeaders(sheetName);
+    const row      = objToRow(headers, obj);
+    // Find the true last row by scanning column A — avoids blank separator
+    // rows tricking the Sheets API into inserting before existing data.
+    const colA     = encodeURIComponent(`${sheetName}!A:A`);
+    const colAData = await request(`/values/${colA}`);
+    const nextRow  = (colAData.values?.length ?? 1) + 1;
+    const range    = encodeURIComponent(`${sheetName}!A${nextRow}:${colLetter(headers.length)}${nextRow}`);
+    await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
       body: JSON.stringify({ values: [row] }),
     });
   }

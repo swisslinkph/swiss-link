@@ -116,7 +116,7 @@ const Dashboard = (() => {
         labels:   Object.keys(counts),
         datasets: [{
           data: Object.values(counts),
-          backgroundColor: ['#CC0000','#FF8C00','#888888','#FFD700'],
+          backgroundColor: ['#16a34a','#2563eb','#9ca3af','#eab308'],
           borderWidth: 2,
         }],
       },

@@ -438,9 +438,9 @@ body {
   white-space: nowrap;
 }
 .badge-member     { background: #dcfce7; color: #15803d; }
-.badge-exempt     { background: #fef3c7; color: #b45309; }
+.badge-exempt     { background: #dbeafe; color: #1d4ed8; }
 .badge-non-member { background: #f3f4f6; color: #6b7280; }
-.badge-tbc        { background: #ede9fe; color: #7c3aed; }
+.badge-tbc        { background: #fef9c3; color: #a16207; }
 .badge-family     { background: var(--navy-light); color: var(--navy); }
 .badge-individual { background: #f0fdf4; color: #15803d; }
 .badge-upcoming   { background: #dbeafe; color: #1d4ed8; }

@@ -608,7 +608,6 @@ const Members = (() => {
 
       const obj = {
         [C.KEY]:    key,
-        [C.NAME]:   `${first} ${last}`.trim().toUpperCase(),
         [C.LAST]:   last,
         [C.ALT]:    get('mf-alt'),
         [C.FIRST]:  first,

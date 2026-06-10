@@ -17,9 +17,10 @@
  *   4. Copy the Web App URL into CONFIG.RSVP_RELAY_URL in js/config.js
  */
 
-const SHEET_ID         = '15C9IbCYjvkOW5USab3CraK0t1sX1LOYf'; // same as app
+const SHEET_ID         = '1xOs_Gii-7N-y97wdaR5sr-5ancGQqz7BA2YNF85UauA';
 const TRANSACTIONS_TAB = 'Transactions';
 const EVENTS_TAB       = 'Events';
+const MEMBERS_TAB      = 'Members';
 
 /**
  * Handle POST from rsvp.html
@@ -37,19 +38,20 @@ function doPost(e) {
       return _json({ success: false, error: 'Missing required fields.' });
     }
 
-    // ── Verify token ─────────────────────────────────────────────
+    // ── Verify token (must match rsvp.html: base64 with = stripped) ─
     const expectedToken = Utilities.base64Encode(
       eventId + ':' + memberKey + ':' + SHEET_ID.slice(0, 8)
-    );
+    ).replace(/=/g, '');
     if (token !== expectedToken) {
       return _json({ success: false, error: 'Invalid token.' });
     }
 
-    // ── Fetch event name (for human-readable record) ──────────────
-    const ss        = SpreadsheetApp.openById(SHEET_ID);
+    // ── Open spreadsheet ──────────────────────────────────────────
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+
+    // ── Fetch event name ──────────────────────────────────────────
     const evtSheet  = ss.getSheetByName(EVENTS_TAB);
     let   eventName = eventId;
-
     if (evtSheet) {
       const evtData   = evtSheet.getDataRange().getValues();
       const evtHdrs   = evtData[0];
@@ -61,11 +63,20 @@ function doPost(e) {
       }
     }
 
-    // ── Derive member name from key ───────────────────────────────
-    const keyParts   = memberKey.split('|');
-    const memberName = keyParts.length >= 2
-      ? _cap(keyParts[0]) + ', ' + _cap(keyParts[1])
-      : memberKey;
+    // ── Fetch member name from Members sheet (MBR-NNNN format) ────
+    let memberName = memberKey;
+    const mbrSheet = ss.getSheetByName(MEMBERS_TAB);
+    if (mbrSheet) {
+      const mbrData   = mbrSheet.getDataRange().getValues();
+      const mbrHdrs   = mbrData[0];
+      const mbrKeyCol = mbrHdrs.indexOf('Member Key');
+      const mbrFstCol = mbrHdrs.indexOf('First Name');
+      const mbrLstCol = mbrHdrs.indexOf('Last Name');
+      if (mbrKeyCol >= 0 && mbrFstCol >= 0 && mbrLstCol >= 0) {
+        const mbrRow = mbrData.find((r, i) => i > 0 && r[mbrKeyCol] === memberKey);
+        if (mbrRow) memberName = (mbrRow[mbrFstCol] + ' ' + mbrRow[mbrLstCol]).trim();
+      }
+    }
 
     // ── Build transaction row ─────────────────────────────────────
     const txnSheet = ss.getSheetByName(TRANSACTIONS_TAB);
@@ -121,12 +132,6 @@ function _nextTxnId(sheet, headers) {
 
   const next = ids.length ? Math.max(...ids) + 1 : 1;
   return prefix + String(next).padStart(3, '0');
-}
-
-/** Capitalise first letter */
-function _cap(str) {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /** Return JSON response */

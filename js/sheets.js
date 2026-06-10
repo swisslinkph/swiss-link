@@ -199,7 +199,7 @@ const Sheets = (() => {
   async function _writeTxHeaders() {
     const headers = [
       'TransactionID','Timestamp','MemberKey','MemberName','EventID','EventName',
-      'AmountPaid','PaymentMode','Category','Year','HeadCount','Notes','RecordedBy',
+      'AmountPaid','PaymentMode','Category','Year','Month','HeadCount','Notes','RecordedBy',
     ];
     const range = encodeURIComponent(`${CONFIG.SHEETS.TRANSACTIONS}!A1`);
     await request(`/values/${range}?valueInputOption=USER_ENTERED`, {

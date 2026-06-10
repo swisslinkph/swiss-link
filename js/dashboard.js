@@ -96,9 +96,8 @@ const Dashboard = (() => {
 
     txns.forEach(t => {
       if (String(t.Year || '') !== String(year)) return;
-      const ts = t.Timestamp || '';
-      const month = new Date(ts).getMonth();
-      if (isNaN(month)) return;
+      const month = parseInt(t.Month, 10) - 1; // Month is 1-based; array is 0-based
+      if (isNaN(month) || month < 0 || month > 11) return;
       const amount = Utils.parsePHP(t.AmountPaid);
       if (t.Category === 'Membership') dues[month]   += amount;
       if (t.Category === 'Event')      events[month] += amount;

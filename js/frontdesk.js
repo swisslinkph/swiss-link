@@ -228,9 +228,10 @@ const FrontDesk = (() => {
 
       // Main entry
       const txnId = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN');
+      const _now = new Date();
       await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
         TransactionID: txnId,
-        Timestamp:     new Date().toISOString(),
+        Timestamp:     _now.toISOString(),
         MemberKey:     memberKey,
         MemberName:    name,
         EventID:       _event.EventID,
@@ -238,7 +239,8 @@ const FrontDesk = (() => {
         AmountPaid:    amount + guestAmt,
         PaymentMode:   mode,
         Category:      'Event',
-        Year:          new Date().getFullYear(),
+        Year:          _now.getFullYear(),
+        Month:         _now.getMonth() + 1,
         HeadCount:     1 + guests,
         Notes:         notes,
         RecordedBy:    Auth.getUserEmail(),

@@ -16,17 +16,18 @@ const Members = (() => {
   let _detailKey  = null;
 
   const C = {
-    KEY:    'Member Key',
-    LAST:   'Last Name',
-    ALT:    'Alternative Name',
-    FIRST:  'First Name',
-    EMAIL:  'Email',
-    MOBILE: 'Mobile',
-    LOC:    'Location (Metro Manila/Province)',
-    STATUS: 'Membership Status',
-    TYPE:   'Membership Type',
-    FAM:    'Family Group',
-    NAME:   'Full Name',
+    KEY:     'Member Key',
+    LAST:    'Last Name',
+    ALT:     'Alternative Name',
+    FIRST:   'First Name',
+    EMAIL:   'Email',
+    MOBILE:  'Mobile',
+    LOC:     'Location (Metro Manila/Province)',
+    STATUS:  'Membership Status',
+    RENEWAL: 'Renewal Year',
+    TYPE:    'Membership Type',
+    FAM:     'Family Group',
+    NAME:    'Full Name',
   };
 
   // ── Load data ─────────────────────────────────────────────────────────────
@@ -108,7 +109,7 @@ const Members = (() => {
         </td>
         <td>${Utils.escape(m[C.EMAIL])}</td>
         <td>${Utils.escape(m[C.LOC])}</td>
-        <td>${Utils.statusBadge(m[C.STATUS])}</td>
+        <td>${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}</td>
         <td>${Utils.typeBadge(m[C.TYPE])}</td>
         <td>${m[C.FAM] ? `<span class="badge badge-fam" title="${Utils.escape(m[C.FAM])}">👨‍👩‍👧 ${Utils.escape(m[C.FAM])}</span>` : ''}</td>
         <td class="amount">${Utils.formatPHP(ytd)}</td>
@@ -163,7 +164,7 @@ const Members = (() => {
               <div class="unassigned-info">
                 <div class="avatar sm">${Utils.initials(name)}</div>
                 <span>${Utils.escape(name)}</span>
-                ${Utils.statusBadge(m[C.STATUS])}
+                ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
               </div>
               <select class="form-control unassigned-select"
                       data-key="${Utils.escape(m[C.KEY])}"
@@ -185,7 +186,7 @@ const Members = (() => {
         <div class="fam-member-info">
           <div class="avatar sm">${Utils.initials(name)}</div>
           <span class="fam-member-name">${Utils.escape(name)}</span>
-          ${Utils.statusBadge(m[C.STATUS])}
+          ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
         </div>
         <button class="btn-icon btn-danger fam-remove-btn" title="Remove from group"
                 onclick="Members.removeFromGroup('${Utils.escape(m[C.KEY])}')">✕</button>
@@ -318,7 +319,7 @@ const Members = (() => {
       return `<div class="fsm-member-row">
         <div class="avatar sm">${Utils.initials(name)}</div>
         <span>${Utils.escape(name)}</span>
-        ${Utils.statusBadge(m[C.STATUS])}
+        ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
       </div>`;
     }).join('');
     document.getElementById('fsm-save-btn').dataset.group = groupName;
@@ -437,7 +438,7 @@ const Members = (() => {
             ${[member[C.EMAIL], member[C.MOBILE], member[C.LOC]].filter(Boolean).map(Utils.escape).join('<span class="meta-sep">·</span>')}
           </div>
           <div class="member-detail-badges">
-            ${Utils.statusBadge(member[C.STATUS])}
+            ${Utils.statusBadge(member[C.STATUS], member[C.RENEWAL])}
             ${Utils.typeBadge(member[C.TYPE])}
             ${member[C.FAM] ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(member[C.FAM])}</span>` : ''}
             <span class="badge badge-key">${Utils.escape(member[C.KEY])}</span>
@@ -643,8 +644,14 @@ const Members = (() => {
       });
 
       if (category === 'Membership' && document.getElementById('dues-mark-member').checked) {
-        await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.STATUS]: 'Member' });
-        member[C.STATUS] = 'Member';
+        const renewalYear = parseInt(document.getElementById('dues-year').value, 10) || dateObj.getFullYear();
+        await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, {
+          ...member,
+          [C.STATUS]:  'Member',
+          [C.RENEWAL]: renewalYear,
+        });
+        member[C.STATUS]  = 'Member';
+        member[C.RENEWAL] = renewalYear;
       }
 
       Utils.hideModal('dues-modal');
@@ -714,22 +721,23 @@ const Members = (() => {
       const last  = get('mf-last');
       const key   = get('mf-key') || _nextMemberId();
 
+      const existing = _editingRow ? _all.find(m => m[C.KEY] === get('mf-key')) : null;
       const obj = {
-        [C.KEY]:    key,
-        [C.LAST]:   last,
-        [C.ALT]:    get('mf-alt'),
-        [C.FIRST]:  first,
-        [C.EMAIL]:  get('mf-email'),
-        [C.MOBILE]: get('mf-mobile'),
-        [C.LOC]:    get('mf-loc'),
-        [C.STATUS]: get('mf-status'),
-        [C.TYPE]:   get('mf-type'),
-        [C.FAM]:    get('mf-fam'),
+        [C.KEY]:     key,
+        [C.LAST]:    last,
+        [C.ALT]:     get('mf-alt'),
+        [C.FIRST]:   first,
+        [C.EMAIL]:   get('mf-email'),
+        [C.MOBILE]:  get('mf-mobile'),
+        [C.LOC]:     get('mf-loc'),
+        [C.STATUS]:  get('mf-status'),
+        [C.RENEWAL]: existing?.[C.RENEWAL] || '',
+        [C.TYPE]:    get('mf-type'),
+        [C.FAM]:     get('mf-fam'),
       };
 
       if (_editingRow) {
-        const existing = _all.find(m => m[C.KEY] === get('mf-key'));
-        const merged   = existing ? { ...existing, ...obj } : obj;
+        const merged = existing ? { ...existing, ...obj } : obj;
         await Sheets.update(CONFIG.SHEETS.MEMBERS, _editingRow, merged);
         Utils.toast('Member updated.');
       } else {

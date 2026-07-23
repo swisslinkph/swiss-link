@@ -329,6 +329,27 @@
         </div>
       </div>
 
+      <div class="settings-section">
+        <h2 class="settings-section-title">Membership Year Rollover</h2>
+        <p class="settings-section-desc">
+          At the start of each membership year, use this to reset all non-Exempt members
+          to <strong>TBC</strong> so renewals can be tracked fresh. Members who have
+          already paid for the new year are unaffected. Transaction history is never deleted.
+        </p>
+        <div class="settings-rollover-row">
+          <input type="number" id="settings-rollover-year" class="form-control"
+                 placeholder="e.g. 2027" min="2020" max="2100" style="width:130px;flex:none;">
+          <button class="btn btn-danger" id="settings-rollover-btn">
+            Start New Membership Year
+          </button>
+        </div>
+        <p class="settings-hint">
+          Members with <strong>Exempt</strong> status will never be reset.
+          Members whose <em>Renewal Year</em> is already equal to or greater than
+          the year you enter will also be skipped.
+        </p>
+      </div>
+
     </div>
   </div><!-- /view-settings -->
 

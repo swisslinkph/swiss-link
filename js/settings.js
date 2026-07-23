@@ -120,9 +120,67 @@ const Settings = (() => {
     }
   }
 
+  // ── Membership year rollover ──────────────────────────────────────────────
+  async function startNewYear() {
+    const yearEl = document.getElementById('settings-rollover-year');
+    const year   = parseInt(yearEl?.value, 10);
+    if (!year || year < 2020 || year > 2100) {
+      Utils.toast('Please enter a valid year (e.g. 2027).', 'error'); return;
+    }
+
+    Utils.setLoading(true, 'Checking members…');
+    let members;
+    try {
+      members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS);
+    } catch (e) {
+      Utils.toast('Failed to load members: ' + e.message, 'error');
+      Utils.setLoading(false);
+      return;
+    }
+    Utils.setLoading(false);
+
+    const toReset = members.filter(m => {
+      const status      = m['Membership Status'];
+      const renewalYear = parseInt(m['Renewal Year'], 10) || 0;
+      return status !== 'Exempt' && renewalYear < year;
+    });
+
+    if (!toReset.length) {
+      Utils.toast(`All eligible members already have ${year} renewal on record.`);
+      return;
+    }
+
+    const ok = await Utils.confirm(
+      `Start ${year} membership year?\n\n` +
+      `${toReset.length} member(s) will be set to TBC.\n` +
+      `Exempt members will not be affected.\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById('settings-rollover-btn');
+    if (btn) btn.disabled = true;
+    Utils.setLoading(true, `Resetting ${toReset.length} members to TBC…`);
+    try {
+      for (const m of toReset) {
+        await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, {
+          ...m, 'Membership Status': 'TBC',
+        });
+      }
+      Utils.toast(`${toReset.length} member(s) set to TBC for ${year}.`);
+      if (yearEl) yearEl.value = '';
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+      Utils.setLoading(false);
+    }
+  }
+
   function init() {
     document.getElementById('settings-add-btn')
       ?.addEventListener('click', addAdmin);
+    document.getElementById('settings-rollover-btn')
+      ?.addEventListener('click', startNewYear);
   }
 
   return { render, init, confirmRemove };

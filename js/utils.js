@@ -68,9 +68,12 @@ const Utils = (() => {
     'TBC':        'badge-tbc',
   };
 
-  function statusBadge(status) {
+  function statusBadge(status, renewalYear) {
     const cls = STATUS_CLASSES[status] || 'badge-tbc';
-    return `<span class="badge ${cls}">${escape(status || 'TBC')}</span>`;
+    const yearChip = (renewalYear && status === 'Member')
+      ? ` <span class="badge-year">${escape(String(renewalYear))}</span>`
+      : '';
+    return `<span class="badge ${cls}">${escape(status || 'TBC')}${yearChip}</span>`;
   }
 
   function typeBadge(type) {

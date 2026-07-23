@@ -16,18 +16,19 @@ const Members = (() => {
   let _detailKey  = null;
 
   const C = {
-    KEY:     'Member Key',
-    LAST:    'Last Name',
-    ALT:     'Alternative Name',
-    FIRST:   'First Name',
-    EMAIL:   'Email',
-    MOBILE:  'Mobile',
-    LOC:     'Location (Metro Manila/Province)',
-    STATUS:  'Membership Status',
-    RENEWAL: 'Renewal Year',
-    TYPE:    'Membership Type',
-    FAM:     'Family Group',
-    NAME:    'Full Name',
+    KEY:      'Member Key',
+    LAST:     'Last Name',
+    ALT:      'Alternative Name',
+    FIRST:    'First Name',
+    EMAIL:    'Email',
+    MOBILE:   'Mobile',
+    LOC:      'Location (Metro Manila/Province)',
+    STATUS:   'Membership Status',
+    RENEWAL:  'Renewal Year',
+    TYPE:     'Membership Type',
+    FAM:      'Family Group',   // legacy column kept for search
+    FAM_HEAD: 'Family Head',    // member key of the family head
+    NAME:     'Full Name',
   };
 
   // ── Load data ─────────────────────────────────────────────────────────────
@@ -94,9 +95,16 @@ const Members = (() => {
       return;
     }
 
+    // Pre-build headKey → name map for the family column
+    const headNames = {};
+    _all.forEach(m => {
+      if (m[C.FAM_HEAD] === m[C.KEY]) headNames[m[C.KEY]] = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
+    });
+
     tbody.innerHTML = _filtered.map(m => {
-      const ytd = Utils.totalPaidYTD(m[C.KEY], _txns);
-      const key = Utils.escape(m[C.KEY]);
+      const ytd     = Utils.totalPaidYTD(m[C.KEY], _txns);
+      const key     = Utils.escape(m[C.KEY]);
+      const famName = headNames[m[C.FAM_HEAD]] || '';
       return `<tr data-key="${key}">
         <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.FIRST])}</td>
         <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.LAST])}</td>
@@ -104,7 +112,7 @@ const Members = (() => {
         <td>${Utils.escape(m[C.LOC])}</td>
         <td>${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}</td>
         <td>${Utils.typeBadge(m[C.TYPE])}</td>
-        <td>${m[C.FAM] ? `<span class="badge badge-fam" title="${Utils.escape(m[C.FAM])}">👨‍👩‍👧 ${Utils.escape(m[C.FAM])}</span>` : ''}</td>
+        <td>${famName ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(famName)}</span>` : ''}</td>
         <td class="amount">${Utils.formatPHP(ytd)}</td>
         <td class="actions">
           <button class="btn-icon" title="View profile" onclick="Members.openDetail('${key}')">👤</button>
@@ -117,29 +125,36 @@ const Members = (() => {
 
   // ── Family Groups view ────────────────────────────────────────────────────
   function _renderFamilyGroups() {
-    const grid      = document.getElementById('family-grid');
-    const unassSec  = document.getElementById('unassigned-section');
+    const grid     = document.getElementById('family-grid');
+    const unassSec = document.getElementById('unassigned-section');
     if (!grid) return;
 
-    // Bucket members by family group
+    // Group by Family Head key
     const groups = {};
     const unassigned = [];
     _all.forEach(m => {
-      const grp = m[C.FAM]?.trim();
-      if (grp) {
-        if (!groups[grp]) groups[grp] = [];
-        groups[grp].push(m);
+      const hk = m[C.FAM_HEAD]?.trim();
+      if (hk) {
+        if (!groups[hk]) groups[hk] = [];
+        groups[hk].push(m);
       } else {
         unassigned.push(m);
       }
     });
 
-    const groupNames = Object.keys(groups).sort();
+    // Sort families by head's last name
+    const headKeys = Object.keys(groups).sort((a, b) => {
+      const ha = _all.find(m => m[C.KEY] === a);
+      const hb = _all.find(m => m[C.KEY] === b);
+      const na = ha ? `${ha[C.LAST]} ${ha[C.FIRST]}` : a;
+      const nb = hb ? `${hb[C.LAST]} ${hb[C.FIRST]}` : b;
+      return na.localeCompare(nb);
+    });
 
-    if (!groupNames.length) {
-      grid.innerHTML = '<p class="empty-state" style="grid-column:1/-1">No family groups yet. Edit a member and set their Family Group to get started.</p>';
+    if (!headKeys.length) {
+      grid.innerHTML = '<p class="empty-state" style="grid-column:1/-1">No family groups yet. Select an unassigned member below and click "Start New Family".</p>';
     } else {
-      grid.innerHTML = groupNames.map(name => _familyCardHTML(name, groups[name], groupNames)).join('');
+      grid.innerHTML = headKeys.map(hk => _familyCardHTML(hk, groups[hk])).join('');
     }
 
     // Unassigned section
@@ -148,23 +163,35 @@ const Members = (() => {
       const list = document.getElementById('unassigned-list');
       if (list) {
         if (!unassigned.length) {
-          list.innerHTML = '<p class="empty-state">All members are assigned to a family group.</p>';
+          list.innerHTML = '<p class="empty-state">All members are assigned to a family.</p>';
         } else {
-          const opts = groupNames.map(g => `<option value="${Utils.escape(g)}">${Utils.escape(g)}</option>`).join('');
+          const headOpts = headKeys.map(hk => {
+            const head = _all.find(m => m[C.KEY] === hk);
+            const name = head ? `${head[C.FIRST]} ${head[C.LAST]}`.trim() : hk;
+            return `<option value="${Utils.escape(hk)}">${Utils.escape(name)}'s family</option>`;
+          }).join('');
+
           list.innerHTML = unassigned.map(m => {
             const name = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
+            const key  = Utils.escape(m[C.KEY]);
             return `<div class="unassigned-row">
               <div class="unassigned-info">
                 <div class="avatar sm">${Utils.initials(name)}</div>
                 <span>${Utils.escape(name)}</span>
                 ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
               </div>
-              <select class="form-control unassigned-select"
-                      data-key="${Utils.escape(m[C.KEY])}"
-                      onchange="Members.assignToGroup(this.dataset.key, this.value); this.value=''">
-                <option value="">— Assign to group —</option>
-                ${opts}
-              </select>
+              <div class="unassigned-actions">
+                ${headOpts ? `<select class="form-control unassigned-select"
+                        data-key="${key}"
+                        onchange="Members.assignToFamily(this.dataset.key, this.value); this.value=''">
+                  <option value="">— Add to existing family —</option>
+                  ${headOpts}
+                </select>` : ''}
+                <button class="btn btn-sm btn-outline"
+                        onclick="Members.createFamily('${key}')">
+                  Start New Family
+                </button>
+              </div>
             </div>`;
           }).join('');
         }
@@ -172,17 +199,27 @@ const Members = (() => {
     }
   }
 
-  function _familyCardHTML(groupName, members, allGroupNames) {
+  function _familyCardHTML(headKey, members) {
+    const head     = _all.find(m => m[C.KEY] === headKey);
+    const headName = head ? `${head[C.FIRST]} ${head[C.LAST]}`.trim() : headKey;
+    const hk       = Utils.escape(headKey);
+
     const memberRows = members.map(m => {
-      const name = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
+      const name   = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
+      const isHead = m[C.KEY] === headKey;
+      const key    = Utils.escape(m[C.KEY]);
       return `<div class="fam-member-row">
         <div class="fam-member-info">
           <div class="avatar sm">${Utils.initials(name)}</div>
           <span class="fam-member-name">${Utils.escape(name)}</span>
+          ${isHead ? '<span class="badge badge-head">👑 Head</span>' : ''}
           ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
         </div>
-        <button class="btn-icon btn-danger fam-remove-btn" title="Remove from group"
-                onclick="Members.removeFromGroup('${Utils.escape(m[C.KEY])}')">✕</button>
+        <div style="display:flex;gap:4px;">
+          ${!isHead ? `<button class="btn-icon" title="Set as family head" onclick="Members.setAsHead('${key}')">👑</button>` : ''}
+          <button class="btn-icon btn-danger" title="Remove from family"
+                  onclick="Members.removeFromFamily('${key}')">✕</button>
+        </div>
       </div>`;
     }).join('');
 
@@ -191,16 +228,11 @@ const Members = (() => {
     const yearPaid   = _txns
       .filter(t => memberKeys.includes(t['MemberKey']) && String(t['Year']) === String(year) && t['Category'] === 'Membership')
       .reduce((s, t) => s + (parseFloat(t['AmountPaid']) || 0), 0);
-    const grp = Utils.escape(groupName);
 
     return `<div class="family-card">
       <div class="family-card-header">
-        <span class="family-card-name">👨‍👩‍👧 ${grp}</span>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="family-card-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
-          <button class="btn-icon" title="Rename group"
-                  onclick="Members.openRenameGroup('${grp}')">✏️</button>
-        </div>
+        <span class="family-card-name">👨‍👩‍👧 ${Utils.escape(headName)}</span>
+        <span class="family-card-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
       </div>
       <div class="family-card-members">${memberRows}</div>
       <div class="family-card-footer">
@@ -209,24 +241,26 @@ const Members = (() => {
           <span class="family-paid-label">${year} membership dues</span>
         </div>
         <button class="btn btn-sm btn-outline"
-                onclick="Members.openFamilyStatusModal('${grp}')">
+                onclick="Members.openFamilyStatusModal('${hk}')">
           Update Status
         </button>
       </div>
     </div>`;
   }
 
-  // ── Assign / remove family group ──────────────────────────────────────────
-  async function assignToGroup(memberKey, groupName) {
-    if (!groupName) return;
+  // ── Family assignment / head management ───────────────────────────────────
+  async function assignToFamily(memberKey, headKey) {
+    if (!headKey) return;
     const member = _all.find(m => m[C.KEY] === memberKey);
     if (!member) return;
     Utils.setLoading(true, 'Saving…');
     try {
-      await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.FAM]: groupName });
-      member[C.FAM] = groupName;
+      await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.FAM_HEAD]: headKey });
+      member[C.FAM_HEAD] = headKey;
       _renderFamilyGroups();
-      Utils.toast(`${member[C.FIRST]} ${member[C.LAST]} added to "${groupName}".`);
+      const head = _all.find(m => m[C.KEY] === headKey);
+      const headName = head ? `${head[C.FIRST]} ${head[C.LAST]}`.trim() : headKey;
+      Utils.toast(`${member[C.FIRST]} ${member[C.LAST]} added to ${headName}'s family.`);
     } catch (e) {
       Utils.toast('Error: ' + e.message, 'error');
     } finally {
@@ -234,79 +268,88 @@ const Members = (() => {
     }
   }
 
-  async function removeFromGroup(memberKey) {
+  async function removeFromFamily(memberKey) {
+    const member = _all.find(m => m[C.KEY] === memberKey);
+    if (!member) return;
+    const name   = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
+    const isHead = member[C.FAM_HEAD] === memberKey;
+
+    if (isHead) {
+      const others = _all.filter(m => m[C.FAM_HEAD] === memberKey && m[C.KEY] !== memberKey);
+      if (others.length) {
+        Utils.toast(`${name} is the family head — set a new head first before removing them.`, 'error');
+        return;
+      }
+    }
+
+    const ok = await Utils.confirm(`Remove ${name} from their family?`);
+    if (!ok) return;
+    Utils.setLoading(true, 'Removing…');
+    try {
+      await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.FAM_HEAD]: '' });
+      member[C.FAM_HEAD] = '';
+      _renderFamilyGroups();
+      Utils.toast(`${name} removed from family.`);
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      Utils.setLoading(false);
+    }
+  }
+
+  async function setAsHead(memberKey) {
+    const member = _all.find(m => m[C.KEY] === memberKey);
+    if (!member) return;
+    const oldHeadKey = member[C.FAM_HEAD];
+    if (!oldHeadKey || oldHeadKey === memberKey) return;
+
+    const name = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
+    const ok   = await Utils.confirm(`Set ${name} as the new family head?`);
+    if (!ok) return;
+
+    const familyMembers = _all.filter(m => m[C.FAM_HEAD] === oldHeadKey);
+    Utils.setLoading(true, 'Updating family head…');
+    try {
+      for (const m of familyMembers) {
+        await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, { ...m, [C.FAM_HEAD]: memberKey });
+        m[C.FAM_HEAD] = memberKey;
+      }
+      Utils.toast(`${name} is now the family head.`);
+      _renderFamilyGroups();
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      Utils.setLoading(false);
+    }
+  }
+
+  async function createFamily(memberKey) {
     const member = _all.find(m => m[C.KEY] === memberKey);
     if (!member) return;
     const name = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
-    const ok = await Utils.confirm(`Remove ${name} from family group "${member[C.FAM]}"?`);
+    const ok   = await Utils.confirm(`Create a new family with ${name} as the head?`);
     if (!ok) return;
-    Utils.setLoading(true, 'Saving…');
+    Utils.setLoading(true, 'Creating family…');
     try {
-      await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.FAM]: '' });
-      member[C.FAM] = '';
+      await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, [C.FAM_HEAD]: memberKey });
+      member[C.FAM_HEAD] = memberKey;
       _renderFamilyGroups();
-      Utils.toast(`${name} removed from family group.`);
+      Utils.toast(`${name}'s family created.`);
     } catch (e) {
       Utils.toast('Error: ' + e.message, 'error');
     } finally {
-      Utils.setLoading(false);
-    }
-  }
-
-  // ── Rename group modal ────────────────────────────────────────────────────
-  function openRenameGroup(groupName) {
-    document.getElementById('rename-group-old').value            = groupName;
-    document.getElementById('rename-group-current-display').textContent = groupName;
-    document.getElementById('rename-group-input').value          = groupName;
-    Utils.showModal('rename-group-modal');
-    setTimeout(() => {
-      const inp = document.getElementById('rename-group-input');
-      inp.focus();
-      inp.select();
-    }, 50);
-  }
-
-  async function saveRenameGroup() {
-    const oldName = document.getElementById('rename-group-old').value.trim();
-    const newName = document.getElementById('rename-group-input').value.trim();
-
-    if (!newName)             { Utils.toast('Please enter a new group name.', 'error'); return; }
-    if (newName === oldName)  { Utils.hideModal('rename-group-modal'); return; }
-
-    const affected = _all.filter(m => m[C.FAM] === oldName);
-    if (!affected.length) { Utils.toast('No members found in this group.', 'error'); return; }
-
-    const ok = await Utils.confirm(
-      `Rename group "${oldName}" → "${newName}"?\n${affected.length} member(s) will be updated.`
-    );
-    if (!ok) return;
-
-    const btn = document.getElementById('rename-group-save-btn');
-    btn.disabled = true;
-    Utils.setLoading(true, 'Renaming group…');
-
-    try {
-      for (const m of affected) {
-        await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, { ...m, [C.FAM]: newName });
-        m[C.FAM] = newName;
-      }
-      Utils.hideModal('rename-group-modal');
-      Utils.toast(`Group renamed to "${newName}"`);
-      _renderFamilyGroups();
-    } catch (e) {
-      Utils.toast('Save failed: ' + e.message, 'error');
-    } finally {
-      btn.disabled = false;
       Utils.setLoading(false);
     }
   }
 
   // ── Family status modal ───────────────────────────────────────────────────
-  function openFamilyStatusModal(groupName) {
-    const members = _all.filter(m => m[C.FAM] === groupName);
-    document.getElementById('fsm-title').textContent = `Update Status — ${groupName}`;
+  function openFamilyStatusModal(headKey) {
+    const members  = _all.filter(m => m[C.FAM_HEAD] === headKey);
+    const head     = _all.find(m => m[C.KEY] === headKey);
+    const headName = head ? `${head[C.FIRST]} ${head[C.LAST]}`.trim() : headKey;
+    document.getElementById('fsm-title').textContent = `Update Status — ${headName}'s family`;
     document.getElementById('fsm-desc').textContent =
-      `Sets the 2026 membership status for all ${members.length} member${members.length !== 1 ? 's' : ''} in this group.`;
+      `Sets the membership status for all ${members.length} member${members.length !== 1 ? 's' : ''} in this family.`;
     document.getElementById('fsm-members-list').innerHTML = members.map(m => {
       const name = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
       return `<div class="fsm-member-row">
@@ -315,15 +358,15 @@ const Members = (() => {
         ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
       </div>`;
     }).join('');
-    document.getElementById('fsm-save-btn').dataset.group = groupName;
+    document.getElementById('fsm-save-btn').dataset.group = headKey;
     Utils.showModal('family-status-modal');
   }
 
   async function saveFamilyStatus() {
-    const btn       = document.getElementById('fsm-save-btn');
-    const groupName = btn.dataset.group;
-    const status    = document.getElementById('fsm-status').value;
-    const members   = _all.filter(m => m[C.FAM] === groupName);
+    const btn     = document.getElementById('fsm-save-btn');
+    const headKey = btn.dataset.group;
+    const status  = document.getElementById('fsm-status').value;
+    const members = _all.filter(m => m[C.FAM_HEAD] === headKey);
 
     btn.disabled = true;
     Utils.setLoading(true, 'Updating family…');
@@ -363,13 +406,6 @@ const Members = (() => {
   }
 
   // ── Datalist helper ───────────────────────────────────────────────────────
-  function _populateFamilyDatalist() {
-    const dl = document.getElementById('family-groups-list');
-    if (!dl) return;
-    const groups = [...new Set(_all.map(m => m[C.FAM]).filter(Boolean))].sort();
-    dl.innerHTML = groups.map(g => `<option value="${Utils.escape(g)}">`).join('');
-  }
-
   // ── Member Detail view ────────────────────────────────────────────────────
   function openDetail(key) {
     _detailKey = key;
@@ -433,7 +469,7 @@ const Members = (() => {
           <div class="member-detail-badges">
             ${Utils.statusBadge(member[C.STATUS], member[C.RENEWAL])}
             ${Utils.typeBadge(member[C.TYPE])}
-            ${member[C.FAM] ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(member[C.FAM])}</span>` : ''}
+            ${(() => { const hd = member[C.FAM_HEAD] ? _all.find(m => m[C.KEY] === member[C.FAM_HEAD]) : null; return hd ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(`${hd[C.FIRST]} ${hd[C.LAST]}`.trim())}'s family</span>` : ''; })()}
             <span class="badge badge-key">${Utils.escape(member[C.KEY])}</span>
           </div>
         </div>
@@ -675,7 +711,6 @@ const Members = (() => {
     document.getElementById('member-modal-title').textContent = 'Add Member';
     document.getElementById('member-form').reset();
     document.getElementById('mf-key').value = '';
-    _populateFamilyDatalist();
     Utils.showModal('member-modal');
   }
 
@@ -685,7 +720,6 @@ const Members = (() => {
     if (!member) return;
     _editingRow = member._rowIndex;
     document.getElementById('member-modal-title').textContent = 'Edit Member';
-    _populateFamilyDatalist();
     _populateForm(member);
     Utils.showModal('member-modal');
   }
@@ -701,7 +735,6 @@ const Members = (() => {
     set('mf-loc',    m[C.LOC]);
     set('mf-status', m[C.STATUS]);
     set('mf-type',   m[C.TYPE]);
-    set('mf-fam',    m[C.FAM]);
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -726,7 +759,7 @@ const Members = (() => {
         [C.STATUS]:  get('mf-status'),
         [C.RENEWAL]: existing?.[C.RENEWAL] || '',
         [C.TYPE]:    get('mf-type'),
-        [C.FAM]:     get('mf-fam'),
+        // FAM (legacy) and FAM_HEAD preserved from existing via merge below
       };
 
       if (_editingRow) {
@@ -817,10 +850,6 @@ const Members = (() => {
       ?.addEventListener('click', () => Utils.hideModal('txn-modal'));
     document.getElementById('txn-save-btn')
       ?.addEventListener('click', saveTxn);
-    document.getElementById('rename-group-close')
-      ?.addEventListener('click', () => Utils.hideModal('rename-group-modal'));
-    document.getElementById('rename-group-save-btn')
-      ?.addEventListener('click', saveRenameGroup);
     document.querySelectorAll('#members-table th[data-sort]').forEach(th => {
       th.addEventListener('click', () => sort(th.dataset.sort));
     });
@@ -832,6 +861,6 @@ const Members = (() => {
     openAdd, openEdit, confirmDelete, exportCSV,
     openRecordDues, onDuesCategoryChange,
     openEditTxn, confirmDeleteTxn,
-    assignToGroup, removeFromGroup, openFamilyStatusModal, openRenameGroup,
+    assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
   };
 })();

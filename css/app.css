@@ -479,6 +479,7 @@ body {
 .badge-dues       { background: #fef3c7; color: #b45309; }
 .badge-event      { background: var(--navy-light); color: var(--navy); }
 .badge-fam        { background: #ede9fe; color: #7c3aed; }
+.badge-head       { background: #fef9c3; color: #92400e; }
 .badge-year {
   display: inline-block;
   background: rgba(0,0,0,.12);
@@ -914,6 +915,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   min-width: 0;
 }
 .unassigned-select { max-width: 220px; font-size: 13px; padding: 5px 8px; }
+.unassigned-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
 
 /* ── Family status modal member list ───────────────────────────────────── */
 .fsm-member-row {

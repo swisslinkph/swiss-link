@@ -90,23 +90,16 @@ const Members = (() => {
     if (!tbody) return;
 
     if (!_filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No members found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No members found.</td></tr>';
       return;
     }
 
     tbody.innerHTML = _filtered.map(m => {
-      const ytd      = Utils.totalPaidYTD(m[C.KEY], _txns);
-      const fullName = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
-      const initials = Utils.initials(m[C.FIRST] || m[C.LAST] || '?');
-      return `<tr data-key="${Utils.escape(m[C.KEY])}">
-        <td>
-          <div class="member-cell member-cell-link" onclick="Members.openDetail('${Utils.escape(m[C.KEY])}')">
-            <div class="avatar">${initials}</div>
-            <div>
-              <div class="member-name">${Utils.escape(fullName)}</div>
-            </div>
-          </div>
-        </td>
+      const ytd = Utils.totalPaidYTD(m[C.KEY], _txns);
+      const key = Utils.escape(m[C.KEY]);
+      return `<tr data-key="${key}">
+        <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.FIRST])}</td>
+        <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.LAST])}</td>
         <td>${Utils.escape(m[C.EMAIL])}</td>
         <td>${Utils.escape(m[C.LOC])}</td>
         <td>${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}</td>
@@ -114,9 +107,9 @@ const Members = (() => {
         <td>${m[C.FAM] ? `<span class="badge badge-fam" title="${Utils.escape(m[C.FAM])}">👨‍👩‍👧 ${Utils.escape(m[C.FAM])}</span>` : ''}</td>
         <td class="amount">${Utils.formatPHP(ytd)}</td>
         <td class="actions">
-          <button class="btn-icon" title="View profile" onclick="Members.openDetail('${Utils.escape(m[C.KEY])}')">👤</button>
-          <button class="btn-icon" title="Edit" onclick="Members.openEdit('${Utils.escape(m[C.KEY])}')">✏️</button>
-          <button class="btn-icon btn-danger" title="Delete" onclick="Members.confirmDelete('${Utils.escape(m[C.KEY])}')">🗑️</button>
+          <button class="btn-icon" title="View profile" onclick="Members.openDetail('${key}')">👤</button>
+          <button class="btn-icon" title="Edit" onclick="Members.openEdit('${key}')">✏️</button>
+          <button class="btn-icon btn-danger" title="Delete" onclick="Members.confirmDelete('${key}')">🗑️</button>
         </td>
       </tr>`;
     }).join('');

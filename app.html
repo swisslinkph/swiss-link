@@ -945,17 +945,16 @@
         A member key is required to confirm payment. Link an existing member or add a new one.
       </div>
       <p id="reg-link-reg-name" style="font-weight:600;margin-bottom:12px;"></p>
-      <div class="form-group" style="position:relative;">
+      <div class="form-group">
         <label for="reg-link-search">Search by name</label>
         <input type="text" id="reg-link-search" class="form-control"
                placeholder="Type last or first name…"
                oninput="Registrations.searchLinkMember()">
-        <div id="reg-link-suggestions" class="member-key-suggestions" style="display:none;"></div>
       </div>
+      <div id="reg-link-suggestions" class="member-key-suggestions" style="display:none;"></div>
       <div class="form-group">
         <label for="reg-link-key">Member Key</label>
-        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. MBR-0001"
-               oninput="document.getElementById('reg-link-suggestions').style.display='none'">
+        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. MBR-0001">
       </div>
       <input type="hidden" id="reg-link-reg-id">
     </div>
@@ -994,12 +993,11 @@
           <label for="reg-add-email">Email</label>
           <input type="email" id="reg-add-email" class="form-control">
         </div>
-        <div class="form-group" style="grid-column:1/-1;position:relative;">
+        <div class="form-group" style="grid-column:1/-1;">
           <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
-          <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN"
-                 oninput="Registrations.clearMemberSuggestions()">
-          <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;"></div>
+          <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
         </div>
+        <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;grid-column:1/-1;"></div>
         <div class="form-group">
           <label for="reg-add-source">Source</label>
           <select id="reg-add-source" class="form-control" onchange="Registrations.onAddSourceChange()">

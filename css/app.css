@@ -1165,16 +1165,12 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 /* ── Member key suggestion dropdown ───────────────────────────────────── */
 .member-key-suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0; right: 0;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 0 0 var(--radius) var(--radius);
-  box-shadow: var(--shadow-lg);
-  z-index: 200;
+  border-radius: var(--radius);
   max-height: 220px;
   overflow-y: auto;
+  margin-bottom: 8px;
 }
 .member-key-suggestion-item {
   display: flex;

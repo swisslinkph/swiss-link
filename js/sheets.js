@@ -173,7 +173,26 @@ const Sheets = (() => {
         const h = await getHeaders(name);
         if (!h.length) await _writeAdminsHeaders();
       }
+      if (name === CONFIG.SHEETS.REGISTRATIONS) {
+        const h = await getHeaders(name);
+        if (!h.length) await _writeRegistrationsHeaders();
+      }
     }
+  }
+
+  async function _writeRegistrationsHeaders() {
+    const headers = [
+      'RegistrationID','Timestamp','Source','EventID','EventName',
+      'LastName','FirstName','Email','MemberKey',
+      'MemberQty','GuestQty','KidsQty','IsWalkIn',
+      'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes',
+    ];
+    const range = encodeURIComponent(`${CONFIG.SHEETS.REGISTRATIONS}!A1`);
+    await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      body: JSON.stringify({ values: [headers] }),
+    });
+    clearHeaderCache(CONFIG.SHEETS.REGISTRATIONS);
   }
 
   async function _writeAdminsHeaders() {
@@ -189,7 +208,8 @@ const Sheets = (() => {
   async function _writeEventsHeaders() {
     const headers = [
       'EventID','Title','Date','Location','Description',
-      'MemberFee','GuestFee','RSVPFormURL','Status','CreatedDate','CreatedBy',
+      'MemberFee','GuestFee','KidsFee','WalkInMemberFee','WalkInGuestFee',
+      'RSVPFormURL','Status','CreatedDate','CreatedBy',
     ];
     const range = encodeURIComponent(`${CONFIG.SHEETS.EVENTS}!A1`);
     await request(`/values/${range}?valueInputOption=USER_ENTERED`, {

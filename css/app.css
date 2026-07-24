@@ -1106,3 +1106,49 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .settings-rollover-row {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px;
 }
+
+/* ── Registrations view ────────────────────────────────────────────────── */
+#view-registrations { padding: 20px; max-width: 1100px; }
+
+.reg-header {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.reg-header h2 { flex: 1; font-size: 20px; font-weight: 700; color: var(--navy); }
+
+.reg-summary {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.reg-stat {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 60px;
+}
+.reg-stat-num {
+  font-size: 24px; font-weight: 700; line-height: 1;
+  color: var(--navy);
+}
+.reg-stat-label {
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: .4px; margin-top: 4px;
+}
+.reg-confirmed  { color: #166534; }
+.reg-pending    { color: #92400e; }
+.reg-cancelled  { color: #991b1b; }
+
+.reg-filters {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.reg-filters .form-control { min-width: 140px; max-width: 200px; }
+.reg-filters .form-control:first-child { flex: 1; min-width: 200px; }
+
+.badge-reg-confirmed { background: #dcfce7; color: #166534; }
+.badge-reg-pending   { background: #fef3c7; color: #92400e; }
+.badge-reg-cancelled { background: #fee2e2; color: #991b1b; }
+.badge-walkin        { background: #ede9fe; color: #5b21b6; font-size: 10px; }
+
+.checkin-summary { background: var(--bg); border-radius: var(--radius); padding: 14px 16px; }

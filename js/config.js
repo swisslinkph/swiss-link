@@ -15,11 +15,12 @@ const CONFIG = {
 
   // Sheet tab names (must match exactly)
   SHEETS: {
-    MEMBERS:      'Members',
-    EVENTS:       'Events',
-    TRANSACTIONS: 'Transactions',
-    ADMINS:       'Admins',
-    RATES:        'Rates',
+    MEMBERS:       'Members',
+    EVENTS:        'Events',
+    TRANSACTIONS:  'Transactions',
+    ADMINS:        'Admins',
+    RATES:         'Rates',
+    REGISTRATIONS: 'Registrations',
   },
 
   // Whitelisted Google account emails — only these can log in

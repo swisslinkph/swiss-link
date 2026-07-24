@@ -218,6 +218,59 @@
   </div><!-- /view-events -->
 
 
+  <!-- ── REGISTRATIONS ─────────────────────────────────────────── -->
+  <div class="view" id="view-registrations">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" id="reg-event-title">Registrations</h1>
+        <p class="page-subtitle" id="reg-event-meta"></p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-outline" onclick="Router.navigate('events')">← Events</button>
+        <button class="btn btn-primary" onclick="Registrations.openAddWalkIn()">+ Walk-in</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="reg-summary" class="reg-summary"></div>
+      <div class="filter-bar reg-filters" style="margin-bottom:12px;">
+        <input type="search" id="reg-search" class="form-control search-input"
+               placeholder="Search name or email…" oninput="Registrations.applyFilter()">
+        <select id="reg-filter-status" class="form-control" style="width:150px;"
+                onchange="Registrations.applyFilter()">
+          <option value="">All statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+        <select id="reg-filter-source" class="form-control" style="width:140px;"
+                onchange="Registrations.applyFilter()">
+          <option value="">All sources</option>
+          <option value="Form">Form</option>
+          <option value="Walk-in">Walk-in</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table" id="reg-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Member</th>
+              <th>Tickets</th>
+              <th>Total Due</th>
+              <th>Status</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="reg-tbody">
+            <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /view-registrations -->
+
+
   <!-- ── FRONT DESK ──────────────────────────────────────────── -->
   <div class="view" id="view-frontdesk">
     <div class="page-header">
@@ -539,17 +592,43 @@
             <label for="ef-location">Location</label>
             <input type="text" id="ef-location" class="form-control" placeholder="e.g. Makati Shangri-La">
           </div>
-          <div class="form-group">
-            <label for="ef-member-fee">Member Fee (₱)</label>
-            <input type="number" id="ef-member-fee" class="form-control" placeholder="0" min="0" step="0.01">
-          </div>
-          <div class="form-group">
-            <label for="ef-guest-fee">Guest Fee (₱)</label>
-            <input type="number" id="ef-guest-fee" class="form-control" placeholder="0" min="0" step="0.01">
+          <div class="form-group full">
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">
+              Pre-registration Fees <span style="font-weight:400;text-transform:none;">(leave blank if not used)</span>
+            </label>
+            <div class="form-grid" style="margin:4px 0 0;gap:10px;">
+              <div class="form-group">
+                <label for="ef-member-fee">Member (₱)</label>
+                <input type="number" id="ef-member-fee" class="form-control" placeholder="—" min="0" step="0.01">
+              </div>
+              <div class="form-group">
+                <label for="ef-guest-fee">Guest (₱)</label>
+                <input type="number" id="ef-guest-fee" class="form-control" placeholder="—" min="0" step="0.01">
+              </div>
+              <div class="form-group">
+                <label for="ef-kids-fee">Kids (₱)</label>
+                <input type="number" id="ef-kids-fee" class="form-control" placeholder="—" min="0" step="0.01">
+              </div>
+            </div>
           </div>
           <div class="form-group full">
-            <label for="ef-desc">Description</label>
-            <textarea id="ef-desc" class="form-control" rows="3" placeholder="Event details, dress code, etc."></textarea>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">
+              Walk-in Fees <span style="font-weight:400;text-transform:none;">(leave blank if same as pre-reg or not used)</span>
+            </label>
+            <div class="form-grid" style="margin:4px 0 0;gap:10px;">
+              <div class="form-group">
+                <label for="ef-walkin-member">Member Walk-in (₱)</label>
+                <input type="number" id="ef-walkin-member" class="form-control" placeholder="—" min="0" step="0.01">
+              </div>
+              <div class="form-group">
+                <label for="ef-walkin-guest">Guest Walk-in (₱)</label>
+                <input type="number" id="ef-walkin-guest" class="form-control" placeholder="—" min="0" step="0.01">
+              </div>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label for="ef-desc">Description / Notes</label>
+            <textarea id="ef-desc" class="form-control" rows="2" placeholder="Event details, dress code, contact info…"></textarea>
           </div>
         </div>
       </form>
@@ -828,6 +907,116 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
+     CONFIRM PAYMENT MODAL — Registration payment confirmation
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reg-confirm-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2>Confirm Payment</h2>
+      <button class="modal-close" onclick="Utils.hideModal('reg-confirm-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="checkin-summary" style="margin-bottom:16px;">
+        <h3 id="reg-confirm-name">—</h3>
+        <p id="reg-confirm-tickets" style="font-size:13px;color:var(--text-muted);margin:2px 0 0;"></p>
+        <p id="reg-confirm-due" style="font-size:13px;font-weight:600;margin:4px 0 0;"></p>
+      </div>
+      <input type="hidden" id="reg-confirm-id">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="reg-confirm-amount">Amount Paid (₱)</label>
+          <input type="number" id="reg-confirm-amount" class="form-control" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label for="reg-confirm-mode">Payment Mode</label>
+          <select id="reg-confirm-mode" class="form-control">
+            <option>BDO</option>
+            <option>GCash</option>
+            <option>PayPal</option>
+            <option>Cash</option>
+            <option>Bank Transfer</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-confirm-notes">Admin Notes</label>
+          <input type="text" id="reg-confirm-notes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('reg-confirm-modal')">Cancel</button>
+      <button class="btn btn-primary" id="reg-confirm-save-btn" onclick="Registrations.saveConfirmPayment()">✓ Confirm Payment</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     WALK-IN MODAL — Add a walk-in registration
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reg-walkin-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h2>Add Walk-in</h2>
+      <button class="modal-close" onclick="Utils.hideModal('reg-walkin-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="reg-walkin-rates" class="settings-hint" style="margin-bottom:12px;"></p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="reg-wi-last">Last Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="reg-wi-last" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="reg-wi-first">First Name</label>
+          <input type="text" id="reg-wi-first" class="form-control">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-wi-email">Email</label>
+          <input type="email" id="reg-wi-email" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="reg-wi-member-qty">Adult Member tickets</label>
+          <input type="number" id="reg-wi-member-qty" class="form-control" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label for="reg-wi-guest-qty">Adult Guest tickets</label>
+          <input type="number" id="reg-wi-guest-qty" class="form-control" value="0" min="0">
+        </div>
+        <div class="form-group" id="reg-wi-kids-row">
+          <label for="reg-wi-kids-qty">Kids tickets</label>
+          <input type="number" id="reg-wi-kids-qty" class="form-control" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label for="reg-wi-mode">Payment Mode</label>
+          <select id="reg-wi-mode" class="form-control">
+            <option>Cash</option>
+            <option>GCash</option>
+            <option>BDO</option>
+            <option>Bank Transfer</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="reg-wi-amount">Amount Paid (₱)</label>
+          <input type="number" id="reg-wi-amount" class="form-control" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-wi-notes">Notes</label>
+          <input type="text" id="reg-wi-notes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('reg-walkin-modal')">Cancel</button>
+      <button class="btn btn-primary" id="reg-walkin-save-btn" onclick="Registrations.saveWalkIn()">Save Walk-in</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
      EMAIL PREVIEW MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="email-preview-modal">
@@ -863,6 +1052,7 @@
 <script src="js/frontdesk.js"></script>
 <script src="js/email.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/registrations.js"></script>
 
 <script>
   // ── Demo mode bypass (add ?demo=true to URL) ─────────────────────
@@ -918,15 +1108,16 @@
     if (!_isDemo) Sheets.ensureSheets().catch(e => console.warn('ensureSheets:', e.message));
 
     // Register routes
-    Router.register('dashboard', Dashboard.render);
-    Router.register('members',   Members.render);
-    Router.register('events',    Events.render);
-    Router.register('frontdesk', FrontDesk.render);
-    Router.register('email',     Email.render);
-    Router.register('settings',  Settings.render);
+    Router.register('dashboard',     Dashboard.render);
+    Router.register('members',       Members.render);
+    Router.register('events',        Events.render);
+    Router.register('registrations', Registrations.render);
+    Router.register('frontdesk',     FrontDesk.render);
+    Router.register('email',         Email.render);
+    Router.register('settings',      Settings.render);
 
     // Wire up all module event listeners
-    [Dashboard, Members, Events, FrontDesk, Email, Settings].forEach(m => m.init());
+    [Dashboard, Members, Events, Registrations, FrontDesk, Email, Settings].forEach(m => m.init());
 
     // Start routing → navigates to #dashboard by default
     Router.init();

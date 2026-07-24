@@ -78,6 +78,9 @@ const Events = (() => {
         ${e.Description ? `<p class="event-card-desc">${Utils.escape(e.Description)}</p>` : ''}
 
         <div class="event-card-actions">
+          <button class="btn btn-sm btn-primary" onclick="Events.openRegistrations('${Utils.escape(e.EventID)}')">
+            📋 Registrations
+          </button>
           <button class="btn btn-sm" onclick="Events.openFrontDesk('${Utils.escape(e.EventID)}')">
             🎫 Front Desk
           </button>
@@ -114,12 +117,15 @@ const Events = (() => {
     _editingRow = event._rowIndex;
     document.getElementById('event-modal-title').textContent = 'Edit Event';
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-    set('ef-title',       event.Title);
-    set('ef-date',        Utils.toISODate(event.Date));
-    set('ef-location',    event.Location);
-    set('ef-desc',        event.Description);
-    set('ef-member-fee',  event.MemberFee);
-    set('ef-guest-fee',   event.GuestFee);
+    set('ef-title',          event.Title);
+    set('ef-date',           Utils.toISODate(event.Date));
+    set('ef-location',       event.Location);
+    set('ef-desc',           event.Description);
+    set('ef-member-fee',     event.MemberFee);
+    set('ef-guest-fee',      event.GuestFee);
+    set('ef-kids-fee',       event.KidsFee);
+    set('ef-walkin-member',  event.WalkInMemberFee);
+    set('ef-walkin-guest',   event.WalkInGuestFee);
     Utils.showModal('event-modal');
   }
 
@@ -133,13 +139,16 @@ const Events = (() => {
       if (!title) { Utils.toast('Event title is required.', 'error'); btn.disabled = false; return; }
 
       const obj = {
-        Title:       title,
-        Date:        get('ef-date'),
-        Location:    get('ef-location'),
-        Description: get('ef-desc'),
-        MemberFee:   get('ef-member-fee'),
-        GuestFee:    get('ef-guest-fee'),
-        Status:      new Date(get('ef-date')) >= new Date() ? 'Upcoming' : 'Completed',
+        Title:            title,
+        Date:             get('ef-date'),
+        Location:         get('ef-location'),
+        Description:      get('ef-desc'),
+        MemberFee:        get('ef-member-fee'),
+        GuestFee:         get('ef-guest-fee'),
+        KidsFee:          get('ef-kids-fee'),
+        WalkInMemberFee:  get('ef-walkin-member'),
+        WalkInGuestFee:   get('ef-walkin-guest'),
+        Status:           new Date(get('ef-date')) >= new Date() ? 'Upcoming' : 'Completed',
       };
 
       if (_editingRow) {
@@ -220,6 +229,12 @@ const Events = (() => {
     Router.navigate('frontdesk');
   }
 
+  // ── Navigate to registrations view for this event ─────────────────────────
+  function openRegistrations(eventId) {
+    sessionStorage.setItem('reg_event', eventId);
+    Router.navigate('registrations');
+  }
+
   // ── Get all events (for Email picker) ────────────────────────────────────
   function getAll() { return _all; }
 
@@ -235,5 +250,5 @@ const Events = (() => {
       ?.addEventListener('click', () => Utils.hideModal('attendee-modal'));
   }
 
-  return { render, init, openAdd, openEdit, save, confirmDelete, viewAttendees, openFrontDesk, getAll };
+  return { render, init, openAdd, openEdit, save, confirmDelete, viewAttendees, openFrontDesk, openRegistrations, getAll };
 })();

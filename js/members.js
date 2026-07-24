@@ -14,6 +14,7 @@ const Members = (() => {
   let _editingRow = null;
   let _view       = 'list'; // 'list' | 'families'
   let _detailKey  = null;
+  let _rates      = {}; // loaded from Rates sheet, falls back to MEMBERSHIP_RATES
 
   const C = {
     KEY:      'Member Key',
@@ -50,13 +51,31 @@ const Members = (() => {
     return '';
   }
 
+  async function _loadRates() {
+    try {
+      const rows = await Sheets.getAll(CONFIG.SHEETS.RATES);
+      if (!rows.length) return { ...MEMBERSHIP_RATES };
+      const loaded = {};
+      rows.forEach(r => {
+        const id     = r['Tier ID']?.trim();
+        const label  = r['Label']?.trim();
+        const amount = parseFloat(r['Amount']);
+        if (id && label && !isNaN(amount)) loaded[id] = { label, amount };
+      });
+      return Object.keys(loaded).length ? loaded : { ...MEMBERSHIP_RATES };
+    } catch {
+      return { ...MEMBERSHIP_RATES };
+    }
+  }
+
   // ── Load data ─────────────────────────────────────────────────────────────
   async function render() {
     Utils.setLoading(true, 'Loading members…');
     try {
-      [_all, _txns] = await Promise.all([
+      [_all, _txns, _rates] = await Promise.all([
         Sheets.getAll(CONFIG.SHEETS.MEMBERS),
         Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []),
+        _loadRates(),
       ]);
       _all = _all.filter(m => m[C.KEY]?.trim());
       if (_view === 'families') {
@@ -630,10 +649,17 @@ const Members = (() => {
     document.getElementById('dues-description').value              = '';
     document.getElementById('dues-mark-member').checked            = true;
 
+    // Build tier options from live rates (may differ from hardcoded defaults)
+    const tierSel = document.getElementById('dues-tier');
+    tierSel.innerHTML = '<option value="">— Select tier —</option>' +
+      Object.entries(_rates).map(([id, r]) =>
+        `<option value="${Utils.escape(id)}">${Utils.escape(r.label)} — ₱${r.amount.toLocaleString()}</option>`
+      ).join('');
+
     // Auto-suggest tier and pre-fill amount
     const suggestedTier = _suggestTier(member);
-    document.getElementById('dues-tier').value = suggestedTier;
-    const rate = MEMBERSHIP_RATES[suggestedTier];
+    tierSel.value = _rates[suggestedTier] ? suggestedTier : '';
+    const rate = _rates[suggestedTier];
     document.getElementById('dues-amount').value = rate ? rate.amount : '';
 
     onDuesCategoryChange();
@@ -661,7 +687,7 @@ const Members = (() => {
 
   function onDuesTierChange() {
     const tier = document.getElementById('dues-tier').value;
-    const rate = MEMBERSHIP_RATES[tier];
+    const rate = _rates[tier];
     if (rate) document.getElementById('dues-amount').value = rate.amount;
   }
 
@@ -683,7 +709,7 @@ const Members = (() => {
       const year = parseInt(document.getElementById('dues-year').value, 10);
       if (!year) { Utils.toast('Please enter a membership year.', 'error'); return; }
       const tier    = document.getElementById('dues-tier').value;
-      const tierObj = MEMBERSHIP_RATES[tier];
+      const tierObj = _rates[tier];
       eventName = tierObj ? `${year} Membership Dues – ${tierObj.label}` : `${year} Membership Dues`;
     } else if (category === 'Event') {
       const sel = document.getElementById('dues-event-select');

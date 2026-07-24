@@ -19,6 +19,7 @@ const CONFIG = {
     EVENTS:       'Events',
     TRANSACTIONS: 'Transactions',
     ADMINS:       'Admins',
+    RATES:        'Rates',
   },
 
   // Whitelisted Google account emails — only these can log in

@@ -176,11 +176,36 @@ const Settings = (() => {
     }
   }
 
+  async function initRatesSheet() {
+    const btn = document.getElementById('settings-rates-btn');
+    btn.disabled = true;
+    Utils.setLoading(true, 'Setting up Rates sheet…');
+    try {
+      const DEFAULT_RATES = [
+        ['Tier ID',      'Label',                            'Amount'],
+        ['single-jr',    'Single Jr. (18–25)',          1500],
+        ['mm-single',    'Metro Manila – Individual',   2800],
+        ['mm-family',    'Metro Manila – Family',       3500],
+        ['prov-single',  'Province/Overseas – Individual', 2000],
+        ['prov-family',  'Province/Overseas – Family',  2300],
+      ];
+      await Sheets.initSheet(CONFIG.SHEETS.RATES, DEFAULT_RATES);
+      Utils.toast('Rates sheet ready — edit amounts in Google Sheets, then reload the app.');
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      Utils.setLoading(false);
+    }
+  }
+
   function init() {
     document.getElementById('settings-add-btn')
       ?.addEventListener('click', addAdmin);
     document.getElementById('settings-rollover-btn')
       ?.addEventListener('click', startNewYear);
+    document.getElementById('settings-rates-btn')
+      ?.addEventListener('click', initRatesSheet);
   }
 
   return { render, init, confirmRemove };

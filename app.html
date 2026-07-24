@@ -331,6 +331,24 @@
       </div>
 
       <div class="settings-section">
+        <h2 class="settings-section-title">Membership Rates</h2>
+        <p class="settings-section-desc">
+          Rates are loaded from the <strong>Rates</strong> sheet in Google Sheets at login.
+          Click below to create that sheet and seed it with the current defaults,
+          then edit the amounts directly in the spreadsheet each year.
+          Reload the app after editing to apply the new rates.
+        </p>
+        <button class="btn btn-outline" id="settings-rates-btn">
+          Initialize Rates Sheet
+        </button>
+        <p class="settings-hint">
+          Safe to run again — it overwrites the Rates sheet with the defaults listed below.<br>
+          Tiers: Single Jr. (₱1,500) · MM Individual (₱2,800) · MM Family (₱3,500) ·
+          Province/Overseas Individual (₱2,000) · Province/Overseas Family (₱2,300)
+        </p>
+      </div>
+
+      <div class="settings-section">
         <h2 class="settings-section-title">Membership Year Rollover</h2>
         <p class="settings-section-desc">
           At the start of each membership year, use this to reset all non-Exempt members
@@ -739,11 +757,6 @@
               <label for="dues-tier">Membership Tier</label>
               <select id="dues-tier" class="form-control" onchange="Members.onDuesTierChange()">
                 <option value="">— Select tier —</option>
-                <option value="single-jr">Single Jr. (18–25) — ₱1,500</option>
-                <option value="mm-single">Metro Manila – Individual — ₱2,800</option>
-                <option value="mm-family">Metro Manila – Family — ₱3,500</option>
-                <option value="prov-single">Province/Overseas – Individual — ₱2,000</option>
-                <option value="prov-family">Province/Overseas – Family — ₱2,300</option>
               </select>
             </div>
           </div>

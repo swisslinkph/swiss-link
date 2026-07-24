@@ -561,8 +561,22 @@ const Registrations = (() => {
       if (!r) return;
 
       await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, { ...r, [C.MKEY]: key });
+
+      // If the member has no email on file and this registration has one, sync it over
+      let emailSynced = false;
+      if (key && r[C.EMAIL]) {
+        const member = _members.find(m => m['Member Key'] === key);
+        if (member && !member['Email']) {
+          await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, Email: r[C.EMAIL] });
+          _members = []; // invalidate cache
+          emailSynced = true;
+        }
+      }
+
       Utils.hideModal('reg-link-modal');
-      Utils.toast(key ? `Linked to ${key}` : 'Member key cleared.');
+      Utils.toast(key
+        ? `Linked to ${key}${emailSynced ? ' · Email saved to member record.' : ''}`
+        : 'Member key cleared.');
       await render(); // reloads _all with updated MemberKey
 
       // If this link was triggered by a blocked Confirm, auto-open Confirm now

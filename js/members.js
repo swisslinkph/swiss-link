@@ -115,7 +115,20 @@ const Members = (() => {
   // ── Filter + sort ─────────────────────────────────────────────────────────
   function _applyFilter(query) {
     _filtered = Utils.filterRows(_all, query, [C.FIRST, C.LAST, C.ALT, C.EMAIL, C.FAM, C.KEY]);
-    _filtered = Utils.sortTable(_filtered, _sortKey, _sortDir);
+    if (_sortKey === C.STATUS) {
+      // Compound sort: Status (toggleable) then Renewal Year descending within same status
+      _filtered = [..._filtered].sort((a, b) => {
+        const sa  = (a[C.STATUS] || '').toLowerCase();
+        const sb  = (b[C.STATUS] || '').toLowerCase();
+        const cmp = sa.localeCompare(sb);
+        if (cmp !== 0) return _sortDir === 'asc' ? cmp : -cmp;
+        const ya  = parseInt(a[C.RENEWAL], 10) || 0;
+        const yb  = parseInt(b[C.RENEWAL], 10) || 0;
+        return yb - ya; // most recent year first within same status
+      });
+    } else {
+      _filtered = Utils.sortTable(_filtered, _sortKey, _sortDir);
+    }
   }
 
   function _updateCount() {

@@ -924,6 +924,9 @@
       <button class="modal-close" onclick="Utils.hideModal('reg-link-modal')" aria-label="Close">✕</button>
     </div>
     <div class="modal-body">
+      <div id="reg-link-warning" class="reg-link-warning" style="display:none;">
+        A member key is required to confirm payment. Link an existing member or add a new one.
+      </div>
       <p id="reg-link-reg-name" style="font-weight:600;margin-bottom:12px;"></p>
       <div class="form-group" style="position:relative;">
         <label for="reg-link-search">Search by name</label>
@@ -934,14 +937,16 @@
       </div>
       <div class="form-group">
         <label for="reg-link-key">Member Key</label>
-        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. DELA-JUAN"
+        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. MBR-0001"
                oninput="document.getElementById('reg-link-suggestions').style.display='none'">
       </div>
       <input type="hidden" id="reg-link-reg-id">
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-outline" style="margin-right:auto;"
+              onclick="Registrations.openAddMemberFromReg()">+ New Member</button>
       <button class="btn btn-outline" onclick="Utils.hideModal('reg-link-modal')">Cancel</button>
-      <button class="btn btn-primary" id="reg-link-save-btn" onclick="Registrations.saveLinkMember()">Save</button>
+      <button class="btn btn-primary" id="reg-link-save-btn" onclick="Registrations.saveLinkMember()">Link &amp; Continue</button>
     </div>
   </div>
 </div>

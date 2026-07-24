@@ -14,6 +14,7 @@ const Members = (() => {
   let _editingRow = null;
   let _view       = 'list'; // 'list' | 'families'
   let _detailKey  = null;
+  let _afterSaveCallback = null; // optional cross-module callback set by openAdd(prefill, cb)
   let _rates      = {}; // loaded from Rates sheet, falls back to MEMBERSHIP_RATES
 
   const C = {
@@ -835,12 +836,21 @@ const Members = (() => {
     }
   }
 
-  function openAdd() {
+  function openAdd(prefill, afterSaveCallback) {
     _editingRow = null;
+    _afterSaveCallback = afterSaveCallback || null;
     document.getElementById('member-modal-title').textContent = 'Add Member';
     document.getElementById('member-form').reset();
     document.getElementById('mf-key').value = '';
     _buildFamilySelect('', '');
+    if (prefill) {
+      const set = (id, val) => { if (val) { const el = document.getElementById(id); if (el) el.value = val; } };
+      set('mf-key',    prefill.key);
+      set('mf-first',  prefill.firstName);
+      set('mf-last',   prefill.lastName);
+      set('mf-email',  prefill.email);
+      set('mf-status', prefill.status);
+    }
     Utils.showModal('member-modal');
   }
 
@@ -911,6 +921,12 @@ const Members = (() => {
       Utils.hideModal('member-modal');
       await render();
       if (_detailKey) _renderDetail(_detailKey);
+
+      if (!_editingRow && _afterSaveCallback) {
+        const cb = _afterSaveCallback;
+        _afterSaveCallback = null;
+        await cb(key);
+      }
     } catch (e) {
       Utils.toast(e.message, 'error');
     } finally {

@@ -5,13 +5,14 @@
  */
 
 const Registrations = (() => {
-  let _eventId      = null;
-  let _event        = null;
-  let _all          = [];   // all registrations for this event
-  let _filtered     = [];
-  let _events       = [];   // all events (for name lookup)
-  let _members      = [];   // for member key lookup
-  let _editingRegId = null; // set when editing an existing registration
+  let _eventId        = null;
+  let _event          = null;
+  let _all            = [];   // all registrations for this event
+  let _filtered       = [];
+  let _events         = [];   // all events (for name lookup)
+  let _members        = [];   // for member key lookup
+  let _editingRegId   = null; // set when editing an existing registration
+  let _pendingConfirmId = null; // set when Confirm was blocked by missing member key
 
   const C = {
     ID:        'RegistrationID',
@@ -227,6 +228,13 @@ const Registrations = (() => {
     const r = _all.find(x => x[C.ID] === regId);
     if (!r) return;
 
+    // Member key is required before confirming payment
+    if (!r[C.MKEY]) {
+      _pendingConfirmId = regId;
+      openLinkMember(regId);
+      return;
+    }
+
     const name      = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ') || regId;
     const breakdown = _feeBreakdown(r);
     const storedTotal = parseFloat(r[C.TOTAL]) || 0;
@@ -363,6 +371,10 @@ const Registrations = (() => {
     document.getElementById('reg-link-search').value = '';
     document.getElementById('reg-link-suggestions').style.display = 'none';
 
+    // Show warning if opened because Confirm was blocked by missing member key
+    const warningEl = document.getElementById('reg-link-warning');
+    if (warningEl) warningEl.style.display = _pendingConfirmId ? '' : 'none';
+
     // Load members first, then auto-search by registration name
     if (!_members.length) {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
@@ -418,12 +430,58 @@ const Registrations = (() => {
       await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, { ...r, [C.MKEY]: key });
       Utils.hideModal('reg-link-modal');
       Utils.toast(key ? `Linked to ${key}` : 'Member key cleared.');
-      await render();
+      await render(); // reloads _all with updated MemberKey
+
+      // If this link was triggered by a blocked Confirm, auto-open Confirm now
+      if (_pendingConfirmId && _pendingConfirmId === regId && key) {
+        const pendingId = _pendingConfirmId;
+        _pendingConfirmId = null;
+        openConfirmPayment(pendingId);
+      } else {
+        _pendingConfirmId = null;
+      }
     } catch (e) {
       Utils.toast(e.message, 'error');
     } finally {
       btn.disabled = false;
     }
+  }
+
+  // ── Add as New Member from Link modal ─────────────────────────────────────
+  async function openAddMemberFromReg() {
+    const regId = document.getElementById('reg-link-reg-id')?.value;
+    const r = _all.find(x => x[C.ID] === regId);
+    if (!r) return;
+
+    if (!_members.length) {
+      _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    }
+
+    // Calculate next member key from local cache
+    const nums = _members
+      .map(m => m['Member Key'])
+      .filter(k => /^MBR-\d+$/.test(k))
+      .map(k => parseInt(k.slice(4), 10));
+    const nextNum = nums.length ? Math.max(...nums) + 1 : 1;
+    const suggestedKey = `MBR-${String(nextNum).padStart(4, '0')}`;
+
+    _pendingConfirmId = regId; // keep set so Confirm auto-opens after
+    Utils.hideModal('reg-link-modal');
+
+    Members.openAdd(
+      { key: suggestedKey, firstName: r[C.FIRST], lastName: r[C.LAST], email: r[C.EMAIL], status: 'Member' },
+      async (newKey) => {
+        _members = []; // stale — will reload on next name search
+        const allRegs = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+        const regRow  = allRegs.find(x => x[C.ID] === regId);
+        if (regRow) {
+          await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, regRow._rowIndex, { ...regRow, [C.MKEY]: newKey });
+        }
+        _pendingConfirmId = null;
+        await render();
+        openConfirmPayment(regId);
+      }
+    );
   }
 
   // ── Walk-in modal ─────────────────────────────────────────────────────────
@@ -694,7 +752,7 @@ const Registrations = (() => {
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
-    openLinkMember, searchLinkMember, selectLinkSuggestion, saveLinkMember,
+    openLinkMember, searchLinkMember, selectLinkSuggestion, saveLinkMember, openAddMemberFromReg,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,
     backToEvents,

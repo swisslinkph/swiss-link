@@ -105,14 +105,16 @@ const Sheets = (() => {
   // ── DELETE a row by row index (clears it; use with caution) ──────────────
   async function deleteRow(sheetName, rowIndex) {
     // Resolve numeric sheet gid, caching to avoid repeated metadata fetches
-    if (!_sheetIdCache[sheetName]) {
+    // Use `=== undefined` not `!` — sheetId can legitimately be 0 (first sheet)
+    if (_sheetIdCache[sheetName] === undefined) {
       const meta = await request('');
       meta.sheets.forEach(s => { _sheetIdCache[s.properties.title] = s.properties.sheetId; });
     }
     const sheetId = _sheetIdCache[sheetName];
     if (sheetId === undefined) throw new Error(`Sheet "${sheetName}" not found`);
 
-    await request('/batchUpdate', {
+    // Note: structural batchUpdate uses :batchUpdate (colon), not /batchUpdate
+    await request(':batchUpdate', {
       method: 'POST',
       body: JSON.stringify({
         requests: [{
@@ -148,7 +150,7 @@ const Sheets = (() => {
     const needed   = Object.values(CONFIG.SHEETS).filter(n => !existing.includes(n));
 
     if (needed.length) {
-      await request('/batchUpdate', {
+      await request(':batchUpdate', {
         method: 'POST',
         body: JSON.stringify({
           requests: needed.map(title => ({

@@ -843,7 +843,6 @@ const Members = (() => {
     _updateCount();
     Utils.setLoading(false);
     Utils.toast('Member deleted.');
-    render().catch(() => {});
   }
 
   // ── Export CSV ────────────────────────────────────────────────────────────

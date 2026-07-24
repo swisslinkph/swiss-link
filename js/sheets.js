@@ -29,8 +29,9 @@ const Sheets = (() => {
     return options.method === 'DELETE' ? null : res.json();
   }
 
-  // ── Cache for header rows ─────────────────────────────────────────────────
+  // ── Cache for header rows and sheet gids ─────────────────────────────────
   const _headerCache = {};
+  const _sheetIdCache = {};
 
   async function getHeaders(sheetName) {
     if (_headerCache[sheetName]) return _headerCache[sheetName];
@@ -103,11 +104,13 @@ const Sheets = (() => {
 
   // ── DELETE a row by row index (clears it; use with caution) ──────────────
   async function deleteRow(sheetName, rowIndex) {
-    // Get the sheet's gid first
-    const meta = await request('');
-    const sheet = meta.sheets.find(s => s.properties.title === sheetName);
-    if (!sheet) throw new Error(`Sheet "${sheetName}" not found`);
-    const sheetId = sheet.properties.sheetId;
+    // Resolve numeric sheet gid, caching to avoid repeated metadata fetches
+    if (!_sheetIdCache[sheetName]) {
+      const meta = await request('');
+      meta.sheets.forEach(s => { _sheetIdCache[s.properties.title] = s.properties.sheetId; });
+    }
+    const sheetId = _sheetIdCache[sheetName];
+    if (sheetId === undefined) throw new Error(`Sheet "${sheetName}" not found`);
 
     await request('/batchUpdate', {
       method: 'POST',

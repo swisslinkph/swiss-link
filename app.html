@@ -333,18 +333,28 @@
       <div class="settings-section">
         <h2 class="settings-section-title">Membership Rates</h2>
         <p class="settings-section-desc">
-          Rates are loaded from the <strong>Rates</strong> sheet in Google Sheets at login.
-          Click below to create that sheet and seed it with the current defaults,
-          then edit the amounts directly in the spreadsheet each year.
-          Reload the app after editing to apply the new rates.
+          Rates are loaded from a <strong>Rates</strong> tab in your Google Sheet at login.
+          To set up or update rates, edit that tab directly —
+          <a id="settings-sheet-link" href="#" target="_blank" rel="noopener">open the spreadsheet</a>.
         </p>
-        <button class="btn btn-outline" id="settings-rates-btn">
-          Initialize Rates Sheet
-        </button>
-        <p class="settings-hint">
-          Safe to run again — it overwrites the Rates sheet with the defaults listed below.<br>
-          Tiers: Single Jr. (₱1,500) · MM Individual (₱2,800) · MM Family (₱3,500) ·
-          Province/Overseas Individual (₱2,000) · Province/Overseas Family (₱2,300)
+        <p class="settings-hint" style="margin-top:8px;">
+          <strong>One-time setup:</strong> create a sheet tab named <code>Rates</code> with
+          three columns: <code>Tier ID</code>, <code>Label</code>, <code>Amount</code>. Add one row per tier.<br><br>
+          Default tiers:
+        </p>
+        <table class="rates-table">
+          <thead><tr><th>Tier ID</th><th>Label</th><th>Amount</th></tr></thead>
+          <tbody>
+            <tr><td>single-jr</td><td>Single Jr. (18–25)</td><td>1500</td></tr>
+            <tr><td>mm-single</td><td>Metro Manila – Individual</td><td>2800</td></tr>
+            <tr><td>mm-family</td><td>Metro Manila – Family</td><td>3500</td></tr>
+            <tr><td>prov-single</td><td>Province/Overseas – Individual</td><td>2000</td></tr>
+            <tr><td>prov-family</td><td>Province/Overseas – Family</td><td>2300</td></tr>
+          </tbody>
+        </table>
+        <p class="settings-hint" style="margin-top:8px;">
+          After editing amounts in the sheet, reload the app to apply the new rates.
+          If the Rates tab is missing, the app uses the defaults above.
         </p>
       </div>
 

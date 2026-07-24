@@ -129,27 +129,6 @@ const Sheets = (() => {
     });
   }
 
-  // ── CREATE sheet tab + bulk-write rows (used for one-time init) ──────────
-  async function initSheet(name, rows) {
-    // Create the tab if it doesn't exist yet
-    try {
-      await getHeaders(name);
-    } catch {
-      await request('/batchUpdate', {
-        method: 'POST',
-        body: JSON.stringify({ requests: [{ addSheet: { properties: { title: name } } }] }),
-      });
-      clearHeaderCache(name);
-    }
-    // Overwrite from A1 with all provided rows
-    const range = encodeURIComponent(`${name}!A1`);
-    await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
-      method: 'PUT',
-      body: JSON.stringify({ values: rows }),
-    });
-    clearHeaderCache(name);
-  }
-
   // ── BATCH UPDATE multiple cells ───────────────────────────────────────────
   async function batchUpdate(updates) {
     // updates: [{ range: 'Sheet!A1', values: [[v]] }, ...]
@@ -258,7 +237,7 @@ const Sheets = (() => {
   }
 
   return {
-    getAll, append, update, deleteRow, batchUpdate, initSheet,
+    getAll, append, update, deleteRow, batchUpdate,
     getHeaders, clearHeaderCache, ensureSheets, nextId,
   };
 })();

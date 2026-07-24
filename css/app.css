@@ -1088,6 +1088,10 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 .settings-add-row .form-control { min-width: 180px; }
 .settings-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; margin-bottom: 0; }
+.rates-table { border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.rates-table th, .rates-table td { padding: 5px 14px 5px 0; text-align: left; border-bottom: 1px solid var(--border); }
+.rates-table th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.rates-table td:first-child { font-family: monospace; font-size: 11px; }
 .settings-rollover-row {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px;
 }

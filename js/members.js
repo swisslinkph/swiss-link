@@ -31,6 +31,25 @@ const Members = (() => {
     NAME:     'Full Name',
   };
 
+  // Annual membership rates — keyed by tier id
+  const MEMBERSHIP_RATES = {
+    'single-jr':   { label: 'Single Jr. (18–25)',           amount: 1500 },
+    'mm-single':   { label: 'Metro Manila – Individual',     amount: 2800 },
+    'mm-family':   { label: 'Metro Manila – Family',         amount: 3500 },
+    'prov-single': { label: 'Province/Overseas – Individual', amount: 2000 },
+    'prov-family': { label: 'Province/Overseas – Family',    amount: 2300 },
+  };
+
+  function _suggestTier(member) {
+    const type = (member[C.TYPE] || '').toLowerCase();
+    const loc  = member[C.LOC]  || '';
+    if (type === 'single')     return 'single-jr';
+    const isMM     = loc === 'Metro Manila';
+    if (type === 'family')     return isMM ? 'mm-family'  : 'prov-family';
+    if (type === 'individual') return isMM ? 'mm-single'  : 'prov-single';
+    return '';
+  }
+
   // ── Load data ─────────────────────────────────────────────────────────────
   async function render() {
     Utils.setLoading(true, 'Loading members…');
@@ -604,13 +623,19 @@ const Members = (() => {
     document.getElementById('dues-member-key').value               = key;
     document.getElementById('dues-category').value                 = 'Membership';
     document.getElementById('dues-year').value                     = Utils.currentYear();
-    document.getElementById('dues-amount').value                   = '';
     document.getElementById('dues-mode').value                     = 'Cash';
     document.getElementById('dues-date').value                     = Utils.today();
     document.getElementById('dues-notes').value                    = '';
     document.getElementById('dues-headcount').value                = '1';
     document.getElementById('dues-description').value              = '';
     document.getElementById('dues-mark-member').checked            = true;
+
+    // Auto-suggest tier and pre-fill amount
+    const suggestedTier = _suggestTier(member);
+    document.getElementById('dues-tier').value = suggestedTier;
+    const rate = MEMBERSHIP_RATES[suggestedTier];
+    document.getElementById('dues-amount').value = rate ? rate.amount : '';
+
     onDuesCategoryChange();
 
     // Populate event dropdown (lazy-load once)
@@ -634,6 +659,12 @@ const Members = (() => {
     document.getElementById('dues-mark-member-row').style.display    = cat === 'Membership' ? '' : 'none';
   }
 
+  function onDuesTierChange() {
+    const tier = document.getElementById('dues-tier').value;
+    const rate = MEMBERSHIP_RATES[tier];
+    if (rate) document.getElementById('dues-amount').value = rate.amount;
+  }
+
   async function saveRecordDues() {
     const btn      = document.getElementById('dues-save-btn');
     const key      = document.getElementById('dues-member-key').value;
@@ -651,7 +682,9 @@ const Members = (() => {
       txnPrefix = 'MEM';
       const year = parseInt(document.getElementById('dues-year').value, 10);
       if (!year) { Utils.toast('Please enter a membership year.', 'error'); return; }
-      eventName = `${year} Membership Dues`;
+      const tier    = document.getElementById('dues-tier').value;
+      const tierObj = MEMBERSHIP_RATES[tier];
+      eventName = tierObj ? `${year} Membership Dues – ${tierObj.label}` : `${year} Membership Dues`;
     } else if (category === 'Event') {
       const sel = document.getElementById('dues-event-select');
       eventId   = sel.value;
@@ -910,7 +943,7 @@ const Members = (() => {
     render, init, switchView,
     openDetail, closeDetail,
     openAdd, openEdit, confirmDelete, exportCSV,
-    openRecordDues, onDuesCategoryChange,
+    openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
   };

@@ -729,9 +729,24 @@
         </div>
 
         <!-- Membership-specific -->
-        <div id="dues-membership-fields" class="form-group">
-          <label for="dues-year">Membership Year</label>
-          <input type="number" id="dues-year" class="form-control" min="2020" max="2099">
+        <div id="dues-membership-fields" style="grid-column:1/-1;">
+          <div class="form-grid" style="margin:0;">
+            <div class="form-group">
+              <label for="dues-year">Membership Year</label>
+              <input type="number" id="dues-year" class="form-control" min="2020" max="2099">
+            </div>
+            <div class="form-group">
+              <label for="dues-tier">Membership Tier</label>
+              <select id="dues-tier" class="form-control" onchange="Members.onDuesTierChange()">
+                <option value="">— Select tier —</option>
+                <option value="single-jr">Single Jr. (18–25) — ₱1,500</option>
+                <option value="mm-single">Metro Manila – Individual — ₱2,800</option>
+                <option value="mm-family">Metro Manila – Family — ₱3,500</option>
+                <option value="prov-single">Province/Overseas – Individual — ₱2,000</option>
+                <option value="prov-family">Province/Overseas – Family — ₱2,300</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <!-- Event-specific -->

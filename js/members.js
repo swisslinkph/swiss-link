@@ -180,7 +180,6 @@ const Members = (() => {
             const key  = Utils.escape(m[C.KEY]);
             return `<div class="unassigned-row">
               <div class="unassigned-info">
-                <div class="avatar sm">${Utils.initials(name)}</div>
                 <span>${Utils.escape(name)}</span>
                 ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
               </div>
@@ -204,9 +203,14 @@ const Members = (() => {
   }
 
   function _familyCardHTML(headKey, members) {
-    const head     = _all.find(m => m[C.KEY] === headKey);
-    const headName = head ? `${head[C.FIRST]} ${head[C.LAST]}`.trim() : headKey;
-    const hk       = Utils.escape(headKey);
+    const hk = Utils.escape(headKey);
+
+    // Head selector options — used in the card header
+    const headOpts = members.map(m => {
+      const name = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
+      const sel  = m[C.KEY] === headKey ? 'selected' : '';
+      return `<option value="${Utils.escape(m[C.KEY])}" ${sel}>${Utils.escape(name)}</option>`;
+    }).join('');
 
     const memberRows = members.map(m => {
       const name   = `${m[C.FIRST]} ${m[C.LAST]}`.trim();
@@ -214,16 +218,13 @@ const Members = (() => {
       const key    = Utils.escape(m[C.KEY]);
       return `<div class="fam-member-row">
         <div class="fam-member-info">
-          <div class="avatar sm">${Utils.initials(name)}</div>
           <span class="fam-member-name">${Utils.escape(name)}</span>
-          ${isHead ? '<span class="badge badge-head">👑 Head</span>' : ''}
           ${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}
         </div>
-        <div style="display:flex;gap:4px;">
-          ${!isHead ? `<button class="btn-icon" title="Set as family head" onclick="Members.setAsHead('${key}')">👑</button>` : ''}
-          <button class="btn-icon btn-danger" title="Remove from family"
-                  onclick="Members.removeFromFamily('${key}')">✕</button>
-        </div>
+        ${!isHead
+          ? `<button class="btn-icon btn-danger fam-remove-btn" title="Remove from family"
+                     onclick="Members.removeFromFamily('${key}')">✕</button>`
+          : '<span class="fam-remove-placeholder"></span>'}
       </div>`;
     }).join('');
 
@@ -235,7 +236,15 @@ const Members = (() => {
 
     return `<div class="family-card">
       <div class="family-card-header">
-        <span class="family-card-name">👨‍👩‍👧 ${Utils.escape(headName)}</span>
+        <div class="family-head-select-wrap">
+          <span class="family-card-icon">👨‍👩‍👧</span>
+          <select class="fam-head-select"
+                  title="Change family head"
+                  data-head="${hk}"
+                  onchange="Members.setAsHead(this.value, this)">
+            ${headOpts}
+          </select>
+        </div>
         <span class="family-card-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
       </div>
       <div class="family-card-members">${memberRows}</div>
@@ -301,15 +310,21 @@ const Members = (() => {
     }
   }
 
-  async function setAsHead(memberKey) {
+  async function setAsHead(memberKey, selectEl) {
     const member = _all.find(m => m[C.KEY] === memberKey);
     if (!member) return;
     const oldHeadKey = member[C.FAM_HEAD];
-    if (!oldHeadKey || oldHeadKey === memberKey) return;
+    if (!oldHeadKey || oldHeadKey === memberKey) {
+      if (selectEl) selectEl.value = oldHeadKey || memberKey;
+      return;
+    }
 
     const name = `${member[C.FIRST]} ${member[C.LAST]}`.trim();
     const ok   = await Utils.confirm(`Set ${name} as the new family head?`);
-    if (!ok) return;
+    if (!ok) {
+      if (selectEl) selectEl.value = oldHeadKey;
+      return;
+    }
 
     const familyMembers = _all.filter(m => m[C.FAM_HEAD] === oldHeadKey);
     Utils.setLoading(true, 'Updating family head…');

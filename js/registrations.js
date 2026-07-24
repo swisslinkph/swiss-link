@@ -483,20 +483,51 @@ const Registrations = (() => {
     Utils.showModal('reg-link-modal');
   }
 
+  function _memberTypeBadge(m) {
+    const type      = m['Membership Type'] || '';
+    const isFamHead = m['Family Head'] === m['Member Key'];
+    const label     = type === 'Family' ? (isFamHead ? 'Family' : 'Family member') : type;
+    const cls       = { Family: 'sug-family', Individual: 'sug-individual', Single: 'sug-single', Honorary: 'sug-honorary' }[type] || 'sug-other';
+    return label ? `<span class="suggestion-type ${cls}">${Utils.escape(label)}</span>` : '';
+  }
+
+  function _memberTypeScore(m, wantsFamily) {
+    const type      = m['Membership Type'] || '';
+    const isFamily  = type === 'Family';
+    const isFamHead = m['Family Head'] === m['Member Key'];
+    if (wantsFamily) {
+      if (isFamily && isFamHead) return 0;
+      if (isFamily)              return 1;
+      return 2;
+    } else {
+      if (!isFamily) return 0;
+      if (isFamHead) return 1;
+      return 2;
+    }
+  }
+
   function searchLinkMember() {
     const q   = (document.getElementById('reg-link-search')?.value || '').toLowerCase().trim();
     const box = document.getElementById('reg-link-suggestions');
     if (!box) return;
 
-    // If search box is empty, use the registration name from the label
     const regName = (document.getElementById('reg-link-reg-name')?.textContent || '').toLowerCase();
     const term    = q || regName;
     if (!term) { box.style.display = 'none'; return; }
 
-    const matches = _members.filter(m => {
-      const full = `${m['First Name'] || ''} ${m['Last Name'] || ''} ${m['Alternative Name'] || ''}`.toLowerCase();
-      return term.split(/\s+/).some(word => word.length > 1 && full.includes(word));
-    }).slice(0, 6);
+    // Use MemberQty of the current registration to rank results by type
+    const regId      = document.getElementById('reg-link-reg-id')?.value;
+    const reg        = _all.find(x => x[C.ID] === regId);
+    const mQty       = parseInt(reg?.[C.MEM_QTY], 10) || 1;
+    const wantsFamily = mQty > 1;
+
+    const matches = _members
+      .filter(m => {
+        const full = `${m['First Name'] || ''} ${m['Last Name'] || ''} ${m['Alternative Name'] || ''}`.toLowerCase();
+        return term.split(/\s+/).some(word => word.length > 1 && full.includes(word));
+      })
+      .sort((a, b) => _memberTypeScore(a, wantsFamily) - _memberTypeScore(b, wantsFamily))
+      .slice(0, 6);
 
     if (!matches.length) { box.style.display = 'none'; return; }
 
@@ -506,7 +537,10 @@ const Registrations = (() => {
       return `<div class="member-key-suggestion-item"
                    onclick="Registrations.selectLinkSuggestion('${Utils.escape(key)}')">
         <span class="suggestion-name">${Utils.escape(name)}</span>
-        <span class="suggestion-key">${Utils.escape(key)}</span>
+        <span style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          ${_memberTypeBadge(m)}
+          <span class="suggestion-key">${Utils.escape(key)}</span>
+        </span>
       </div>`;
     }).join('');
     box.style.display = 'block';
@@ -659,23 +693,33 @@ const Registrations = (() => {
 
     if (!last && !first) { box.style.display = 'none'; return; }
 
-    const matches = _members.filter(m => {
-      const mLast  = (m['Last Name']  || '').toLowerCase();
-      const mFirst = (m['First Name'] || '').toLowerCase();
-      const mAlt   = (m['Alternative Name'] || '').toLowerCase();
-      const lastOk  = !last  || mLast.includes(last);
-      const firstOk = !first || mFirst.includes(first) || mAlt.includes(first);
-      return lastOk && firstOk;
-    }).slice(0, 6);
+    const mQty        = parseInt(document.getElementById('reg-add-member-qty')?.value, 10) || 1;
+    const wantsFamily = mQty > 1;
+
+    const matches = _members
+      .filter(m => {
+        const mLast  = (m['Last Name']  || '').toLowerCase();
+        const mFirst = (m['First Name'] || '').toLowerCase();
+        const mAlt   = (m['Alternative Name'] || '').toLowerCase();
+        const lastOk  = !last  || mLast.includes(last);
+        const firstOk = !first || mFirst.includes(first) || mAlt.includes(first);
+        return lastOk && firstOk;
+      })
+      .sort((a, b) => _memberTypeScore(a, wantsFamily) - _memberTypeScore(b, wantsFamily))
+      .slice(0, 6);
 
     if (!matches.length) { box.style.display = 'none'; return; }
 
     box.innerHTML = matches.map(m => {
       const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
       const key  = m['Member Key'] || '';
-      return `<div class="member-key-suggestion-item" onclick="Registrations.selectMemberSuggestion('${Utils.escape(key)}', '${Utils.escape(name)}')">
+      return `<div class="member-key-suggestion-item"
+                   onclick="Registrations.selectMemberSuggestion('${Utils.escape(key)}', '${Utils.escape(name)}')">
         <span class="suggestion-name">${Utils.escape(name)}</span>
-        <span class="suggestion-key">${Utils.escape(key)}</span>
+        <span style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          ${_memberTypeBadge(m)}
+          <span class="suggestion-key">${Utils.escape(key)}</span>
+        </span>
       </div>`;
     }).join('');
     box.style.display = 'block';

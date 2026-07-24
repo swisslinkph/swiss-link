@@ -320,6 +320,116 @@ const Registrations = (() => {
     }
   }
 
+  // ── Add Registration modal ────────────────────────────────────────────────
+  function openAddRegistration() {
+    const form = document.getElementById('reg-add-modal');
+    if (!form) return;
+    form.querySelectorAll('input[type=text], input[type=email], input[type=number]')
+      .forEach(el => { el.value = el.type === 'number' ? '0' : ''; });
+    const statusEl = document.getElementById('reg-add-status');
+    if (statusEl) statusEl.value = 'Pending';
+    const sourceEl = document.getElementById('reg-add-source');
+    if (sourceEl) sourceEl.value = 'Manual';
+    const walkinEl = document.getElementById('reg-add-walkin');
+    if (walkinEl) walkinEl.checked = false;
+    _toggleAddPaymentFields(false);
+    const hasKids = _event && parseFloat(_event.KidsFee) > 0;
+    const kidsRow = document.getElementById('reg-add-kids-row');
+    if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
+    Utils.showModal('reg-add-modal');
+  }
+
+  function onAddSourceChange() {
+    const source  = document.getElementById('reg-add-source')?.value;
+    const walkinEl = document.getElementById('reg-add-walkin');
+    if (walkinEl) walkinEl.checked = source === 'Walk-in';
+    recalcAddTotal();
+  }
+
+  function onAddWalkInChange() {
+    recalcAddTotal();
+  }
+
+  function recalcAddTotal() {
+    if (!_event) return;
+    const isWalkIn = document.getElementById('reg-add-walkin')?.checked;
+    const mFee = parseFloat(isWalkIn ? (_event.WalkInMemberFee || _event.MemberFee) : _event.MemberFee) || 0;
+    const gFee = parseFloat(isWalkIn ? (_event.WalkInGuestFee  || _event.GuestFee)  : _event.GuestFee)  || 0;
+    const kFee = parseFloat(_event.KidsFee) || 0;
+    const mQty = parseInt(document.getElementById('reg-add-member-qty')?.value, 10) || 0;
+    const gQty = parseInt(document.getElementById('reg-add-guest-qty')?.value,  10) || 0;
+    const kQty = parseInt(document.getElementById('reg-add-kids-qty')?.value,   10) || 0;
+    const total = (mQty * mFee) + (gQty * gFee) + (kQty * kFee);
+    const totalEl = document.getElementById('reg-add-total');
+    if (totalEl) totalEl.value = total || '';
+  }
+
+  function onAddStatusChange() {
+    const status = document.getElementById('reg-add-status')?.value;
+    _toggleAddPaymentFields(status === 'Confirmed');
+  }
+
+  function _toggleAddPaymentFields(show) {
+    document.getElementById('reg-add-mode-row')  ?.style && (document.getElementById('reg-add-mode-row').style.display   = show ? '' : 'none');
+    document.getElementById('reg-add-amount-row')?.style && (document.getElementById('reg-add-amount-row').style.display = show ? '' : 'none');
+  }
+
+  async function saveAddRegistration() {
+    const btn = document.getElementById('reg-add-save-btn');
+    btn.disabled = true;
+    try {
+      const get = id => document.getElementById(id)?.value?.trim() || '';
+      const last = get('reg-add-last');
+      if (!last) { Utils.toast('Last name is required.', 'error'); return; }
+
+      const mQty    = parseInt(get('reg-add-member-qty'), 10) || 0;
+      const gQty    = parseInt(get('reg-add-guest-qty'),  10) || 0;
+      const kQty    = parseInt(get('reg-add-kids-qty'),   10) || 0;
+      if (mQty + gQty + kQty === 0) { Utils.toast('Enter at least 1 ticket.', 'error'); return; }
+
+      const isWalkIn = document.getElementById('reg-add-walkin')?.checked;
+      const source   = get('reg-add-source') || 'Manual';
+      const status   = get('reg-add-status') || 'Pending';
+      const total    = get('reg-add-total');
+      const amount   = status === 'Confirmed' ? (get('reg-add-amount') || total) : '';
+
+      const rows   = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+      const maxNum = rows.map(r => parseInt((r[C.ID] || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
+      const nextNum = maxNum.length ? Math.max(...maxNum) + 1 : 1;
+      const regId   = 'REG-' + String(nextNum).padStart(4, '0');
+
+      await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
+        [C.ID]:        regId,
+        [C.TS]:        new Date().toISOString(),
+        [C.SOURCE]:    source,
+        [C.EVID]:      _eventId,
+        [C.EVNAME]:    _event?.Title || '',
+        [C.LAST]:      last,
+        [C.FIRST]:     get('reg-add-first'),
+        [C.EMAIL]:     get('reg-add-email'),
+        [C.MKEY]:      get('reg-add-member-key'),
+        [C.MEM_QTY]:   mQty,
+        [C.GUEST_QTY]: gQty,
+        [C.KIDS_QTY]:  kQty,
+        [C.WALKIN]:    isWalkIn ? 'Yes' : 'No',
+        [C.TOTAL]:     total,
+        [C.PAY_NOTE]:  get('reg-add-pay-note'),
+        [C.STATUS]:    status,
+        [C.PAY_MODE]:  status === 'Confirmed' ? get('reg-add-mode') : '',
+        [C.AMOUNT]:    amount,
+        [C.NOTES]:     get('reg-add-notes'),
+      });
+
+      Utils.hideModal('reg-add-modal');
+      Utils.toast('Registration saved.');
+      await render();
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   // ── Back to events ────────────────────────────────────────────────────────
   function backToEvents() {
     Router.navigate('events');
@@ -344,6 +454,8 @@ const Registrations = (() => {
     applyFilter,
     openConfirmPayment, saveConfirmPayment,
     cancelRegistration,
+    openAddRegistration, onAddSourceChange, onAddWalkInChange,
+    recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openAddWalkIn, saveWalkIn,
     backToEvents,
   };

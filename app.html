@@ -225,8 +225,9 @@
         <h1 class="page-title" id="reg-event-title">Registrations</h1>
         <p class="page-subtitle" id="reg-event-meta"></p>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-outline" onclick="Router.navigate('events')">← Events</button>
+        <button class="btn btn-outline" onclick="Registrations.openAddRegistration()">+ Add Registration</button>
         <button class="btn btn-primary" onclick="Registrations.openAddWalkIn()">+ Walk-in</button>
       </div>
     </div>
@@ -901,6 +902,110 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Utils.hideModal('dues-modal')">Cancel</button>
       <button class="btn btn-primary" id="dues-save-btn">💰 Record Payment</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ADD REGISTRATION MODAL — Manual entry
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reg-add-modal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2>Add Registration</h2>
+      <button class="modal-close" onclick="Utils.hideModal('reg-add-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="reg-add-last">Last Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="reg-add-last" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="reg-add-first">First Name</label>
+          <input type="text" id="reg-add-first" class="form-control">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-add-email">Email</label>
+          <input type="email" id="reg-add-email" class="form-control">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
+          <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
+        </div>
+        <div class="form-group">
+          <label for="reg-add-source">Source</label>
+          <select id="reg-add-source" class="form-control" onchange="Registrations.onAddSourceChange()">
+            <option value="Manual">Manual</option>
+            <option value="Form">Google Form</option>
+            <option value="Walk-in">Walk-in</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;">
+            <input type="checkbox" id="reg-add-walkin" onchange="Registrations.onAddWalkInChange()">
+            Walk-in rates apply
+          </label>
+        </div>
+
+        <div style="grid-column:1/-1;border-top:1px solid var(--border);margin:4px 0;"></div>
+
+        <div class="form-group">
+          <label for="reg-add-member-qty">Member tickets</label>
+          <input type="number" id="reg-add-member-qty" class="form-control" value="0" min="0" oninput="Registrations.recalcAddTotal()">
+        </div>
+        <div class="form-group">
+          <label for="reg-add-guest-qty">Guest tickets</label>
+          <input type="number" id="reg-add-guest-qty" class="form-control" value="0" min="0" oninput="Registrations.recalcAddTotal()">
+        </div>
+        <div class="form-group" id="reg-add-kids-row">
+          <label for="reg-add-kids-qty">Kids tickets</label>
+          <input type="number" id="reg-add-kids-qty" class="form-control" value="0" min="0" oninput="Registrations.recalcAddTotal()">
+        </div>
+        <div class="form-group" id="reg-add-total-row">
+          <label for="reg-add-total">Total Due (₱)</label>
+          <input type="number" id="reg-add-total" class="form-control" min="0" step="0.01" placeholder="Auto-calculated">
+        </div>
+
+        <div style="grid-column:1/-1;border-top:1px solid var(--border);margin:4px 0;"></div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-add-pay-note">Payment Note <span class="text-muted" style="font-weight:400;">(what registrant wrote / indicated)</span></label>
+          <input type="text" id="reg-add-pay-note" class="form-control" placeholder="e.g. MS Paid, GCash sent">
+        </div>
+        <div class="form-group">
+          <label for="reg-add-status">Payment Status</label>
+          <select id="reg-add-status" class="form-control" onchange="Registrations.onAddStatusChange()">
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+          </select>
+        </div>
+        <div class="form-group" id="reg-add-mode-row" style="display:none;">
+          <label for="reg-add-mode">Payment Mode</label>
+          <select id="reg-add-mode" class="form-control">
+            <option>BDO</option>
+            <option>GCash</option>
+            <option>PayPal</option>
+            <option>Cash</option>
+            <option>Bank Transfer</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group" id="reg-add-amount-row" style="display:none;">
+          <label for="reg-add-amount">Amount Paid (₱)</label>
+          <input type="number" id="reg-add-amount" class="form-control" min="0" step="0.01">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="reg-add-notes">Admin Notes</label>
+          <input type="text" id="reg-add-notes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('reg-add-modal')">Cancel</button>
+      <button class="btn btn-primary" id="reg-add-save-btn" onclick="Registrations.saveAddRegistration()">Save Registration</button>
     </div>
   </div>
 </div>

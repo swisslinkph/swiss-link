@@ -104,7 +104,11 @@ const Members = (() => {
     tbody.innerHTML = _filtered.map(m => {
       const ytd     = Utils.totalPaidYTD(m[C.KEY], _txns);
       const key     = Utils.escape(m[C.KEY]);
+      const isHead  = m[C.FAM_HEAD] === m[C.KEY];
       const famName = headNames[m[C.FAM_HEAD]] || '';
+      const famCell = isHead
+        ? `<span class="badge badge-head">👑 Head</span>`
+        : famName ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(famName)}</span>` : '';
       return `<tr data-key="${key}">
         <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.FIRST])}</td>
         <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.LAST])}</td>
@@ -112,7 +116,7 @@ const Members = (() => {
         <td>${Utils.escape(m[C.LOC])}</td>
         <td>${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}</td>
         <td>${Utils.typeBadge(m[C.TYPE])}</td>
-        <td>${famName ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(famName)}</span>` : ''}</td>
+        <td>${famCell}</td>
         <td class="amount">${Utils.formatPHP(ytd)}</td>
         <td class="actions">
           <button class="btn-icon" title="View profile" onclick="Members.openDetail('${key}')">👤</button>
@@ -706,11 +710,36 @@ const Members = (() => {
   }
 
   // ── Add modal ─────────────────────────────────────────────────────────────
+  function _buildFamilySelect(memberKey, currentHeadKey) {
+    const sel  = document.getElementById('mf-fam-head');
+    const hint = document.getElementById('mf-fam-hint');
+    if (!sel) return;
+
+    const isHead = memberKey && currentHeadKey === memberKey;
+
+    if (isHead) {
+      sel.innerHTML = `<option value="${Utils.escape(memberKey)}">👑 Head of own family</option>`;
+      sel.disabled  = true;
+      if (hint) { hint.textContent = 'To reassign the head, use the Family Groups view.'; hint.style.display = ''; }
+    } else {
+      sel.disabled = false;
+      if (hint) hint.style.display = 'none';
+      const heads = _all.filter(m => m[C.FAM_HEAD] === m[C.KEY] && m[C.KEY] !== memberKey);
+      sel.innerHTML = '<option value="">— No family —</option>' +
+        heads.map(h => {
+          const name     = `${h[C.FIRST]} ${h[C.LAST]}`.trim();
+          const selected = currentHeadKey === h[C.KEY] ? 'selected' : '';
+          return `<option value="${Utils.escape(h[C.KEY])}" ${selected}>${Utils.escape(name)}'s family</option>`;
+        }).join('');
+    }
+  }
+
   function openAdd() {
     _editingRow = null;
     document.getElementById('member-modal-title').textContent = 'Add Member';
     document.getElementById('member-form').reset();
     document.getElementById('mf-key').value = '';
+    _buildFamilySelect('', '');
     Utils.showModal('member-modal');
   }
 
@@ -735,6 +764,7 @@ const Members = (() => {
     set('mf-loc',    m[C.LOC]);
     set('mf-status', m[C.STATUS]);
     set('mf-type',   m[C.TYPE]);
+    _buildFamilySelect(m[C.KEY], m[C.FAM_HEAD]);
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -758,8 +788,9 @@ const Members = (() => {
         [C.LOC]:     get('mf-loc'),
         [C.STATUS]:  get('mf-status'),
         [C.RENEWAL]: existing?.[C.RENEWAL] || '',
-        [C.TYPE]:    get('mf-type'),
-        // FAM (legacy) and FAM_HEAD preserved from existing via merge below
+        [C.TYPE]:     get('mf-type'),
+        [C.FAM_HEAD]: get('mf-fam-head'),
+        // FAM (legacy) preserved from existing via merge below
       };
 
       if (_editingRow) {

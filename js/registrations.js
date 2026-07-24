@@ -5,12 +5,13 @@
  */
 
 const Registrations = (() => {
-  let _eventId   = null;
-  let _event     = null;
-  let _all       = [];   // all registrations for this event
-  let _filtered  = [];
-  let _events    = [];   // all events (for name lookup)
-  let _members   = [];   // for member key lookup
+  let _eventId      = null;
+  let _event        = null;
+  let _all          = [];   // all registrations for this event
+  let _filtered     = [];
+  let _events       = [];   // all events (for name lookup)
+  let _members      = [];   // for member key lookup
+  let _editingRegId = null; // set when editing an existing registration
 
   const C = {
     ID:        'RegistrationID',
@@ -127,6 +128,7 @@ const Registrations = (() => {
       const status = r[C.STATUS] || 'Pending';
       const isWI   = r[C.WALKIN] === 'Yes';
 
+      const safeId = Utils.escape(r[C.ID]);
       return `<tr>
         <td>
           <strong>${Utils.escape(name || '—')}</strong>
@@ -134,21 +136,28 @@ const Registrations = (() => {
           ${isWI ? ' <span class="badge badge-walkin">Walk-in</span>' : ''}
         </td>
         <td>${Utils.escape(r[C.MKEY] || '—')}</td>
-        <td>${pax}</td>
+        <td style="white-space:nowrap;">${pax}</td>
         <td class="amount">${Utils.formatPHP(r[C.TOTAL])}</td>
         <td><span class="badge badge-reg-${status.toLowerCase()}">${status}</span></td>
-        <td>${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '—')}</td>
-        <td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            title="${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '')}">
+          ${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '—')}
+        </td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm btn-outline" onclick="Registrations.openEditRegistration('${safeId}')">
+            Edit
+          </button>
           ${status !== 'Confirmed' ? `
-            <button class="btn btn-sm btn-primary" onclick="Registrations.openConfirmPayment('${Utils.escape(r[C.ID])}')">
+            <button class="btn btn-sm btn-primary" style="margin-left:4px;"
+                    onclick="Registrations.openConfirmPayment('${safeId}')">
               Confirm
             </button>` : `
-            <span class="text-muted" style="font-size:12px;">
+            <span class="text-muted" style="font-size:12px;margin-left:4px;">
               ${Utils.formatPHP(r[C.AMOUNT])} via ${Utils.escape(r[C.PAY_MODE] || '—')}
             </span>`}
           ${status !== 'Cancelled' ? `
             <button class="btn btn-sm btn-danger-outline" style="margin-left:4px;"
-                    onclick="Registrations.cancelRegistration('${Utils.escape(r[C.ID])}')">
+                    onclick="Registrations.cancelRegistration('${safeId}')">
               ✕
             </button>` : ''}
         </td>
@@ -161,10 +170,26 @@ const Registrations = (() => {
     const m = parseInt(r[C.MEM_QTY], 10) || 0;
     const g = parseInt(r[C.GUEST_QTY], 10) || 0;
     const k = parseInt(r[C.KIDS_QTY], 10) || 0;
-    if (m) parts.push(`${m}M`);
-    if (g) parts.push(`${g}G`);
-    if (k) parts.push(`${k}K`);
-    return parts.join(' + ') || '—';
+    if (m) parts.push(`${m} Member${m !== 1 ? 's' : ''}`);
+    if (g) parts.push(`${g} Guest${g !== 1 ? 's' : ''}`);
+    if (k) parts.push(`${k} Kid${k !== 1 ? 's' : ''}`);
+    return parts.join(' · ') || '—';
+  }
+
+  function _feeBreakdown(r) {
+    const isWI = r[C.WALKIN] === 'Yes';
+    const mFee = parseFloat(isWI ? (_event?.WalkInMemberFee || _event?.MemberFee) : _event?.MemberFee) || 0;
+    const gFee = parseFloat(isWI ? (_event?.WalkInGuestFee  || _event?.GuestFee)  : _event?.GuestFee)  || 0;
+    const kFee = parseFloat(_event?.KidsFee) || 0;
+    const m    = parseInt(r[C.MEM_QTY],   10) || 0;
+    const g    = parseInt(r[C.GUEST_QTY], 10) || 0;
+    const k    = parseInt(r[C.KIDS_QTY],  10) || 0;
+    const parts = [];
+    if (m && mFee) parts.push(`${m} × ₱${mFee.toLocaleString()}`);
+    if (g && gFee) parts.push(`${g} × ₱${gFee.toLocaleString()}`);
+    if (k && kFee) parts.push(`${k} × ₱${kFee.toLocaleString()}`);
+    const total  = (m * mFee) + (g * gFee) + (k * kFee);
+    return { line: parts.join(' + '), total };
   }
 
   function _applyFilter() {
@@ -194,13 +219,30 @@ const Registrations = (() => {
     const r = _all.find(x => x[C.ID] === regId);
     if (!r) return;
 
-    const name = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ') || regId;
-    document.getElementById('reg-confirm-id').value       = regId;
+    const name      = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ') || regId;
+    const breakdown = _feeBreakdown(r);
+    const storedTotal = parseFloat(r[C.TOTAL]) || 0;
+    const calcTotal   = breakdown.total;
+
+    document.getElementById('reg-confirm-id').value         = regId;
     document.getElementById('reg-confirm-name').textContent = name;
-    document.getElementById('reg-confirm-tickets').textContent = _paxSummary(r);
-    document.getElementById('reg-confirm-due').textContent = 'Total Due: ' + Utils.formatPHP(r[C.TOTAL]);
-    document.getElementById('reg-confirm-amount').value   = r[C.TOTAL] || '';
-    document.getElementById('reg-confirm-notes').value    = r[C.NOTES] || '';
+
+    // Ticket pax + fee breakdown
+    const ticketsEl = document.getElementById('reg-confirm-tickets');
+    ticketsEl.innerHTML = `${Utils.escape(_paxSummary(r))}` +
+      (breakdown.line ? `<br><span style="color:var(--text-muted)">${Utils.escape(breakdown.line)}</span>` : '');
+
+    // If stored total differs from calculated, show both
+    const dueEl = document.getElementById('reg-confirm-due');
+    if (storedTotal && calcTotal && storedTotal !== calcTotal) {
+      dueEl.innerHTML = `Total Due: <strong>${Utils.formatPHP(storedTotal)}</strong>` +
+        ` <span style="color:var(--text-muted);font-size:12px;">(calculated: ${Utils.formatPHP(calcTotal)})</span>`;
+    } else {
+      dueEl.textContent = 'Total Due: ' + Utils.formatPHP(storedTotal || calcTotal);
+    }
+
+    document.getElementById('reg-confirm-amount').value = r[C.TOTAL] || (calcTotal || '');
+    document.getElementById('reg-confirm-notes').value  = r[C.NOTES] || '';
     Utils.showModal('reg-confirm-modal');
   }
 
@@ -252,6 +294,53 @@ const Registrations = (() => {
     } catch (e) {
       Utils.toast(e.message, 'error');
     }
+  }
+
+  // ── Edit Registration (reuses Add Registration modal) ─────────────────────
+  function openEditRegistration(regId) {
+    const r = _all.find(x => x[C.ID] === regId);
+    if (!r) return;
+
+    _editingRegId = regId;
+
+    // Update modal title and button
+    const titleEl = document.querySelector('#reg-add-modal .modal-header h2');
+    const btnEl   = document.getElementById('reg-add-save-btn');
+    if (titleEl) titleEl.textContent = 'Edit Registration';
+    if (btnEl)   btnEl.textContent   = 'Save Changes';
+
+    // Pre-fill fields
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('reg-add-last',       r[C.LAST]);
+    set('reg-add-first',      r[C.FIRST]);
+    set('reg-add-email',      r[C.EMAIL]);
+    set('reg-add-member-key', r[C.MKEY]);
+    set('reg-add-source',     r[C.SOURCE] || 'Manual');
+    set('reg-add-member-qty', r[C.MEM_QTY]   || 0);
+    set('reg-add-guest-qty',  r[C.GUEST_QTY] || 0);
+    set('reg-add-kids-qty',   r[C.KIDS_QTY]  || 0);
+    set('reg-add-total',      r[C.TOTAL]);
+    set('reg-add-pay-note',   r[C.PAY_NOTE]);
+    set('reg-add-status',     r[C.STATUS] || 'Pending');
+    set('reg-add-mode',       r[C.PAY_MODE]);
+    set('reg-add-amount',     r[C.AMOUNT]);
+    set('reg-add-notes',      r[C.NOTES]);
+
+    const walkinEl = document.getElementById('reg-add-walkin');
+    if (walkinEl) walkinEl.checked = r[C.WALKIN] === 'Yes';
+
+    _toggleAddPaymentFields(r[C.STATUS] === 'Confirmed');
+    clearMemberSuggestions();
+
+    const hasKids = _event && parseFloat(_event.KidsFee) > 0;
+    const kidsRow = document.getElementById('reg-add-kids-row');
+    if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
+
+    if (!_members.length) {
+      Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
+    }
+
+    Utils.showModal('reg-add-modal');
   }
 
   // ── Walk-in modal ─────────────────────────────────────────────────────────
@@ -365,6 +454,14 @@ const Registrations = (() => {
 
   // ── Add Registration modal ────────────────────────────────────────────────
   function openAddRegistration() {
+    _editingRegId = null;
+
+    // Reset title and button
+    const titleEl = document.querySelector('#reg-add-modal .modal-header h2');
+    const btnEl   = document.getElementById('reg-add-save-btn');
+    if (titleEl) titleEl.textContent = 'Add Registration';
+    if (btnEl)   btnEl.textContent   = 'Save Registration';
+
     const form = document.getElementById('reg-add-modal');
     if (!form) return;
     form.querySelectorAll('input[type=text], input[type=email], input[type=number]')
@@ -381,7 +478,6 @@ const Registrations = (() => {
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
 
-    // Load members in background for key lookup (cache after first load)
     if (!_members.length) {
       Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
     }
@@ -443,14 +539,7 @@ const Registrations = (() => {
       const total    = get('reg-add-total');
       const amount   = status === 'Confirmed' ? (get('reg-add-amount') || total) : '';
 
-      const rows   = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
-      const maxNum = rows.map(r => parseInt((r[C.ID] || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
-      const nextNum = maxNum.length ? Math.max(...maxNum) + 1 : 1;
-      const regId   = 'REG-' + String(nextNum).padStart(4, '0');
-
-      await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
-        [C.ID]:        regId,
-        [C.TS]:        new Date().toISOString(),
+      const obj = {
         [C.SOURCE]:    source,
         [C.EVID]:      _eventId,
         [C.EVNAME]:    _event?.Title || '',
@@ -468,10 +557,25 @@ const Registrations = (() => {
         [C.PAY_MODE]:  status === 'Confirmed' ? get('reg-add-mode') : '',
         [C.AMOUNT]:    amount,
         [C.NOTES]:     get('reg-add-notes'),
-      });
+      };
 
+      if (_editingRegId) {
+        const existing = _all.find(x => x[C.ID] === _editingRegId);
+        if (!existing) throw new Error('Registration not found.');
+        await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, existing._rowIndex, { ...existing, ...obj });
+        Utils.toast('Registration updated.');
+      } else {
+        const rows    = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+        const maxNum  = rows.map(r => parseInt((r[C.ID] || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
+        const nextNum = maxNum.length ? Math.max(...maxNum) + 1 : 1;
+        obj[C.ID] = 'REG-' + String(nextNum).padStart(4, '0');
+        obj[C.TS] = new Date().toISOString();
+        await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, obj);
+        Utils.toast('Registration saved.');
+      }
+
+      _editingRegId = null;
       Utils.hideModal('reg-add-modal');
-      Utils.toast('Registration saved.');
       await render();
     } catch (e) {
       Utils.toast(e.message, 'error');
@@ -506,6 +610,7 @@ const Registrations = (() => {
     cancelRegistration,
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
+    openEditRegistration,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,
     backToEvents,

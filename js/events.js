@@ -6,15 +6,17 @@
 const Events = (() => {
   let _all      = [];
   let _txns     = [];
+  let _regs     = [];
   let _editingRow = null;
 
   // ── Render ────────────────────────────────────────────────────────────────
   async function render() {
     Utils.setLoading(true, 'Loading events…');
     try {
-      [_all, _txns] = await Promise.all([
+      [_all, _txns, _regs] = await Promise.all([
         Sheets.getAll(CONFIG.SHEETS.EVENTS),
         Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS),
+        Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []),
       ]);
       _renderList();
     } catch (e) {
@@ -36,27 +38,47 @@ const Events = (() => {
     }
 
     container.innerHTML = sorted.map(e => {
-      const attendeeTxns = _txns.filter(t => t.EventID === e.EventID && t.Category === 'Event');
-      const attendeeCount = attendeeTxns.length;
-      const revenue       = attendeeTxns.reduce((s, t) => s + Utils.parsePHP(t.AmountPaid), 0);
+      const attendeeTxns  = _txns.filter(t => t.EventID === e.EventID && t.Category === 'Event');
+      const rsvpCount     = _txns.filter(t => t.EventID === e.EventID && t.Category === 'RSVP').length;
+      const eventRegs     = _regs.filter(r => r.EventID === e.EventID);
+      const hasRegs       = eventRegs.length > 0;
       const isPast        = new Date(e.Date) < new Date() && e.Status !== 'Upcoming';
       const statusClass   = isPast ? 'event-card-past' : 'event-card-upcoming';
-      const rsvpCount     = _txns.filter(t => t.EventID === e.EventID && t.Category === 'RSVP').length;
 
-      return `<div class="event-card ${statusClass}">
-        <div class="event-card-header">
-          <div>
-            <h3 class="event-card-title">${Utils.escape(e.Title)}</h3>
-            <div class="event-card-meta">
-              📅 ${Utils.formatDate(e.Date)} &nbsp;|&nbsp; 📍 ${Utils.escape(e.Location)}
-            </div>
+      let statsHTML;
+      if (hasRegs) {
+        const confirmed  = eventRegs.filter(r => r.PaymentStatus === 'Confirmed').length;
+        const pending    = eventRegs.filter(r => r.PaymentStatus === 'Pending').length;
+        const totalPax   = eventRegs.reduce((s, r) =>
+          s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
+        const collected  = eventRegs
+          .filter(r => r.PaymentStatus === 'Confirmed')
+          .reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+        statsHTML = `
+          <div class="stat-box">
+            <span class="stat-num">${eventRegs.length}</span>
+            <span class="stat-label">Registrations</span>
           </div>
-          <div class="event-card-status">
-            <span class="badge badge-${isPast ? 'past' : 'upcoming'}">${isPast ? 'Past' : 'Upcoming'}</span>
+          <div class="stat-box">
+            <span class="stat-num">${totalPax}</span>
+            <span class="stat-label">Total Pax</span>
           </div>
-        </div>
-
-        <div class="event-card-stats">
+          <div class="stat-box" style="color:#166534">
+            <span class="stat-num">${confirmed}</span>
+            <span class="stat-label">Confirmed</span>
+          </div>
+          <div class="stat-box" style="color:#92400e">
+            <span class="stat-num">${pending}</span>
+            <span class="stat-label">Pending</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num">${Utils.formatPHP(collected)}</span>
+            <span class="stat-label">Collected</span>
+          </div>`;
+      } else {
+        const attendeeCount = attendeeTxns.length;
+        const revenue       = attendeeTxns.reduce((s, t) => s + Utils.parsePHP(t.AmountPaid), 0);
+        statsHTML = `
           <div class="stat-box">
             <span class="stat-num">${attendeeCount}</span>
             <span class="stat-label">Attendees</span>
@@ -72,8 +94,23 @@ const Events = (() => {
           <div class="stat-box">
             <span class="stat-num">${Utils.formatPHP(e.MemberFee)}</span>
             <span class="stat-label">Member Fee</span>
+          </div>`;
+      }
+
+      return `<div class="event-card ${statusClass}">
+        <div class="event-card-header">
+          <div>
+            <h3 class="event-card-title">${Utils.escape(e.Title)}</h3>
+            <div class="event-card-meta">
+              📅 ${Utils.formatDate(e.Date)} &nbsp;|&nbsp; 📍 ${Utils.escape(e.Location)}
+            </div>
+          </div>
+          <div class="event-card-status">
+            <span class="badge badge-${isPast ? 'past' : 'upcoming'}">${isPast ? 'Past' : 'Upcoming'}</span>
           </div>
         </div>
+
+        <div class="event-card-stats">${statsHTML}</div>
 
         ${e.Description ? `<p class="event-card-desc">${Utils.escape(e.Description)}</p>` : ''}
 

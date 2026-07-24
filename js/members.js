@@ -114,7 +114,9 @@ const Members = (() => {
 
   // ── Filter + sort ─────────────────────────────────────────────────────────
   function _applyFilter(query) {
+    const statusFilter = document.getElementById('member-status-filter')?.value || '';
     _filtered = Utils.filterRows(_all, query, [C.FIRST, C.LAST, C.ALT, C.EMAIL, C.FAM, C.KEY]);
+    if (statusFilter) _filtered = _filtered.filter(m => m[C.STATUS] === statusFilter);
     if (_sortKey === C.STATUS) {
       // Compound sort: Status (toggleable) then Renewal Year descending within same status
       _filtered = [..._filtered].sort((a, b) => {
@@ -463,6 +465,12 @@ const Members = (() => {
     _renderTable();
     _updateCount();
   });
+
+  function applyStatusFilter() {
+    _applyFilter(document.getElementById('member-search')?.value || '');
+    _renderTable();
+    _updateCount();
+  }
 
   // ── Sort ──────────────────────────────────────────────────────────────────
   function sort(key) {
@@ -985,5 +993,6 @@ const Members = (() => {
     openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
+    applyStatusFilter,
   };
 })();

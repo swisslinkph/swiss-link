@@ -149,8 +149,15 @@
           <button class="view-toggle-btn" data-view="families" onclick="Members.switchView('families')">👨‍👩‍👧 Family Groups</button>
         </div>
       </div>
-      <div id="members-list-controls" style="display:flex;align-items:center;gap:10px;">
+      <div id="members-list-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <input type="search" id="member-search" class="search-input" placeholder="Search name, email…">
+        <select id="member-status-filter" class="form-control" style="width:160px;"
+                onchange="Members.applyStatusFilter()">
+          <option value="">All statuses</option>
+          <option value="Active">Paid (Active)</option>
+          <option value="TBC">Not Paid (TBC)</option>
+          <option value="Exempt">Exempt</option>
+        </select>
         <span class="record-count" id="member-count"></span>
         <button class="btn btn-outline btn-sm" id="member-export-btn">⬇ Export CSV</button>
         <button class="btn btn-primary btn-sm" id="add-member-btn">+ Add Member</button>

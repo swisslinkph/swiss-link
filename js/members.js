@@ -727,7 +727,11 @@ const Members = (() => {
       const heads = _all
         .filter(m => m[C.FAM_HEAD] === m[C.KEY] && m[C.KEY] !== memberKey)
         .sort((a, b) => a[C.LAST].localeCompare(b[C.LAST]) || a[C.FIRST].localeCompare(b[C.FIRST]));
+      const selfOption = memberKey
+        ? `<option value="${Utils.escape(memberKey)}" ${currentHeadKey === memberKey ? 'selected' : ''}>➕ Start new family (make me head)</option>`
+        : '';
       sel.innerHTML = '<option value="">— No family —</option>' +
+        selfOption +
         heads.map(h => {
           const name     = `${h[C.FIRST]} ${h[C.LAST]}`.trim();
           const selected = currentHeadKey === h[C.KEY] ? 'selected' : '';

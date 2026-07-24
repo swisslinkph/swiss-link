@@ -129,13 +129,21 @@ const Registrations = (() => {
       const isWI   = r[C.WALKIN] === 'Yes';
 
       const safeId = Utils.escape(r[C.ID]);
+      const mkey   = r[C.MKEY] || '';
       return `<tr>
         <td>
           <strong>${Utils.escape(name || '—')}</strong>
           ${r[C.EMAIL] ? `<br><span class="text-muted" style="font-size:12px;">${Utils.escape(r[C.EMAIL])}</span>` : ''}
           ${isWI ? ' <span class="badge badge-walkin">Walk-in</span>' : ''}
         </td>
-        <td>${Utils.escape(r[C.MKEY] || '—')}</td>
+        <td>
+          ${mkey
+            ? `<span style="font-family:monospace;font-size:12px;">${Utils.escape(mkey)}</span>
+               <button class="btn btn-sm btn-outline" style="margin-left:4px;padding:2px 6px;"
+                       onclick="Registrations.openLinkMember('${safeId}')">✎</button>`
+            : `<button class="btn btn-sm btn-outline" style="color:var(--red);border-color:var(--red);"
+                       onclick="Registrations.openLinkMember('${safeId}')">Link</button>`}
+        </td>
         <td style="white-space:nowrap;">${pax}</td>
         <td class="amount">${Utils.formatPHP(r[C.TOTAL])}</td>
         <td><span class="badge badge-reg-${status.toLowerCase()}">${status}</span></td>
@@ -297,19 +305,17 @@ const Registrations = (() => {
   }
 
   // ── Edit Registration (reuses Add Registration modal) ─────────────────────
-  function openEditRegistration(regId) {
+  async function openEditRegistration(regId) {
     const r = _all.find(x => x[C.ID] === regId);
     if (!r) return;
 
     _editingRegId = regId;
 
-    // Update modal title and button
     const titleEl = document.querySelector('#reg-add-modal .modal-header h2');
     const btnEl   = document.getElementById('reg-add-save-btn');
     if (titleEl) titleEl.textContent = 'Edit Registration';
     if (btnEl)   btnEl.textContent   = 'Save Changes';
 
-    // Pre-fill fields
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
     set('reg-add-last',       r[C.LAST]);
     set('reg-add-first',      r[C.FIRST]);
@@ -330,17 +336,94 @@ const Registrations = (() => {
     if (walkinEl) walkinEl.checked = r[C.WALKIN] === 'Yes';
 
     _toggleAddPaymentFields(r[C.STATUS] === 'Confirmed');
-    clearMemberSuggestions();
 
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
 
+    // Load members first, then show suggestions based on pre-filled name
     if (!_members.length) {
-      Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
+      _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
+    clearMemberSuggestions();
+    searchMemberKey(); // auto-suggest from the pre-filled name
 
     Utils.showModal('reg-add-modal');
+  }
+
+  // ── Link Member modal ─────────────────────────────────────────────────────
+  async function openLinkMember(regId) {
+    const r = _all.find(x => x[C.ID] === regId);
+    if (!r) return;
+
+    document.getElementById('reg-link-reg-id').value  = regId;
+    const name = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ');
+    document.getElementById('reg-link-reg-name').textContent = name;
+    document.getElementById('reg-link-key').value    = r[C.MKEY] || '';
+    document.getElementById('reg-link-search').value = '';
+    document.getElementById('reg-link-suggestions').style.display = 'none';
+
+    // Load members first, then auto-search by registration name
+    if (!_members.length) {
+      _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    }
+    searchLinkMember(); // pre-fill suggestions from the registration name
+
+    Utils.showModal('reg-link-modal');
+  }
+
+  function searchLinkMember() {
+    const q   = (document.getElementById('reg-link-search')?.value || '').toLowerCase().trim();
+    const box = document.getElementById('reg-link-suggestions');
+    if (!box) return;
+
+    // If search box is empty, use the registration name from the label
+    const regName = (document.getElementById('reg-link-reg-name')?.textContent || '').toLowerCase();
+    const term    = q || regName;
+    if (!term) { box.style.display = 'none'; return; }
+
+    const matches = _members.filter(m => {
+      const full = `${m['First Name'] || ''} ${m['Last Name'] || ''} ${m['Alternative Name'] || ''}`.toLowerCase();
+      return term.split(/\s+/).some(word => word.length > 1 && full.includes(word));
+    }).slice(0, 6);
+
+    if (!matches.length) { box.style.display = 'none'; return; }
+
+    box.innerHTML = matches.map(m => {
+      const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
+      const key  = m['Member Key'] || '';
+      return `<div class="member-key-suggestion-item"
+                   onclick="Registrations.selectLinkSuggestion('${Utils.escape(key)}')">
+        <span class="suggestion-name">${Utils.escape(name)}</span>
+        <span class="suggestion-key">${Utils.escape(key)}</span>
+      </div>`;
+    }).join('');
+    box.style.display = 'block';
+  }
+
+  function selectLinkSuggestion(key) {
+    document.getElementById('reg-link-key').value = key;
+    document.getElementById('reg-link-suggestions').style.display = 'none';
+  }
+
+  async function saveLinkMember() {
+    const btn   = document.getElementById('reg-link-save-btn');
+    btn.disabled = true;
+    try {
+      const regId = document.getElementById('reg-link-reg-id').value;
+      const key   = (document.getElementById('reg-link-key')?.value || '').trim();
+      const r     = _all.find(x => x[C.ID] === regId);
+      if (!r) return;
+
+      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, { ...r, [C.MKEY]: key });
+      Utils.hideModal('reg-link-modal');
+      Utils.toast(key ? `Linked to ${key}` : 'Member key cleared.');
+      await render();
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   // ── Walk-in modal ─────────────────────────────────────────────────────────
@@ -611,6 +694,7 @@ const Registrations = (() => {
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
+    openLinkMember, searchLinkMember, selectLinkSuggestion, saveLinkMember,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,
     backToEvents,

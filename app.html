@@ -915,6 +915,39 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
+     LINK MEMBER MODAL — Quick member key assignment from reg table
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reg-link-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <h2>Link Member</h2>
+      <button class="modal-close" onclick="Utils.hideModal('reg-link-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="reg-link-reg-name" style="font-weight:600;margin-bottom:12px;"></p>
+      <div class="form-group" style="position:relative;">
+        <label for="reg-link-search">Search by name</label>
+        <input type="text" id="reg-link-search" class="form-control"
+               placeholder="Type last or first name…"
+               oninput="Registrations.searchLinkMember()">
+        <div id="reg-link-suggestions" class="member-key-suggestions" style="display:none;"></div>
+      </div>
+      <div class="form-group">
+        <label for="reg-link-key">Member Key</label>
+        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. DELA-JUAN"
+               oninput="document.getElementById('reg-link-suggestions').style.display='none'">
+      </div>
+      <input type="hidden" id="reg-link-reg-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('reg-link-modal')">Cancel</button>
+      <button class="btn btn-primary" id="reg-link-save-btn" onclick="Registrations.saveLinkMember()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
      ADD REGISTRATION MODAL — Manual entry
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="reg-add-modal">

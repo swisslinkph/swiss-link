@@ -1194,3 +1194,29 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .sug-single     { background: #fef3c7; color: #92400e; }
 .sug-honorary   { background: #f3e8ff; color: #6b21a8; }
 .sug-other      { background: var(--bg-2); color: var(--text-muted); }
+
+/* ── Member preview panel (link modal) ────────────────────────────────── */
+.member-preview {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.member-preview-ok   { background: #f0fdf4; border-color: #86efac; }
+.member-preview-warn { background: #fefce8; border-color: #fde047; }
+.member-preview-row  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.preview-key         { font-family: monospace; font-size: 12px; color: var(--text-muted); margin-left: auto; }
+.preview-detail      { font-size: 12px; color: var(--text-muted); padding-left: 2px; }
+.preview-warn        { font-size: 12px; color: #854d0e; padding-left: 2px; }
+
+@media (prefers-color-scheme: dark) {
+  .member-preview-ok   { background: #052e16; border-color: #166534; }
+  .member-preview-warn { background: #1c1a07; border-color: #713f12; }
+  .preview-warn        { color: #fde68a; }
+}
+:root[data-theme="dark"] .member-preview-ok   { background: #052e16; border-color: #166534; }
+:root[data-theme="dark"] .member-preview-warn { background: #1c1a07; border-color: #713f12; }
+:root[data-theme="dark"] .preview-warn        { color: #fde68a; }

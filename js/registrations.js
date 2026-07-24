@@ -469,6 +469,8 @@ const Registrations = (() => {
     document.getElementById('reg-link-key').value    = r[C.MKEY] || '';
     document.getElementById('reg-link-search').value = '';
     document.getElementById('reg-link-suggestions').style.display = 'none';
+    const previewEl = document.getElementById('reg-link-member-preview');
+    if (previewEl) previewEl.style.display = 'none';
 
     // Show warning if opened because Confirm was blocked by missing member key
     const warningEl = document.getElementById('reg-link-warning');
@@ -479,16 +481,71 @@ const Registrations = (() => {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
     searchLinkMember(); // pre-fill suggestions from the registration name
+    if (r[C.MKEY]) _updateMemberPreview(r[C.MKEY]); // show preview for already-linked key
 
     Utils.showModal('reg-link-modal');
+  }
+
+  function _memberTypeCls(type) {
+    return { Family: 'sug-family', Individual: 'sug-individual', Single: 'sug-single', Honorary: 'sug-honorary' }[type] || 'sug-other';
   }
 
   function _memberTypeBadge(m) {
     const type      = m['Membership Type'] || '';
     const isFamHead = m['Family Head'] === m['Member Key'];
     const label     = type === 'Family' ? (isFamHead ? 'Family' : 'Family member') : type;
-    const cls       = { Family: 'sug-family', Individual: 'sug-individual', Single: 'sug-single', Honorary: 'sug-honorary' }[type] || 'sug-other';
-    return label ? `<span class="suggestion-type ${cls}">${Utils.escape(label)}</span>` : '';
+    return label ? `<span class="suggestion-type ${_memberTypeCls(type)}">${Utils.escape(label)}</span>` : '';
+  }
+
+  // Show member info + mismatch warning below the key field in the link modal
+  function _updateMemberPreview(key) {
+    const el = document.getElementById('reg-link-member-preview');
+    if (!el) return;
+    if (!key) { el.style.display = 'none'; return; }
+
+    const member = _members.find(m => m['Member Key'] === key);
+    if (!member) { el.style.display = 'none'; return; }
+
+    const regId       = document.getElementById('reg-link-reg-id')?.value;
+    const reg         = _all.find(x => x[C.ID] === regId);
+    const mQty        = parseInt(reg?.[C.MEM_QTY], 10) || 1;
+    const type        = member['Membership Type'] || '';
+    const isFamily    = type === 'Family';
+    const isFamHead   = member['Family Head'] === member['Member Key'];
+    const wantsFamily = mQty > 1;
+    const mismatch    = wantsFamily && !isFamily;
+
+    // Describe the family group
+    let groupInfo = '';
+    if (isFamily && isFamHead) {
+      const rels = _members.filter(m => m['Family Head'] === key && m['Member Key'] !== key);
+      groupInfo = rels.length
+        ? rels.map(m => `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim()).join(', ')
+        : 'No other family members linked yet';
+    } else if (isFamily && member['Family Head'] && member['Family Head'] !== key) {
+      const head = _members.find(m => m['Member Key'] === member['Family Head']);
+      groupInfo = head
+        ? `Under ${Utils.escape(`${head['First Name'] || ''} ${head['Last Name'] || ''}`.trim())}'s family`
+        : 'Family member';
+    }
+
+    el.innerHTML = `
+      <div class="member-preview ${mismatch ? 'member-preview-warn' : 'member-preview-ok'}">
+        <div class="member-preview-row">
+          ${_memberTypeBadge(member)}
+          <strong>${Utils.escape(`${member['First Name'] || ''} ${member['Last Name'] || ''}`.trim())}</strong>
+          <span class="preview-key">${Utils.escape(key)}</span>
+        </div>
+        ${groupInfo ? `<div class="preview-detail">${Utils.escape(groupInfo)}</div>` : ''}
+        ${mismatch
+          ? `<div class="preview-warn">⚠ ${mQty} member tickets but this record is ${Utils.escape(type || 'not a family')} — consider linking to a Family record</div>`
+          : ''}
+      </div>`;
+    el.style.display = 'block';
+  }
+
+  function onLinkKeyInput() {
+    _updateMemberPreview((document.getElementById('reg-link-key')?.value || '').trim());
   }
 
   function _memberTypeScore(m, wantsFamily) {
@@ -549,6 +606,7 @@ const Registrations = (() => {
   function selectLinkSuggestion(key) {
     document.getElementById('reg-link-key').value = key;
     document.getElementById('reg-link-suggestions').style.display = 'none';
+    _updateMemberPreview(key);
   }
 
   async function saveLinkMember() {
@@ -910,6 +968,7 @@ const Registrations = (() => {
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
     openLinkMember, searchLinkMember, selectLinkSuggestion, saveLinkMember, openAddMemberFromReg,
+    onLinkKeyInput,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,
     backToEvents,

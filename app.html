@@ -954,8 +954,10 @@
       <div id="reg-link-suggestions" class="member-key-suggestions" style="display:none;"></div>
       <div class="form-group">
         <label for="reg-link-key">Member Key</label>
-        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. MBR-0001">
+        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. MBR-0001"
+               oninput="Registrations.onLinkKeyInput()">
       </div>
+      <div id="reg-link-member-preview" style="display:none;"></div>
       <input type="hidden" id="reg-link-reg-id">
     </div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">

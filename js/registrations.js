@@ -48,9 +48,7 @@ const Registrations = (() => {
       ]);
 
       _event = _events.find(e => e.EventID === _eventId) || null;
-
-      // Filter to this event
-      _all = _all.filter(r => r[C.EVID] === _eventId);
+      _all   = _all.filter(r => r[C.EVID] === _eventId);
 
       _applyFilter();
       _renderHeader();
@@ -61,6 +59,107 @@ const Registrations = (() => {
     } finally {
       Utils.setLoading(false);
     }
+
+    // Background form sync — page is already visible; update if new rows arrive
+    if (_event?.FormSheetID) {
+      _syncFromForm().then(n => {
+        if (!n) return;
+        Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).then(rows => {
+          _all = rows.filter(r => r[C.EVID] === _eventId);
+          _applyFilter();
+          _renderSummary();
+          _renderTable();
+          Utils.toast(`${n} new registration${n !== 1 ? 's' : ''} synced from Google Form.`);
+        });
+      }).catch(() => {});
+    }
+  }
+
+  // ── Google Form sync helpers ───────────────────────────────────────────────
+  function _detectFormCols(headers) {
+    const h = headers.map(s => s.toLowerCase());
+    const idx = fn => h.findIndex(fn);
+    return {
+      ts:       idx(s => s.includes('timestamp')),
+      email:    idx(s => s.includes('email') && !s.includes('payment')),
+      last:     idx(s => s.includes('family') || s.includes('last name') || s.includes('surname')),
+      first:    idx(s => s.includes('first name') || s.includes('given name')),
+      status:   idx(s => s.includes('member status')),
+      memQty:   idx(s => s.includes('adult') && s.includes('member') && !s.includes('non') && !s.includes('guest')),
+      guestQty: idx(s => s.includes('adult') && (s.includes('non') || s.includes('guest'))),
+      kidsQty:  idx(s => s.includes('kid') || s.includes('child')),
+      comments: idx(s => s.includes('comment') || s.includes('question')),
+    };
+  }
+
+  function _feeFromHeader(header) {
+    const m = (header || '').match(/[\d,]+\s*(?:php|₱)/i);
+    return m ? parseInt(m[0].replace(/[^0-9]/g, ''), 10) : 0;
+  }
+
+  async function _syncFromForm() {
+    if (!_event?.FormSheetID || !_eventId) return 0;
+    const tabName = _event.FormSheetTab || 'Form Responses 1';
+
+    const { headers, rows } = await Sheets.getFromSheet(_event.FormSheetID, tabName, 1);
+    if (!headers.length || !rows.length) return 0;
+
+    const cols = _detectFormCols(headers);
+    const get  = (row, i) => i >= 0 ? (row[i] || '').toString().trim() : '';
+
+    // Load ALL registrations for dedup (not just this event)
+    const allRegs = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+    const seenTs  = new Set(allRegs.map(r => r[C.TS]));
+    const maxNum  = allRegs.reduce((m, r) => {
+      const n = parseInt((r[C.ID] || '').replace(/\D/g, ''), 10);
+      return isNaN(n) ? m : Math.max(m, n);
+    }, 0);
+
+    // Fee per ticket type — event config takes priority, then fall back to column header price
+    const mFee = parseFloat(_event.MemberFee) || _feeFromHeader(headers[cols.memQty]);
+    const gFee = parseFloat(_event.GuestFee)  || _feeFromHeader(headers[cols.guestQty]);
+    const kFee = parseFloat(_event.KidsFee)   || _feeFromHeader(headers[cols.kidsQty]);
+
+    let nextNum  = maxNum;
+    let imported = 0;
+
+    for (const row of rows) {
+      const ts = get(row, cols.ts);
+      if (!ts || seenTs.has(ts)) continue;
+
+      const mQty = parseInt(get(row, cols.memQty),   10) || 0;
+      const gQty = parseInt(get(row, cols.guestQty), 10) || 0;
+      const kQty = parseInt(get(row, cols.kidsQty),  10) || 0;
+      if (mQty + gQty + kQty === 0) continue;
+
+      nextNum++;
+      await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
+        [C.ID]:        'REG-' + String(nextNum).padStart(4, '0'),
+        [C.TS]:        ts,
+        [C.SOURCE]:    'Google Form',
+        [C.EVID]:      _eventId,
+        [C.EVNAME]:    _event.Title,
+        [C.LAST]:      get(row, cols.last),
+        [C.FIRST]:     get(row, cols.first),
+        [C.EMAIL]:     get(row, cols.email),
+        [C.MKEY]:      '',
+        [C.MEM_QTY]:   mQty,
+        [C.GUEST_QTY]: gQty,
+        [C.KIDS_QTY]:  kQty,
+        [C.WALKIN]:    'No',
+        [C.TOTAL]:     (mQty * mFee) + (gQty * gFee) + (kQty * kFee),
+        [C.PAY_NOTE]:  get(row, cols.comments),
+        [C.STATUS]:    'Pending',
+        [C.PAY_MODE]:  '',
+        [C.AMOUNT]:    '',
+        [C.NOTES]:     get(row, cols.status) ? `Form status: ${get(row, cols.status)}` : '',
+      });
+
+      seenTs.add(ts); // guard against duplicate timestamps within the same form sheet
+      imported++;
+    }
+
+    return imported;
   }
 
   function _renderHeader() {

@@ -160,6 +160,12 @@ const Sheets = (() => {
       });
     }
 
+    // Migrate existing Events sheet — add form-sync columns if missing
+    if (existing.includes(CONFIG.SHEETS.EVENTS)) {
+      await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormSheetID');
+      await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormSheetTab');
+    }
+
     // Write headers for any sheet that exists but is empty
     const allSheets = [...needed, ...existing];
     for (const name of allSheets) {
@@ -234,6 +240,32 @@ const Sheets = (() => {
     clearHeaderCache(CONFIG.SHEETS.TRANSACTIONS);
   }
 
+  // ── READ from an external spreadsheet (e.g. Google Form responses) ──────
+  async function getFromSheet(sheetId, tabName, headerRow) {
+    headerRow = headerRow || 1;
+    const base = `${BASE}/${sheetId}`;
+    const hRange = encodeURIComponent(`${tabName}!${headerRow}:${headerRow}`);
+    const hData  = await request(`${base}/values/${hRange}`);
+    const headers = (hData.values?.[0] || []).map(h => h.toString().trim());
+    if (!headers.length) return { headers: [], rows: [] };
+    const dRange = encodeURIComponent(`${tabName}!A${headerRow + 1}:${colLetter(headers.length)}9999`);
+    const data   = await request(`${base}/values/${dRange}`);
+    return { headers, rows: data.values || [] };
+  }
+
+  // ── ADD a column header to a sheet if it doesn't already exist ───────────
+  async function ensureColumn(sheetName, columnName) {
+    const headers = await getHeaders(sheetName);
+    if (headers.includes(columnName)) return;
+    const nextCol = colLetter(headers.length + 1);
+    const range   = encodeURIComponent(`${sheetName}!${nextCol}1`);
+    await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      body: JSON.stringify({ values: [[columnName]] }),
+    });
+    clearHeaderCache(sheetName);
+  }
+
   // ── GENERATE next ID for Events / Transactions ────────────────────────────
   async function nextId(sheetName, prefix) {
     const rows = await getAll(sheetName);
@@ -261,5 +293,6 @@ const Sheets = (() => {
   return {
     getAll, append, update, deleteRow, batchUpdate,
     getHeaders, clearHeaderCache, ensureSheets, nextId,
+    getFromSheet, ensureColumn,
   };
 })();

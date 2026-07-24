@@ -638,6 +638,23 @@
             <label for="ef-desc">Description / Notes</label>
             <textarea id="ef-desc" class="form-control" rows="2" placeholder="Event details, dress code, contact info…"></textarea>
           </div>
+          <div class="form-group full">
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">
+              Google Form Integration <span style="font-weight:400;text-transform:none;">(optional — auto-syncs responses into Registrations)</span>
+            </label>
+            <div class="form-grid" style="margin:4px 0 0;gap:10px;">
+              <div class="form-group full">
+                <label for="ef-form-sheet-id">Form Responses Sheet ID</label>
+                <input type="text" id="ef-form-sheet-id" class="form-control"
+                       placeholder="Paste the ID from the Google Sheets URL…">
+              </div>
+              <div class="form-group">
+                <label for="ef-form-sheet-tab">Tab Name</label>
+                <input type="text" id="ef-form-sheet-tab" class="form-control"
+                       placeholder="Form Responses 1">
+              </div>
+            </div>
+          </div>
         </div>
       </form>
     </div>

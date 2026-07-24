@@ -161,8 +161,10 @@ const Events = (() => {
     set('ef-member-fee',     event.MemberFee);
     set('ef-guest-fee',      event.GuestFee);
     set('ef-kids-fee',       event.KidsFee);
-    set('ef-walkin-member',  event.WalkInMemberFee);
-    set('ef-walkin-guest',   event.WalkInGuestFee);
+    set('ef-walkin-member',   event.WalkInMemberFee);
+    set('ef-walkin-guest',    event.WalkInGuestFee);
+    set('ef-form-sheet-id',   event.FormSheetID);
+    set('ef-form-sheet-tab',  event.FormSheetTab);
     Utils.showModal('event-modal');
   }
 
@@ -185,6 +187,8 @@ const Events = (() => {
         KidsFee:          get('ef-kids-fee'),
         WalkInMemberFee:  get('ef-walkin-member'),
         WalkInGuestFee:   get('ef-walkin-guest'),
+        FormSheetID:      get('ef-form-sheet-id'),
+        FormSheetTab:     get('ef-form-sheet-tab'),
         Status:           new Date(get('ef-date')) >= new Date() ? 'Upcoming' : 'Completed',
       };
 

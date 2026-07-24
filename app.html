@@ -920,19 +920,23 @@
       <div class="form-grid">
         <div class="form-group">
           <label for="reg-add-last">Last Name <span style="color:var(--red)">*</span></label>
-          <input type="text" id="reg-add-last" class="form-control">
+          <input type="text" id="reg-add-last" class="form-control"
+                 oninput="Registrations.searchMemberKey()">
         </div>
         <div class="form-group">
           <label for="reg-add-first">First Name</label>
-          <input type="text" id="reg-add-first" class="form-control">
+          <input type="text" id="reg-add-first" class="form-control"
+                 oninput="Registrations.searchMemberKey()">
         </div>
         <div class="form-group" style="grid-column:1/-1">
           <label for="reg-add-email">Email</label>
           <input type="email" id="reg-add-email" class="form-control">
         </div>
-        <div class="form-group" style="grid-column:1/-1">
+        <div class="form-group" style="grid-column:1/-1;position:relative;">
           <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
-          <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
+          <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN"
+                 oninput="Registrations.clearMemberSuggestions()">
+          <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;"></div>
         </div>
         <div class="form-group">
           <label for="reg-add-source">Source</label>

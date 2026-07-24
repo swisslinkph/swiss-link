@@ -10,6 +10,7 @@ const Registrations = (() => {
   let _all       = [];   // all registrations for this event
   let _filtered  = [];
   let _events    = [];   // all events (for name lookup)
+  let _members   = [];   // for member key lookup
 
   const C = {
     ID:        'RegistrationID',
@@ -320,6 +321,48 @@ const Registrations = (() => {
     }
   }
 
+  // ── Member Key search ─────────────────────────────────────────────────────
+  function searchMemberKey() {
+    const last  = (document.getElementById('reg-add-last')?.value  || '').toLowerCase().trim();
+    const first = (document.getElementById('reg-add-first')?.value || '').toLowerCase().trim();
+    const box   = document.getElementById('reg-add-suggestions');
+    if (!box) return;
+
+    if (!last && !first) { box.style.display = 'none'; return; }
+
+    const matches = _members.filter(m => {
+      const mLast  = (m['Last Name']  || '').toLowerCase();
+      const mFirst = (m['First Name'] || '').toLowerCase();
+      const mAlt   = (m['Alternative Name'] || '').toLowerCase();
+      const lastOk  = !last  || mLast.includes(last);
+      const firstOk = !first || mFirst.includes(first) || mAlt.includes(first);
+      return lastOk && firstOk;
+    }).slice(0, 6);
+
+    if (!matches.length) { box.style.display = 'none'; return; }
+
+    box.innerHTML = matches.map(m => {
+      const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
+      const key  = m['Member Key'] || '';
+      return `<div class="member-key-suggestion-item" onclick="Registrations.selectMemberSuggestion('${Utils.escape(key)}', '${Utils.escape(name)}')">
+        <span class="suggestion-name">${Utils.escape(name)}</span>
+        <span class="suggestion-key">${Utils.escape(key)}</span>
+      </div>`;
+    }).join('');
+    box.style.display = 'block';
+  }
+
+  function selectMemberSuggestion(key, name) {
+    const keyEl = document.getElementById('reg-add-member-key');
+    if (keyEl) keyEl.value = key;
+    clearMemberSuggestions();
+  }
+
+  function clearMemberSuggestions() {
+    const box = document.getElementById('reg-add-suggestions');
+    if (box) box.style.display = 'none';
+  }
+
   // ── Add Registration modal ────────────────────────────────────────────────
   function openAddRegistration() {
     const form = document.getElementById('reg-add-modal');
@@ -333,9 +376,16 @@ const Registrations = (() => {
     const walkinEl = document.getElementById('reg-add-walkin');
     if (walkinEl) walkinEl.checked = false;
     _toggleAddPaymentFields(false);
+    clearMemberSuggestions();
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
+
+    // Load members in background for key lookup (cache after first load)
+    if (!_members.length) {
+      Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
+    }
+
     Utils.showModal('reg-add-modal');
   }
 
@@ -456,6 +506,7 @@ const Registrations = (() => {
     cancelRegistration,
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
+    searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,
     backToEvents,
   };

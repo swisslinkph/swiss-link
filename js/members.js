@@ -724,7 +724,9 @@ const Members = (() => {
     } else {
       sel.disabled = false;
       if (hint) hint.style.display = 'none';
-      const heads = _all.filter(m => m[C.FAM_HEAD] === m[C.KEY] && m[C.KEY] !== memberKey);
+      const heads = _all
+        .filter(m => m[C.FAM_HEAD] === m[C.KEY] && m[C.KEY] !== memberKey)
+        .sort((a, b) => a[C.LAST].localeCompare(b[C.LAST]) || a[C.FIRST].localeCompare(b[C.FIRST]));
       sel.innerHTML = '<option value="">— No family —</option>' +
         heads.map(h => {
           const name     = `${h[C.FIRST]} ${h[C.LAST]}`.trim();

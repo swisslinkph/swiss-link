@@ -1088,10 +1088,21 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 .settings-add-row .form-control { min-width: 180px; }
 .settings-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; margin-bottom: 0; }
-.rates-table { border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-.rates-table th, .rates-table td { padding: 5px 14px 5px 0; text-align: left; border-bottom: 1px solid var(--border); }
-.rates-table th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
-.rates-table td:first-child { font-family: monospace; font-size: 11px; }
+.rates-source-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+.rates-live    { background: #dcfce7; color: #166534; }
+.rates-fallback { background: #fef9c3; color: #92400e; }
+.rates-table { border-collapse: collapse; width: 100%; max-width: 420px; margin-top: 4px; }
+.rates-table th, .rates-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+.rates-table th { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; background: var(--bg); }
+.rates-table tr:last-child td { border-bottom: none; }
+.rates-amount-col { text-align: right; font-weight: 600; color: var(--primary); }
 .settings-rollover-row {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px;
 }

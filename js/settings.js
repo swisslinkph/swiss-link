@@ -5,22 +5,65 @@
 const Settings = (() => {
   let _admins = []; // rows from Admins sheet
 
+  const DEFAULT_RATES = [
+    { id: 'single-jr',   label: 'Single Jr. (18–25)',             amount: 1500 },
+    { id: 'mm-single',   label: 'Metro Manila – Individual',       amount: 2800 },
+    { id: 'mm-family',   label: 'Metro Manila – Family',           amount: 3500 },
+    { id: 'prov-single', label: 'Province/Overseas – Individual',  amount: 2000 },
+    { id: 'prov-family', label: 'Province/Overseas – Family',      amount: 2300 },
+  ];
+
   // ── Render ────────────────────────────────────────────────────────────────
   async function render() {
     Utils.setLoading(true, 'Loading settings…');
     try {
-      _admins = await Sheets.getAll(CONFIG.SHEETS.ADMINS);
-    } catch (e) {
-      if (e.message && e.message.toLowerCase().includes('unable to parse range')) {
-        // Admins sheet doesn't exist yet — ensureSheets() will create it
-        _admins = [];
-      } else {
-        Utils.toast(e.message, 'error');
-      }
+      [_admins] = await Promise.all([
+        Sheets.getAll(CONFIG.SHEETS.ADMINS).catch(e => {
+          if (!e.message?.toLowerCase().includes('unable to parse range')) Utils.toast(e.message, 'error');
+          return [];
+        }),
+        _renderRates(),
+      ]);
     } finally {
       _renderList();
       Utils.setLoading(false);
     }
+  }
+
+  async function _renderRates() {
+    const container = document.getElementById('settings-rates-body');
+    if (!container) return;
+
+    let rates = [];
+    let fromSheet = false;
+    try {
+      const rows = await Sheets.getAll(CONFIG.SHEETS.RATES);
+      if (rows.length) {
+        rates = rows
+          .map(r => ({ id: r['Tier ID']?.trim(), label: r['Label']?.trim(), amount: parseFloat(r['Amount']) }))
+          .filter(r => r.id && r.label && !isNaN(r.amount));
+        fromSheet = rates.length > 0;
+      }
+    } catch {}
+
+    if (!fromSheet) rates = DEFAULT_RATES;
+
+    const badge = fromSheet
+      ? `<span class="rates-source-badge rates-live">✓ Live from Rates sheet</span>`
+      : `<span class="rates-source-badge rates-fallback">Using defaults — Rates sheet not found</span>`;
+
+    container.innerHTML = `
+      ${badge}
+      <table class="rates-table">
+        <thead><tr><th>Membership Tier</th><th class="rates-amount-col">Annual Rate</th></tr></thead>
+        <tbody>
+          ${rates.map(r => `
+            <tr>
+              <td>${Utils.escape(r.label)}</td>
+              <td class="rates-amount-col">${Utils.formatPHP(r.amount)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
   }
 
   function _renderList() {

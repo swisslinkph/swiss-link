@@ -337,24 +337,13 @@
           To set up or update rates, edit that tab directly —
           <a id="settings-sheet-link" href="#" target="_blank" rel="noopener">open the spreadsheet</a>.
         </p>
-        <p class="settings-hint" style="margin-top:8px;">
-          <strong>One-time setup:</strong> create a sheet tab named <code>Rates</code> with
-          three columns: <code>Tier ID</code>, <code>Label</code>, <code>Amount</code>. Add one row per tier.<br><br>
-          Default tiers:
-        </p>
-        <table class="rates-table">
-          <thead><tr><th>Tier ID</th><th>Label</th><th>Amount</th></tr></thead>
-          <tbody>
-            <tr><td>single-jr</td><td>Single Jr. (18–25)</td><td>1500</td></tr>
-            <tr><td>mm-single</td><td>Metro Manila – Individual</td><td>2800</td></tr>
-            <tr><td>mm-family</td><td>Metro Manila – Family</td><td>3500</td></tr>
-            <tr><td>prov-single</td><td>Province/Overseas – Individual</td><td>2000</td></tr>
-            <tr><td>prov-family</td><td>Province/Overseas – Family</td><td>2300</td></tr>
-          </tbody>
-        </table>
-        <p class="settings-hint" style="margin-top:8px;">
-          After editing amounts in the sheet, reload the app to apply the new rates.
-          If the Rates tab is missing, the app uses the defaults above.
+        <div id="settings-rates-body" style="margin-top:12px;">
+          <p class="settings-hint">Loading rates…</p>
+        </div>
+        <p class="settings-hint" style="margin-top:10px;">
+          <strong>One-time setup:</strong> create a tab named <code>Rates</code> with columns
+          <code>Tier ID</code>, <code>Label</code>, <code>Amount</code> — one row per tier.
+          Edit amounts there each year, then reload the app.
         </p>
       </div>
 

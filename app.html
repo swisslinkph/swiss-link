@@ -1042,6 +1042,45 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
+     ADD MEMBER FROM SLOT MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reg-slot-add-modal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header">
+      <h2>New Member</h2>
+      <button class="modal-close" onclick="Utils.hideModal('reg-slot-add-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="reg-slot-add-first">First Name</label>
+          <input type="text" id="reg-slot-add-first" class="form-control" placeholder="First name">
+        </div>
+        <div class="form-group">
+          <label for="reg-slot-add-last">Last Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="reg-slot-add-last" class="form-control" placeholder="Last name">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="reg-slot-add-key">Member Key</label>
+        <input type="text" id="reg-slot-add-key" class="form-control" placeholder="MBR-0001">
+      </div>
+      <div id="reg-slot-add-fam-row" class="slot-add-fam-row" style="display:none;">
+        <label class="slot-add-fam-label">
+          <input type="checkbox" id="reg-slot-add-family">
+          <span id="reg-slot-add-fam-label">Link as family</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('reg-slot-add-modal')">Cancel</button>
+      <button class="btn btn-primary" id="reg-slot-add-save-btn" onclick="Registrations.saveAddFromSlot()">Create Member</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
      ADD REGISTRATION MODAL — Manual entry
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="reg-add-modal">

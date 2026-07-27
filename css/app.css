@@ -942,6 +942,20 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .slot-sugg-item:hover { background: var(--bg); }
 .slot-sugg-item span { color: var(--text-muted); margin-left: 6px; font-size: 12px; }
 
+.slot-add-new-opt {
+  color: var(--primary);
+  border-top: 1px dashed var(--border);
+  font-style: italic;
+}
+.slot-add-new-opt:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+
+.slot-add-fam-row { margin-top: 12px; }
+.slot-add-fam-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; cursor: pointer;
+}
+.slot-add-fam-label input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+
 .exempt-note {
   background: #fef3c7;
   color: #b45309;

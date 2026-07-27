@@ -690,6 +690,58 @@
 <!-- ═══════════════════════════════════════════════════════════════
      CHECK-IN MODAL — Front desk payment
 ═══════════════════════════════════════════════════════════════ -->
+<!-- ── Family Group Check-In Modal ───────────────────────────────────────── -->
+<div class="modal-overlay" id="fd-family-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <div>
+        <h2>Family Check-In</h2>
+        <p id="fd-fam-group" style="font-size:13px;color:var(--text-muted);margin-top:2px;"></p>
+      </div>
+      <button class="modal-close" onclick="Utils.hideModal('fd-family-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Member checklist -->
+      <div id="fd-fam-members" style="margin-bottom:4px;"></div>
+
+      <!-- Guests -->
+      <div class="checkin-field-row" style="margin-top:8px;">
+        <label class="field-label">Guests <span class="checkin-fee-sub" id="fd-fam-guest-fee"></span></label>
+        <div class="qty-stepper">
+          <button type="button" class="stepper-btn" onclick="FrontDesk.stepFamGuests(-1)">−</button>
+          <input type="number" id="fd-fam-guests" class="stepper-input" value="0" min="0" readonly>
+          <button type="button" class="stepper-btn" onclick="FrontDesk.stepFamGuests(1)">+</button>
+        </div>
+      </div>
+
+      <!-- Payment pills -->
+      <div class="checkin-field-row" style="flex-wrap:wrap;gap:10px;">
+        <label class="field-label">Payment</label>
+        <div class="pay-pills">
+          <button type="button" class="pay-pill fam-pay-pill active" data-mode="Cash"          onclick="FrontDesk.selectFamMode('Cash')">Cash</button>
+          <button type="button" class="pay-pill fam-pay-pill"        data-mode="GCash"         onclick="FrontDesk.selectFamMode('GCash')">GCash</button>
+          <button type="button" class="pay-pill fam-pay-pill"        data-mode="Bank Transfer" onclick="FrontDesk.selectFamMode('Bank Transfer')">Bank</button>
+          <button type="button" class="pay-pill fam-pay-pill"        data-mode="Other"         onclick="FrontDesk.selectFamMode('Other')">Other</button>
+        </div>
+        <input type="hidden" id="fd-fam-mode" value="Cash">
+      </div>
+
+    </div>
+    <div class="modal-footer checkin-modal-footer">
+      <div class="checkin-total-row">
+        <span class="total-label" style="font-size:14px;font-weight:600;color:var(--text-muted);">Total to collect</span>
+        <span id="fd-fam-total" style="font-size:26px;font-weight:800;color:var(--navy);">₱0</span>
+      </div>
+      <div class="checkin-footer-actions">
+        <button class="btn btn-outline" onclick="Utils.hideModal('fd-family-modal')">Cancel</button>
+        <button class="btn btn-primary checkin-confirm-btn" id="fd-fam-submit"
+          onclick="FrontDesk.submitFamilyCheckin()">✅ Confirm Check-In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="checkin-modal">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">

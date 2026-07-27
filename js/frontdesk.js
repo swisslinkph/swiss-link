@@ -11,7 +11,10 @@ const FrontDesk = (() => {
   let _events   = [];
   let _members  = [];
   let _txns     = [];
-  let _checkedIn = new Set(); // member keys already checked in this session
+  let _checkedIn  = new Set(); // member keys already checked in this session
+  let _famMembers = [];         // family members shown in family modal
+  let _famSelected = new Set(); // selected keys in family modal
+  let _famHead    = null;       // family head key
 
   const PAYMENT_MODES = ['Cash','GCash','BDO','PayPal','Bank Transfer','Other'];
 
@@ -158,6 +161,12 @@ const FrontDesk = (() => {
       const isExempt  = status.toLowerCase() === 'exempt';
       const quickLabel = isExempt ? 'Exempt · ₱0' : Utils.formatPHP(_event.MemberFee) + ' · Cash';
 
+      // Count family members not yet checked in (to decide whether to show family btn)
+      const famPending = fam
+        ? _members.filter(fm => fm['Family Group'] === fam && !_checkedIn.has(fm['Member Key'])).length
+        : 0;
+      const showFamBtn = fam && famPending > 1;
+
       return `<div class="fd-member-card ${alreadyIn ? 'already-in' : ''}">
         <div class="fd-member-info">
           <div class="fd-avatar">${Utils.initials(name)}</div>
@@ -176,6 +185,10 @@ const FrontDesk = (() => {
                  onclick="FrontDesk.quickCheckin('${Utils.escape(key)}', this)">
                  ✅ ${Utils.escape(quickLabel)}
                </button>
+               ${showFamBtn ? `<button class="btn fd-fam-btn"
+                 onclick="FrontDesk.openFamilyCheckin('${Utils.escape(key)}')">
+                 👨‍👩‍👧 Family
+               </button>` : ''}
                <button class="btn fd-custom-btn" title="Customize amount, guests, payment"
                  onclick="FrontDesk.openCheckin('${Utils.escape(key)}')">
                  ⚙
@@ -417,6 +430,176 @@ const FrontDesk = (() => {
     }
   }
 
+  // ── Family Group Check-In ─────────────────────────────────────────────────
+  function openFamilyCheckin(memberKey) {
+    const member = _members.find(m => m['Member Key'] === memberKey);
+    if (!member || !member['Family Group']) return;
+
+    const famGroup = member['Family Group'];
+    _famMembers = _members
+      .filter(m => m['Family Group'] === famGroup)
+      .sort((a, b) => {
+        const aHead = a['Member Key'] === a['Family Head'];
+        const bHead = b['Member Key'] === b['Family Head'];
+        return aHead === bHead ? 0 : aHead ? -1 : 1;
+      });
+
+    const head = _famMembers.find(m => m['Member Key'] === m['Family Head']) || _famMembers[0];
+    _famHead = head?.['Member Key'] || memberKey;
+
+    // Pre-select all members not yet checked in
+    _famSelected = new Set(
+      _famMembers.filter(m => !_checkedIn.has(m['Member Key'])).map(m => m['Member Key'])
+    );
+
+    document.getElementById('fd-fam-group').textContent   = famGroup;
+    document.getElementById('fd-fam-guests').value        = 0;
+    document.getElementById('fd-fam-guest-fee').textContent = Utils.formatPHP(_event.GuestFee) + ' each';
+    document.getElementById('fd-fam-mode').value          = 'Cash';
+    document.querySelectorAll('.fam-pay-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === 'Cash');
+    });
+
+    _renderFamilyMembers();
+    _updateFamilyTotal();
+    Utils.showModal('fd-family-modal');
+  }
+
+  function _renderFamilyMembers() {
+    const container = document.getElementById('fd-fam-members');
+    container.innerHTML = _famMembers.map(m => {
+      const key       = m['Member Key'];
+      const name      = `${m['First Name']} ${m['Last Name']}`.trim();
+      const isHead    = key === m['Family Head'];
+      const isExempt  = (m['Membership Status'] || '').toLowerCase() === 'exempt';
+      const alreadyIn = _checkedIn.has(key);
+      const selected  = _famSelected.has(key);
+
+      if (alreadyIn) {
+        return `<div class="fd-fam-member fd-fam-done">
+          <div class="fd-fam-check">✅</div>
+          <div class="fd-avatar sm">${Utils.initials(name)}</div>
+          <div class="fd-fam-info">
+            <span class="fd-fam-name">${Utils.escape(name)}</span>
+            ${isHead ? '<span class="fam-head-badge">Head</span>' : ''}
+          </div>
+          <span class="fd-fam-already">Already checked in</span>
+        </div>`;
+      }
+
+      return `<div class="fd-fam-member ${selected ? 'selected' : ''}"
+          onclick="FrontDesk.toggleFamilyMember('${Utils.escape(key)}')">
+        <div class="fd-fam-check">${selected ? '☑' : '☐'}</div>
+        <div class="fd-avatar sm">${Utils.initials(name)}</div>
+        <div class="fd-fam-info">
+          <span class="fd-fam-name">${Utils.escape(name)}</span>
+          ${isHead ? '<span class="fam-head-badge">Head</span>' : ''}
+          ${isExempt ? '<span class="badge badge-exempt" style="font-size:10px;">Exempt</span>' : ''}
+        </div>
+        <span class="fd-fam-fee">${isExempt ? '₱0' : Utils.formatPHP(_event.MemberFee)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleFamilyMember(key) {
+    if (_famSelected.has(key)) _famSelected.delete(key);
+    else _famSelected.add(key);
+    _renderFamilyMembers();
+    _updateFamilyTotal();
+  }
+
+  function _updateFamilyTotal() {
+    const mFee   = Utils.parsePHP(_event?.MemberFee || 0);
+    const gFee   = Utils.parsePHP(_event?.GuestFee || 0);
+    const guests = parseInt(document.getElementById('fd-fam-guests')?.value || 0, 10);
+    let total    = 0;
+    _famSelected.forEach(key => {
+      const m = _famMembers.find(fm => fm['Member Key'] === key);
+      if ((m?.['Membership Status'] || '').toLowerCase() !== 'exempt') total += mFee;
+    });
+    total += guests * gFee;
+    const el = document.getElementById('fd-fam-total');
+    if (el) el.textContent = Utils.formatPHP(total);
+  }
+
+  function stepFamGuests(delta) {
+    const el = document.getElementById('fd-fam-guests');
+    if (!el) return;
+    el.value = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+    _updateFamilyTotal();
+  }
+
+  function selectFamMode(mode) {
+    document.getElementById('fd-fam-mode').value = mode;
+    document.querySelectorAll('.fam-pay-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+  }
+
+  async function submitFamilyCheckin() {
+    const btn = document.getElementById('fd-fam-submit');
+    btn.disabled = true;
+    try {
+      const keys   = [..._famSelected];
+      if (!keys.length) { Utils.toast('Select at least one member.', 'error'); btn.disabled = false; return; }
+
+      const mode     = document.getElementById('fd-fam-mode')?.value || 'Cash';
+      const guests   = parseInt(document.getElementById('fd-fam-guests')?.value || 0, 10);
+      const mFee     = Utils.parsePHP(_event?.MemberFee || 0);
+      const gFee     = Utils.parsePHP(_event?.GuestFee || 0);
+      const guestAmt = guests * gFee;
+      const now      = new Date();
+
+      // Guest fees go to the family head if selected, otherwise first selected member
+      const guestHolder = keys.includes(_famHead) ? _famHead : keys[0];
+
+      for (const key of keys) {
+        const m        = _famMembers.find(fm => fm['Member Key'] === key);
+        const name     = m ? `${m['First Name']} ${m['Last Name']}`.trim() : key;
+        const isExempt = (m?.['Membership Status'] || '').toLowerCase() === 'exempt';
+        const memberAmt = isExempt ? 0 : mFee;
+        const extraAmt  = key === guestHolder ? guestAmt : 0;
+
+        const txnId = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN');
+        await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+          TransactionID: txnId,
+          Timestamp:     now.toISOString(),
+          MemberKey:     key,
+          MemberName:    name,
+          EventID:       _event.EventID,
+          EventName:     _event.Title,
+          AmountPaid:    memberAmt + extraAmt,
+          PaymentMode:   mode,
+          Category:      'Event',
+          Year:          now.getFullYear(),
+          Month:         now.getMonth() + 1,
+          HeadCount:     1 + (key === guestHolder ? guests : 0),
+          Notes:         '',
+          RecordedBy:    Auth.getUserEmail(),
+        });
+
+        _checkedIn.add(key);
+        _txns.push({ TransactionID: txnId, MemberKey: key, MemberName: name,
+          EventID: _event.EventID, AmountPaid: memberAmt + extraAmt,
+          PaymentMode: mode, Category: 'Event', HeadCount: 1 });
+      }
+
+      Utils.hideModal('fd-family-modal');
+      _updateLiveStats();
+      _renderCheckedIn();
+      document.getElementById('fd-search').value = '';
+      document.getElementById('fd-results').innerHTML = '';
+      document.getElementById('fd-search')?.focus();
+
+      const famName = _famMembers[0]?.['Family Group'] || 'Family';
+      Utils.toast(`✅ ${famName} · ${keys.length} member${keys.length > 1 ? 's' : ''} checked in`);
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function changeEvent() { _event = null; _renderEventPicker(); }
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -429,5 +612,7 @@ const FrontDesk = (() => {
       ?.addEventListener('input', _updateCheckinTotal);
   }
 
-  return { render, init, selectEvent, openCheckin, quickCheckin, submitCheckin, undoCheckin, changeEvent, stepCount, selectPayMode, toggleNotes };
+  return { render, init, selectEvent, openCheckin, quickCheckin, submitCheckin, undoCheckin,
+    openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
+    changeEvent, stepCount, selectPayMode, toggleNotes };
 })();

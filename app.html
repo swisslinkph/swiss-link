@@ -1112,6 +1112,13 @@
         <p id="reg-confirm-due" style="font-size:13px;font-weight:600;margin:4px 0 0;"></p>
       </div>
       <input type="hidden" id="reg-confirm-id">
+
+      <!-- Member assignment — shown for MemberQty > 1 -->
+      <div id="reg-confirm-members-section" style="display:none;margin-bottom:16px;">
+        <div class="confirm-slots-label">Assign members <span style="font-weight:400;color:var(--text-muted);">— one transaction will be created per member</span></div>
+        <div id="reg-confirm-members"></div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <label for="reg-confirm-amount">Amount Paid (₱)</label>

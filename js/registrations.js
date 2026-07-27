@@ -342,12 +342,10 @@ const Registrations = (() => {
     document.getElementById('reg-confirm-id').value         = regId;
     document.getElementById('reg-confirm-name').textContent = name;
 
-    // Ticket pax + fee breakdown
     const ticketsEl = document.getElementById('reg-confirm-tickets');
     ticketsEl.innerHTML = `${Utils.escape(_paxSummary(r))}` +
       (breakdown.line ? `<br><span style="color:var(--text-muted)">${Utils.escape(breakdown.line)}</span>` : '');
 
-    // If stored total differs from calculated, show both
     const dueEl = document.getElementById('reg-confirm-due');
     if (storedTotal && calcTotal && storedTotal !== calcTotal) {
       dueEl.innerHTML = `Total Due: <strong>${Utils.formatPHP(storedTotal)}</strong>` +
@@ -358,22 +356,142 @@ const Registrations = (() => {
 
     document.getElementById('reg-confirm-amount').value = r[C.TOTAL] || (calcTotal || '');
     document.getElementById('reg-confirm-notes').value  = r[C.NOTES] || '';
+
+    // Member assignment slots (shown when MemberQty > 1)
+    const qty = parseInt(r[C.MEM_QTY], 10) || 1;
+    const section = document.getElementById('reg-confirm-members-section');
+    if (qty > 1) {
+      _renderConfirmSlots(qty, r[C.MKEY]);
+      section.style.display = 'block';
+    } else {
+      section.style.display = 'none';
+    }
+
     Utils.showModal('reg-confirm-modal');
   }
 
+  function _renderConfirmSlots(qty, primaryKey) {
+    if (!_members.length) Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(m => { _members = m; });
+    const pm   = _members.find(m => m['Member Key'] === primaryKey);
+    const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : primaryKey;
+
+    const container = document.getElementById('reg-confirm-members');
+    container.innerHTML = `
+      <div class="confirm-slot">
+        <span class="slot-num">1</span>
+        <div class="slot-assigned">
+          <span class="slot-name">${Utils.escape(pName)}</span>
+          <span class="slot-key">${Utils.escape(primaryKey)}</span>
+        </div>
+        <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
+      </div>
+      ${Array.from({ length: qty - 1 }, (_, i) => `
+      <div class="confirm-slot" id="confirm-slot-${i + 1}">
+        <span class="slot-num">${i + 2}</span>
+        <div class="slot-search-wrap">
+          <input type="text" class="form-control slot-search-input"
+            placeholder="Search member…" autocomplete="off"
+            oninput="Registrations.searchConfirmSlot(${i + 1}, this.value)">
+          <div class="slot-suggestions" id="confirm-slot-sugg-${i + 1}"></div>
+        </div>
+        <input type="hidden" class="slot-key-input" value="">
+      </div>`).join('')}`;
+  }
+
+  function searchConfirmSlot(slotIdx, query) {
+    const suggBox = document.getElementById(`confirm-slot-sugg-${slotIdx}`);
+    if (!suggBox) return;
+    if (!query.trim()) { suggBox.innerHTML = ''; return; }
+
+    const found = Utils.filterRows(_members, query, ['First Name','Last Name','Member Key']).slice(0, 5);
+    suggBox.innerHTML = found.map(m => {
+      const key  = m['Member Key'];
+      const name = `${m['First Name']} ${m['Last Name']}`.trim();
+      return `<div class="slot-sugg-item" onclick="Registrations.selectConfirmSlot(${slotIdx},'${Utils.escape(key)}','${Utils.escape(name)}')">
+        <strong>${Utils.escape(name)}</strong> <span>${Utils.escape(key)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function selectConfirmSlot(slotIdx, key, name) {
+    const slot = document.getElementById(`confirm-slot-${slotIdx}`);
+    if (!slot) return;
+    slot.querySelector('.slot-key-input').value = key;
+    const wrap = slot.querySelector('.slot-search-wrap');
+    wrap.innerHTML = `
+      <div class="slot-assigned">
+        <span class="slot-name">${Utils.escape(name)}</span>
+        <span class="slot-key">${Utils.escape(key)}</span>
+        <button type="button" class="slot-clear" onclick="Registrations.clearConfirmSlot(${slotIdx})">✕</button>
+      </div>`;
+    slot.querySelector('.slot-key-input').value = key;
+  }
+
+  function clearConfirmSlot(slotIdx) {
+    const slot = document.getElementById(`confirm-slot-${slotIdx}`);
+    if (!slot) return;
+    slot.querySelector('.slot-key-input').value = '';
+    slot.querySelector('.slot-search-wrap').innerHTML = `
+      <input type="text" class="form-control slot-search-input"
+        placeholder="Search member…" autocomplete="off"
+        oninput="Registrations.searchConfirmSlot(${slotIdx}, this.value)">
+      <div class="slot-suggestions" id="confirm-slot-sugg-${slotIdx}"></div>`;
+  }
+
   async function saveConfirmPayment() {
-    const btn   = document.getElementById('reg-confirm-save-btn');
+    const btn = document.getElementById('reg-confirm-save-btn');
     btn.disabled = true;
     try {
       const regId  = document.getElementById('reg-confirm-id').value;
-      const amount = document.getElementById('reg-confirm-amount').value.trim();
+      const amount = parseFloat(document.getElementById('reg-confirm-amount').value.trim()) || 0;
       const mode   = document.getElementById('reg-confirm-mode').value;
       const notes  = document.getElementById('reg-confirm-notes').value.trim();
 
-      if (!amount) { Utils.toast('Please enter the amount paid.', 'error'); return; }
+      if (!amount) { Utils.toast('Please enter the amount paid.', 'error'); btn.disabled = false; return; }
 
       const r = _all.find(x => x[C.ID] === regId);
       if (!r) return;
+
+      // Collect assigned member keys from slots (if member assignment section is visible)
+      const section  = document.getElementById('reg-confirm-members-section');
+      const slots    = section?.style.display !== 'none'
+        ? [...document.querySelectorAll('#reg-confirm-members .slot-key-input')].map(el => el.value.trim()).filter(Boolean)
+        : [r[C.MKEY]];
+
+      // Create one transaction per assigned member.
+      // Each secondary member gets the event member fee; slot 1 gets the remainder
+      // (absorbs guest/kids fees or any adjustment).
+      if (slots.length > 0) {
+        const mFee     = parseFloat(_event?.MemberFee) || 0;
+        const secTotal = mFee * (slots.length - 1);
+        const now      = new Date();
+
+        for (let i = 0; i < slots.length; i++) {
+          const key    = slots[i];
+          const member = _members.find(m => m['Member Key'] === key);
+          const mName  = member
+            ? `${member['First Name']} ${member['Last Name']}`.trim()
+            : key;
+          const txnAmt = i === 0 ? Math.max(0, amount - secTotal) : mFee;
+
+          await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+            TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
+            Timestamp:     now.toISOString(),
+            MemberKey:     key,
+            MemberName:    mName,
+            EventID:       _eventId,
+            EventName:     _event?.Title || '',
+            AmountPaid:    txnAmt,
+            PaymentMode:   mode,
+            Category:      'Event',
+            Year:          now.getFullYear(),
+            Month:         now.getMonth() + 1,
+            HeadCount:     1,
+            Notes:         notes,
+            RecordedBy:    Auth.getUserEmail(),
+          });
+        }
+      }
 
       await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, {
         ...r,
@@ -384,7 +502,9 @@ const Registrations = (() => {
       });
 
       Utils.hideModal('reg-confirm-modal');
-      Utils.toast('Payment confirmed.');
+      Utils.toast(slots.length > 1
+        ? `Payment confirmed · ${slots.length} member records created.`
+        : 'Payment confirmed.');
       await render();
     } catch (e) {
       Utils.toast(e.message, 'error');
@@ -963,6 +1083,7 @@ const Registrations = (() => {
     render, init,
     applyFilter,
     openConfirmPayment, saveConfirmPayment,
+    searchConfirmSlot, selectConfirmSlot, clearConfirmSlot,
     cancelRegistration,
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,

@@ -160,8 +160,11 @@ const Sheets = (() => {
       });
     }
 
-    // Migrate existing Events sheet — add form-sync columns if missing
+    // Migrate existing Events sheet — add any missing columns
     if (existing.includes(CONFIG.SHEETS.EVENTS)) {
+      await ensureColumn(CONFIG.SHEETS.EVENTS, 'KidsFee');
+      await ensureColumn(CONFIG.SHEETS.EVENTS, 'WalkInMemberFee');
+      await ensureColumn(CONFIG.SHEETS.EVENTS, 'WalkInGuestFee');
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormSheetID');
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormSheetTab');
     }

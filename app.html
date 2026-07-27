@@ -1105,7 +1105,7 @@
           <label for="reg-add-email">Email</label>
           <input type="email" id="reg-add-email" class="form-control">
         </div>
-        <div class="form-group" style="grid-column:1/-1;">
+        <div class="form-group" id="reg-add-mkey-group" style="grid-column:1/-1;">
           <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
           <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
         </div>
@@ -1113,10 +1113,7 @@
 
         <!-- Member assignment slots — shown in Edit mode when MemberQty > 1 -->
         <div id="reg-edit-slots-section" style="display:none;grid-column:1/-1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <span class="confirm-slots-label" style="margin:0;">Member Assignments</span>
-            <span style="font-size:12px;color:var(--text-muted);">Slot 1 = registrant above</span>
-          </div>
+          <div class="confirm-slots-label" style="margin-bottom:6px;">Member Assignments</div>
           <div id="reg-edit-slots-container"></div>
         </div>
 

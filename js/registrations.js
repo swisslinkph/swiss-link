@@ -13,7 +13,7 @@ const Registrations = (() => {
   let _members        = [];   // for member key lookup
   let _editingRegId     = null;
   let _pendingConfirmId = null;
-  let _slotAddIdx       = null;  // slot being filled by the add-from-slot flow
+  let _slotAddContext    = null;  // { type: 'confirm'|'edit', slotIdx: number }
   let _slotAddPrimaryKey = null; // primary member key for optional family link
 
   const C = {
@@ -26,6 +26,7 @@ const Registrations = (() => {
     FIRST:     'FirstName',
     EMAIL:     'Email',
     MKEY:      'MemberKey',
+    SLOTS:     'MemberSlots',
     MEM_QTY:   'MemberQty',
     GUEST_QTY: 'GuestQty',
     KIDS_QTY:  'KidsQty',
@@ -363,7 +364,8 @@ const Registrations = (() => {
     const qty = parseInt(r[C.MEM_QTY], 10) || 1;
     const section = document.getElementById('reg-confirm-members-section');
     if (qty > 1) {
-      _renderConfirmSlots(qty, r[C.MKEY]);
+      const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
+      _renderConfirmSlots(qty, r[C.MKEY], savedSlots);
       section.style.display = 'block';
     } else {
       section.style.display = 'none';
@@ -372,9 +374,9 @@ const Registrations = (() => {
     Utils.showModal('reg-confirm-modal');
   }
 
-  function _renderConfirmSlots(qty, primaryKey) {
+  function _renderConfirmSlots(qty, primaryKey, savedSlots = []) {
     if (!_members.length) Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(m => { _members = m; });
-    const pm   = _members.find(m => m['Member Key'] === primaryKey);
+    const pm    = _members.find(m => m['Member Key'] === primaryKey);
     const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : primaryKey;
 
     const container = document.getElementById('reg-confirm-members');
@@ -387,17 +389,37 @@ const Registrations = (() => {
         </div>
         <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
       </div>
-      ${Array.from({ length: qty - 1 }, (_, i) => `
-      <div class="confirm-slot" id="confirm-slot-${i + 1}">
-        <span class="slot-num">${i + 2}</span>
-        <div class="slot-search-wrap">
-          <input type="text" class="form-control slot-search-input"
-            placeholder="Search member…" autocomplete="off"
-            oninput="Registrations.searchConfirmSlot(${i + 1}, this.value)">
-          <div class="slot-suggestions" id="confirm-slot-sugg-${i + 1}"></div>
-        </div>
-        <input type="hidden" class="slot-key-input" value="">
-      </div>`).join('')}`;
+      ${Array.from({ length: qty - 1 }, (_, i) => {
+        const slotIdx = i + 1;
+        const saved   = savedSlots[i];
+        if (saved) {
+          const sm    = _members.find(m => m['Member Key'] === saved);
+          const sName = sm ? `${sm['First Name']} ${sm['Last Name']}`.trim() : saved;
+          return `
+          <div class="confirm-slot" id="confirm-slot-${slotIdx}">
+            <span class="slot-num">${slotIdx + 1}</span>
+            <div class="slot-search-wrap">
+              <div class="slot-assigned">
+                <span class="slot-name">${Utils.escape(sName)}</span>
+                <span class="slot-key">${Utils.escape(saved)}</span>
+                <button type="button" class="slot-clear" onclick="Registrations.clearConfirmSlot(${slotIdx})">✕</button>
+              </div>
+            </div>
+            <input type="hidden" class="slot-key-input" value="${Utils.escape(saved)}">
+          </div>`;
+        }
+        return `
+        <div class="confirm-slot" id="confirm-slot-${slotIdx}">
+          <span class="slot-num">${slotIdx + 1}</span>
+          <div class="slot-search-wrap">
+            <input type="text" class="form-control slot-search-input"
+              placeholder="Search member…" autocomplete="off"
+              oninput="Registrations.searchConfirmSlot(${slotIdx}, this.value)">
+            <div class="slot-suggestions" id="confirm-slot-sugg-${slotIdx}"></div>
+          </div>
+          <input type="hidden" class="slot-key-input" value="">
+        </div>`;
+      }).join('')}`;
   }
 
   function searchConfirmSlot(slotIdx, query) {
@@ -415,7 +437,7 @@ const Registrations = (() => {
       </div>`;
     });
     const addNew = `<div class="slot-sugg-item slot-add-new-opt"
-        onclick="Registrations.openAddFromSlot(${slotIdx},'${Utils.escape(q)}')">
+        onclick="Registrations.openAddFromSlot(${slotIdx},'confirm','${Utils.escape(q)}')">
       + Add "<strong>${Utils.escape(q)}</strong>" as new member
     </div>`;
     suggBox.innerHTML = memberItems.join('') + addNew;
@@ -446,7 +468,90 @@ const Registrations = (() => {
       <div class="slot-suggestions" id="confirm-slot-sugg-${slotIdx}"></div>`;
   }
 
-  async function openAddFromSlot(slotIdx, query) {
+  // ── Edit-modal slot helpers (mirrors confirm slot helpers) ──────────────────
+  function _renderEditSlots(qty, savedSlots) {
+    const container = document.getElementById('reg-edit-slots-container');
+    if (!container) return;
+    // Render slots 1..qty-1 (slot 0 = primary member, handled by MemberKey field above)
+    container.innerHTML = Array.from({ length: qty - 1 }, (_, i) => {
+      const slotIdx = i + 1;
+      const saved   = savedSlots[i];
+      if (saved) {
+        const sm   = _members.find(m => m['Member Key'] === saved);
+        const sName = sm ? `${sm['First Name']} ${sm['Last Name']}`.trim() : saved;
+        return `
+        <div class="confirm-slot" id="edit-slot-${slotIdx}">
+          <span class="slot-num">${slotIdx + 1}</span>
+          <div class="slot-search-wrap">
+            <div class="slot-assigned">
+              <span class="slot-name">${Utils.escape(sName)}</span>
+              <span class="slot-key">${Utils.escape(saved)}</span>
+              <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${slotIdx})">✕</button>
+            </div>
+          </div>
+          <input type="hidden" class="slot-key-input" value="${Utils.escape(saved)}">
+        </div>`;
+      }
+      return `
+      <div class="confirm-slot" id="edit-slot-${slotIdx}">
+        <span class="slot-num">${slotIdx + 1}</span>
+        <div class="slot-search-wrap">
+          <input type="text" class="form-control slot-search-input"
+            placeholder="Search or add member…" autocomplete="off"
+            oninput="Registrations.searchEditSlot(${slotIdx}, this.value)">
+          <div class="slot-suggestions" id="edit-slot-sugg-${slotIdx}"></div>
+        </div>
+        <input type="hidden" class="slot-key-input" value="">
+      </div>`;
+    }).join('');
+  }
+
+  function searchEditSlot(slotIdx, query) {
+    const suggBox = document.getElementById(`edit-slot-sugg-${slotIdx}`);
+    if (!suggBox) return;
+    const q = query.trim();
+    if (!q) { suggBox.innerHTML = ''; return; }
+
+    const found = Utils.filterRows(_members, q, ['First Name','Last Name','Member Key']).slice(0, 5);
+    const primaryKey = (document.getElementById('reg-add-member-key')?.value || '').trim();
+    const memberItems = found.map(m => {
+      const key  = m['Member Key'];
+      const name = `${m['First Name']} ${m['Last Name']}`.trim();
+      return `<div class="slot-sugg-item" onclick="Registrations.selectEditSlot(${slotIdx},'${Utils.escape(key)}','${Utils.escape(name)}')">
+        <strong>${Utils.escape(name)}</strong> <span>${Utils.escape(key)}</span>
+      </div>`;
+    });
+    const addNew = `<div class="slot-sugg-item slot-add-new-opt"
+        onclick="Registrations.openAddFromSlot(${slotIdx},'edit','${Utils.escape(q)}')">
+      + Add "<strong>${Utils.escape(q)}</strong>" as new member
+    </div>`;
+    suggBox.innerHTML = memberItems.join('') + addNew;
+  }
+
+  function selectEditSlot(slotIdx, key, name) {
+    const slot = document.getElementById(`edit-slot-${slotIdx}`);
+    if (!slot) return;
+    slot.querySelector('.slot-key-input').value = key;
+    slot.querySelector('.slot-search-wrap').innerHTML = `
+      <div class="slot-assigned">
+        <span class="slot-name">${Utils.escape(name)}</span>
+        <span class="slot-key">${Utils.escape(key)}</span>
+        <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${slotIdx})">✕</button>
+      </div>`;
+  }
+
+  function clearEditSlot(slotIdx) {
+    const slot = document.getElementById(`edit-slot-${slotIdx}`);
+    if (!slot) return;
+    slot.querySelector('.slot-key-input').value = '';
+    slot.querySelector('.slot-search-wrap').innerHTML = `
+      <input type="text" class="form-control slot-search-input"
+        placeholder="Search or add member…" autocomplete="off"
+        oninput="Registrations.searchEditSlot(${slotIdx}, this.value)">
+      <div class="slot-suggestions" id="edit-slot-sugg-${slotIdx}"></div>`;
+  }
+
+  async function openAddFromSlot(slotIdx, context, query) {
     if (!_members.length) {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
@@ -464,10 +569,13 @@ const Registrations = (() => {
     const nextNum = nums.length ? Math.max(...nums) + 1 : 1;
     const suggestedKey = `MBR-${String(nextNum).padStart(4, '0')}`;
 
-    // Identify primary member (slot 0) for the family toggle label
-    const primaryKeyInput = document.querySelector('#reg-confirm-members .slot-key-input');
-    _slotAddIdx       = slotIdx;
-    _slotAddPrimaryKey = primaryKeyInput?.value?.trim() || null;
+    // Identify primary member for the family toggle label
+    _slotAddContext = { type: context, slotIdx };
+    if (context === 'confirm') {
+      _slotAddPrimaryKey = document.querySelector('#reg-confirm-members .slot-key-input')?.value?.trim() || null;
+    } else {
+      _slotAddPrimaryKey = (document.getElementById('reg-add-member-key')?.value || '').trim() || null;
+    }
 
     let primaryName = '';
     if (_slotAddPrimaryKey) {
@@ -530,7 +638,12 @@ const Registrations = (() => {
       _members = []; // invalidate cache
       const name = [first, last].filter(Boolean).join(' ');
       Utils.hideModal('reg-slot-add-modal');
-      selectConfirmSlot(_slotAddIdx, key, name);
+      const { type, slotIdx } = _slotAddContext || {};
+      if (type === 'edit') {
+        selectEditSlot(slotIdx, key, name);
+      } else {
+        selectConfirmSlot(slotIdx, key, name);
+      }
       Utils.toast(`${name} added as ${key}${linkFamily ? ' · linked to family.' : '.'}`);
     } catch (e) {
       Utils.toast(e.message, 'error');
@@ -675,6 +788,17 @@ const Registrations = (() => {
     }
     clearMemberSuggestions();
     searchMemberKey(); // auto-suggest from the pre-filled name
+
+    // Member assignment slots for additional members
+    const qty = parseInt(r[C.MEM_QTY], 10) || 1;
+    const editSlotsSection = document.getElementById('reg-edit-slots-section');
+    if (qty > 1 && editSlotsSection) {
+      const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
+      _renderEditSlots(qty, savedSlots);
+      editSlotsSection.style.display = 'block';
+    } else if (editSlotsSection) {
+      editSlotsSection.style.display = 'none';
+    }
 
     Utils.showModal('reg-add-modal');
   }
@@ -1054,6 +1178,8 @@ const Registrations = (() => {
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
+    const editSlotsSection = document.getElementById('reg-edit-slots-section');
+    if (editSlotsSection) editSlotsSection.style.display = 'none';
 
     if (!_members.length) {
       Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
@@ -1116,6 +1242,13 @@ const Registrations = (() => {
       const total    = get('reg-add-total');
       const amount   = status === 'Confirmed' ? (get('reg-add-amount') || total) : '';
 
+      // Collect secondary member slot assignments
+      const editSlotsSection = document.getElementById('reg-edit-slots-section');
+      const memberSlots = editSlotsSection?.style.display !== 'none'
+        ? [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
+            .map(el => el.value.trim()).filter(Boolean).join(',')
+        : '';
+
       const obj = {
         [C.SOURCE]:    source,
         [C.EVID]:      _eventId,
@@ -1124,6 +1257,7 @@ const Registrations = (() => {
         [C.FIRST]:     get('reg-add-first'),
         [C.EMAIL]:     get('reg-add-email'),
         [C.MKEY]:      get('reg-add-member-key'),
+        [C.SLOTS]:     memberSlots,
         [C.MEM_QTY]:   mQty,
         [C.GUEST_QTY]: gQty,
         [C.KIDS_QTY]:  kQty,
@@ -1184,7 +1318,9 @@ const Registrations = (() => {
     render, init,
     applyFilter,
     openConfirmPayment, saveConfirmPayment,
-    searchConfirmSlot, selectConfirmSlot, clearConfirmSlot, openAddFromSlot, saveAddFromSlot,
+    searchConfirmSlot, selectConfirmSlot, clearConfirmSlot,
+    searchEditSlot, selectEditSlot, clearEditSlot,
+    openAddFromSlot, saveAddFromSlot,
     cancelRegistration,
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,

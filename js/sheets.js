@@ -160,6 +160,11 @@ const Sheets = (() => {
       });
     }
 
+    // Migrate existing Registrations sheet — add any missing columns
+    if (existing.includes(CONFIG.SHEETS.REGISTRATIONS)) {
+      await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'MemberSlots');
+    }
+
     // Migrate existing Events sheet — add any missing columns
     if (existing.includes(CONFIG.SHEETS.EVENTS)) {
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'KidsFee');
@@ -194,7 +199,7 @@ const Sheets = (() => {
   async function _writeRegistrationsHeaders() {
     const headers = [
       'RegistrationID','Timestamp','Source','EventID','EventName',
-      'LastName','FirstName','Email','MemberKey',
+      'LastName','FirstName','Email','MemberKey','MemberSlots',
       'MemberQty','GuestQty','KidsQty','IsWalkIn',
       'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes',
     ];

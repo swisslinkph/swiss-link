@@ -1110,6 +1110,16 @@
           <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
         </div>
         <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;grid-column:1/-1;"></div>
+
+        <!-- Member assignment slots — shown in Edit mode when MemberQty > 1 -->
+        <div id="reg-edit-slots-section" style="display:none;grid-column:1/-1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="confirm-slots-label" style="margin:0;">Member Assignments</span>
+            <span style="font-size:12px;color:var(--text-muted);">Slot 1 = registrant above</span>
+          </div>
+          <div id="reg-edit-slots-container"></div>
+        </div>
+
         <div class="form-group">
           <label for="reg-add-source">Source</label>
           <select id="reg-add-source" class="form-control" onchange="Registrations.onAddSourceChange()">

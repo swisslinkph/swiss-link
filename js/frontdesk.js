@@ -157,15 +157,16 @@ const FrontDesk = (() => {
       const status    = m['Membership Status'] || 'TBC';
       const type      = m['Membership Type'] || '';
       const fam       = m['Family Group'] || '';
+      const famHead   = m['Family Head'] || '';
       const alreadyIn = _checkedIn.has(key);
       const isExempt  = status.toLowerCase() === 'exempt';
       const quickLabel = isExempt ? 'Exempt · ₱0' : Utils.formatPHP(_event.MemberFee) + ' · Cash';
 
-      // Count family members not yet checked in (to decide whether to show family btn)
-      const famPending = fam
-        ? _members.filter(fm => fm['Family Group'] === fam && !_checkedIn.has(fm['Member Key'])).length
+      // Use Family Head field (reliable key-based link) to find family members
+      const famPending = famHead
+        ? _members.filter(fm => fm['Family Head'] === famHead && !_checkedIn.has(fm['Member Key'])).length
         : 0;
-      const showFamBtn = fam && famPending > 1;
+      const showFamBtn = famHead && famPending > 1;
 
       return `<div class="fd-member-card ${alreadyIn ? 'already-in' : ''}">
         <div class="fd-member-info">
@@ -433,26 +434,30 @@ const FrontDesk = (() => {
   // ── Family Group Check-In ─────────────────────────────────────────────────
   function openFamilyCheckin(memberKey) {
     const member = _members.find(m => m['Member Key'] === memberKey);
-    if (!member || !member['Family Group']) return;
+    if (!member) return;
 
-    const famGroup = member['Family Group'];
+    _famHead = member['Family Head'] || memberKey;
+
     _famMembers = _members
-      .filter(m => m['Family Group'] === famGroup)
+      .filter(m => m['Family Head'] === _famHead)
       .sort((a, b) => {
-        const aHead = a['Member Key'] === a['Family Head'];
-        const bHead = b['Member Key'] === b['Family Head'];
+        const aHead = a['Member Key'] === _famHead;
+        const bHead = b['Member Key'] === _famHead;
         return aHead === bHead ? 0 : aHead ? -1 : 1;
       });
 
-    const head = _famMembers.find(m => m['Member Key'] === m['Family Head']) || _famMembers[0];
-    _famHead = head?.['Member Key'] || memberKey;
+    if (_famMembers.length < 2) { Utils.toast('No other family members found.', 'error'); return; }
 
     // Pre-select all members not yet checked in
     _famSelected = new Set(
       _famMembers.filter(m => !_checkedIn.has(m['Member Key'])).map(m => m['Member Key'])
     );
 
-    document.getElementById('fd-fam-group').textContent   = famGroup;
+    const headMember = _famMembers.find(m => m['Member Key'] === _famHead);
+    const groupLabel = headMember
+      ? `${headMember['Last Name'] || headMember['First Name']} Family`
+      : (member['Family Group'] || 'Family Group');
+    document.getElementById('fd-fam-group').textContent = groupLabel;
     document.getElementById('fd-fam-guests').value        = 0;
     document.getElementById('fd-fam-guest-fee').textContent = Utils.formatPHP(_event.GuestFee) + ' each';
     document.getElementById('fd-fam-mode').value          = 'Cash';
@@ -591,7 +596,8 @@ const FrontDesk = (() => {
       document.getElementById('fd-results').innerHTML = '';
       document.getElementById('fd-search')?.focus();
 
-      const famName = _famMembers[0]?.['Family Group'] || 'Family';
+      const headM   = _famMembers.find(m => m['Member Key'] === _famHead);
+      const famName = headM ? `${headM['Last Name'] || headM['First Name']} Family` : 'Family';
       Utils.toast(`✅ ${famName} · ${keys.length} member${keys.length > 1 ? 's' : ''} checked in`);
     } catch (e) {
       Utils.toast(e.message, 'error');

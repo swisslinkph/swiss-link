@@ -693,63 +693,161 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   justify-content: space-between;
   background: var(--white);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 8px;
+  padding: 16px 18px;
+  margin-bottom: 10px;
   box-shadow: var(--shadow);
-  transition: .1s;
+  gap: 12px;
 }
-.fd-member-card.already-in { opacity: .6; }
-.fd-member-info { display: flex; align-items: center; gap: 12px; }
+.fd-member-card.already-in {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.fd-member-info { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
 .fd-avatar {
-  width: 40px; height: 40px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   background: var(--navy); color: #fff;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; flex-shrink: 0;
+  font-size: 15px; font-weight: 700; flex-shrink: 0;
 }
-.fd-avatar.sm { width: 28px; height: 28px; font-size: 11px; }
-.fd-member-name { font-size: 15px; font-weight: 600; }
-.fd-member-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-.fd-checkin-btn { font-size: 14px; padding: 10px 24px; }
-.fd-checked-badge { color: #16a34a; font-weight: 600; font-size: 13px; }
-.fd-no-results { color: var(--text-muted); font-size: 13px; padding: 12px 0; }
+.fd-avatar.sm { width: 30px; height: 30px; font-size: 11px; }
+.fd-avatar.lg {
+  width: 52px; height: 52px; font-size: 18px;
+  background: var(--red); flex-shrink: 0;
+}
+.fd-member-name { font-size: 17px; font-weight: 700; }
+.fd-member-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+.fd-card-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.fd-quick-btn { font-size: 15px; padding: 12px 20px; white-space: nowrap; }
+.fd-custom-btn {
+  width: 40px; height: 40px;
+  padding: 0; font-size: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg); color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.fd-custom-btn:hover { background: var(--border); color: var(--text); }
+.fd-checked-badge { color: #16a34a; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.fd-no-results { color: var(--text-muted); font-size: 14px; padding: 16px 0; }
 
 .fd-checkedin-list h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
 .fd-checkedin-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 14px;
 }
 .fd-checkedin-item span:nth-child(2) { flex: 1; font-weight: 500; }
 .fd-mode { color: var(--text-muted); font-size: 12px; }
 
 /* Check-in modal ─────────────────── */
 .checkin-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   background: var(--bg);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 20px;
 }
-.checkin-summary h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.checkin-summary h3 { font-size: 20px; font-weight: 700; margin-bottom: 3px; }
 .checkin-summary p  { font-size: 13px; color: var(--text-muted); }
+
+/* Amount row */
+.checkin-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.checkin-field-row label { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.checkin-fee-sub { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+.checkin-amount-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.checkin-amount-input {
+  width: 130px; text-align: right;
+  font-size: 22px; font-weight: 700;
+  padding: 8px 12px;
+}
+.checkin-fee-hint { font-size: 11px; color: var(--text-muted); }
+
+/* Steppers */
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.stepper-btn {
+  width: 44px; height: 44px;
+  border: none; background: var(--bg);
+  font-size: 22px; font-weight: 700;
+  color: var(--navy); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s;
+}
+.stepper-btn:hover { background: var(--border); }
+.stepper-input {
+  width: 52px; text-align: center;
+  border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  font-size: 18px; font-weight: 700;
+  padding: 0; height: 44px;
+  background: var(--white); color: var(--text);
+}
+
+/* Payment pills */
+.pay-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pay-pill {
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--white);
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; color: var(--text);
+  transition: .15s;
+}
+.pay-pill:hover { border-color: var(--navy); }
+.pay-pill.active {
+  background: var(--navy); color: #fff;
+  border-color: var(--navy);
+}
+
+/* Notes toggle */
+.checkin-notes-row { padding: 12px 0 4px; }
+.notes-toggle {
+  background: none; border: none;
+  color: var(--text-muted); font-size: 13px;
+  cursor: pointer; padding: 0;
+  text-decoration: underline;
+}
+.notes-toggle:hover { color: var(--text); }
+
+/* Modal footer */
+.checkin-modal-footer { flex-direction: column; align-items: stretch; gap: 12px; }
 .checkin-total-row {
   display: flex;
   justify-content: space-between;
-  font-size: 16px;
-  font-weight: 700;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
 }
+#checkin-total { font-size: 26px; font-weight: 800; color: var(--navy); }
+.checkin-footer-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.checkin-confirm-btn { font-size: 16px; padding: 14px 28px; }
+
 .exempt-note {
   background: #fef3c7;
   color: #b45309;
   border-radius: 6px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 13px;
   margin-bottom: 12px;
 }
 

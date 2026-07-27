@@ -697,10 +697,14 @@
       <button class="modal-close" id="checkin-modal-close" aria-label="Close">✕</button>
     </div>
     <div class="modal-body">
-      <!-- Member + event banner -->
+
+      <!-- Member banner -->
       <div class="checkin-summary">
-        <h3 id="checkin-member-name">—</h3>
-        <p id="checkin-event-name">—</p>
+        <div class="fd-avatar lg" id="checkin-avatar">—</div>
+        <div>
+          <h3 id="checkin-member-name">—</h3>
+          <p id="checkin-event-name">—</p>
+        </div>
       </div>
 
       <!-- Exempt notice -->
@@ -710,48 +714,63 @@
 
       <input type="hidden" id="checkin-member-key">
 
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Default Member Fee</label>
-          <div class="form-control" id="checkin-default-fee" style="background:#f9f9f9;cursor:default;">—</div>
-        </div>
-        <div class="form-group">
-          <label for="checkin-amount">Amount Paid (₱)</label>
-          <input type="number" id="checkin-amount" class="form-control" min="0" step="0.01">
-        </div>
-        <div class="form-group">
-          <label for="checkin-guests">Extra Guests</label>
-          <input type="number" id="checkin-guests" class="form-control" min="0" value="0">
-        </div>
-        <div class="form-group">
-          <label>Guest Fee (each)</label>
-          <div class="form-control" id="checkin-guest-fee" style="background:#f9f9f9;cursor:default;">—</div>
-        </div>
-        <div class="form-group">
-          <label for="checkin-mode">Payment Method</label>
-          <select id="checkin-mode" class="form-control">
-            <option>Cash</option>
-            <option>GCash</option>
-            <option>BDO</option>
-            <option>PayPal</option>
-            <option>Bank Transfer</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="checkin-notes">Notes</label>
-          <input type="text" id="checkin-notes" class="form-control" placeholder="Optional">
+      <!-- Amount -->
+      <div class="checkin-field-row">
+        <label for="checkin-amount">Amount (₱)</label>
+        <div class="checkin-amount-wrap">
+          <input type="number" id="checkin-amount" class="form-control checkin-amount-input" min="0" step="0.01">
+          <span class="checkin-fee-hint" id="checkin-default-fee"></span>
         </div>
       </div>
 
+      <!-- Guests -->
+      <div class="checkin-field-row">
+        <label>Guests <span class="checkin-fee-sub" id="checkin-guest-fee"></span></label>
+        <div class="qty-stepper">
+          <button type="button" class="stepper-btn" onclick="FrontDesk.stepCount('checkin-guests', -1)">−</button>
+          <input type="number" id="checkin-guests" class="stepper-input" value="0" min="0" readonly>
+          <button type="button" class="stepper-btn" onclick="FrontDesk.stepCount('checkin-guests', 1)">+</button>
+        </div>
+      </div>
+
+      <!-- Kids (shown only when event has a kids fee) -->
+      <div class="checkin-field-row" id="checkin-kids-row" style="display:none">
+        <label>Kids <span class="checkin-fee-sub" id="checkin-kids-fee"></span></label>
+        <div class="qty-stepper">
+          <button type="button" class="stepper-btn" onclick="FrontDesk.stepCount('checkin-kids', -1)">−</button>
+          <input type="number" id="checkin-kids" class="stepper-input" value="0" min="0" readonly>
+          <button type="button" class="stepper-btn" onclick="FrontDesk.stepCount('checkin-kids', 1)">+</button>
+        </div>
+      </div>
+
+      <!-- Payment pills -->
+      <div class="checkin-field-row">
+        <label>Payment</label>
+        <div class="pay-pills">
+          <button type="button" class="pay-pill active" data-mode="Cash"          onclick="FrontDesk.selectPayMode('Cash')">Cash</button>
+          <button type="button" class="pay-pill"        data-mode="GCash"         onclick="FrontDesk.selectPayMode('GCash')">GCash</button>
+          <button type="button" class="pay-pill"        data-mode="Bank Transfer" onclick="FrontDesk.selectPayMode('Bank Transfer')">Bank</button>
+          <button type="button" class="pay-pill"        data-mode="Other"         onclick="FrontDesk.selectPayMode('Other')">Other</button>
+        </div>
+        <input type="hidden" id="checkin-mode" value="Cash">
+      </div>
+
+      <!-- Notes (collapsed by default) -->
+      <div class="checkin-notes-row">
+        <button type="button" class="notes-toggle" onclick="FrontDesk.toggleNotes()">+ Add note</button>
+        <input type="text" id="checkin-notes" class="form-control" placeholder="Note…" style="display:none;margin-top:8px;">
+      </div>
+
+    </div>
+    <div class="modal-footer checkin-modal-footer">
       <div class="checkin-total-row">
-        <span>Total to collect:</span>
+        <span>Total to collect</span>
         <strong id="checkin-total">₱0</strong>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="Utils.hideModal('checkin-modal')">Cancel</button>
-      <button class="btn btn-primary" id="checkin-submit-btn">✅ Confirm Check-In</button>
+      <div class="checkin-footer-actions">
+        <button class="btn btn-outline" onclick="Utils.hideModal('checkin-modal')">Cancel</button>
+        <button class="btn btn-primary checkin-confirm-btn" id="checkin-submit-btn">✅ Confirm Check-In</button>
+      </div>
     </div>
   </div>
 </div>

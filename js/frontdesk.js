@@ -144,7 +144,7 @@ const FrontDesk = (() => {
     ]).slice(0, 8);
 
     if (!found.length) {
-      results.innerHTML = '<p class="fd-no-results">No member found. You can check in a guest instead.</p>';
+      results.innerHTML = '<p class="fd-no-results">No member found.</p>';
       return;
     }
 
@@ -155,6 +155,8 @@ const FrontDesk = (() => {
       const type      = m['Membership Type'] || '';
       const fam       = m['Family Group'] || '';
       const alreadyIn = _checkedIn.has(key);
+      const isExempt  = status.toLowerCase() === 'exempt';
+      const quickLabel = isExempt ? 'Exempt · ₱0' : Utils.formatPHP(_event.MemberFee) + ' · Cash';
 
       return `<div class="fd-member-card ${alreadyIn ? 'already-in' : ''}">
         <div class="fd-member-info">
@@ -169,12 +171,88 @@ const FrontDesk = (() => {
         </div>
         ${alreadyIn
           ? `<span class="fd-checked-badge">✅ Checked In</span>`
-          : `<button class="btn btn-primary fd-checkin-btn"
-               onclick="FrontDesk.openCheckin('${Utils.escape(key)}')">
-               Check In
-             </button>`}
+          : `<div class="fd-card-actions">
+               <button class="btn btn-primary fd-quick-btn"
+                 onclick="FrontDesk.quickCheckin('${Utils.escape(key)}', this)">
+                 ✅ ${Utils.escape(quickLabel)}
+               </button>
+               <button class="btn fd-custom-btn" title="Customize amount, guests, payment"
+                 onclick="FrontDesk.openCheckin('${Utils.escape(key)}')">
+                 ⚙
+               </button>
+             </div>`}
       </div>`;
     }).join('');
+  }
+
+  // ── Quick Check-In (no modal — cash, default fee, no guests) ─────────────
+  async function quickCheckin(memberKey, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const member = _members.find(m => m['Member Key'] === memberKey);
+      if (!member) return;
+      const isExempt = (member['Membership Status'] || '').toLowerCase() === 'exempt';
+      const amount   = isExempt ? 0 : (Utils.parsePHP(_event.MemberFee) || 0);
+      const name     = `${member['First Name']} ${member['Last Name']}`.trim();
+
+      const txnId = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN');
+      const now   = new Date();
+      await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+        TransactionID: txnId,
+        Timestamp:     now.toISOString(),
+        MemberKey:     memberKey,
+        MemberName:    name,
+        EventID:       _event.EventID,
+        EventName:     _event.Title,
+        AmountPaid:    amount,
+        PaymentMode:   'Cash',
+        Category:      'Event',
+        Year:          now.getFullYear(),
+        Month:         now.getMonth() + 1,
+        HeadCount:     1,
+        Notes:         '',
+        RecordedBy:    Auth.getUserEmail(),
+      });
+
+      _checkedIn.add(memberKey);
+      _txns.push({ TransactionID: txnId, MemberKey: memberKey, MemberName: name,
+        EventID: _event.EventID, AmountPaid: amount, PaymentMode: 'Cash', Category: 'Event', HeadCount: 1 });
+      _updateLiveStats();
+      _renderCheckedIn();
+      document.getElementById('fd-search').value = '';
+      document.getElementById('fd-results').innerHTML = '';
+      document.getElementById('fd-search')?.focus();
+      Utils.toast(`✅ ${name} · ${isExempt ? 'Exempt' : Utils.formatPHP(amount) + ' Cash'}`);
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── Stepper for quantity fields ───────────────────────────────────────────
+  function stepCount(fieldId, delta) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+    _updateCheckinTotal();
+  }
+
+  // ── Payment pill toggle ───────────────────────────────────────────────────
+  function selectPayMode(mode) {
+    document.getElementById('checkin-mode').value = mode;
+    document.querySelectorAll('.pay-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+  }
+
+  function toggleNotes() {
+    const inp = document.getElementById('checkin-notes');
+    const btn = document.querySelector('.notes-toggle');
+    if (!inp) return;
+    const shown = inp.style.display !== 'none';
+    inp.style.display = shown ? 'none' : 'block';
+    if (btn) btn.textContent = shown ? '+ Add note' : '− Remove note';
+    if (!shown) inp.focus();
   }
 
   // ── Check-in Payment Modal ────────────────────────────────────────────────
@@ -182,20 +260,36 @@ const FrontDesk = (() => {
     const member = _members.find(m => m['Member Key'] === memberKey);
     if (!member) return;
 
-    const name        = `${member['First Name']} ${member['Last Name']}`.trim();
-    const defaultAmt  = Utils.parsePHP(_event.MemberFee) || 0;
-    const isExempt    = (member['Membership Status'] || '').toLowerCase() === 'exempt';
+    const name       = `${member['First Name']} ${member['Last Name']}`.trim();
+    const defaultAmt = Utils.parsePHP(_event.MemberFee) || 0;
+    const isExempt   = (member['Membership Status'] || '').toLowerCase() === 'exempt';
 
-    document.getElementById('checkin-member-name').textContent  = name;
-    document.getElementById('checkin-event-name').textContent   = _event.Title;
-    document.getElementById('checkin-default-fee').textContent  = Utils.formatPHP(_event.MemberFee);
-    document.getElementById('checkin-member-key').value         = memberKey;
-    document.getElementById('checkin-amount').value             = isExempt ? 0 : defaultAmt;
-    document.getElementById('checkin-guests').value             = 0;
-    document.getElementById('checkin-guest-fee').textContent    = Utils.formatPHP(_event.GuestFee);
-    document.getElementById('checkin-mode').value               = 'Cash';
-    document.getElementById('checkin-notes').value              = '';
-    document.getElementById('checkin-exempt-note').style.display = isExempt ? 'block' : 'none';
+    document.getElementById('checkin-member-name').textContent    = name;
+    document.getElementById('checkin-avatar').textContent          = Utils.initials(name);
+    document.getElementById('checkin-event-name').textContent      = _event.Title;
+    document.getElementById('checkin-default-fee').textContent     = `Default: ${Utils.formatPHP(_event.MemberFee)}`;
+    document.getElementById('checkin-member-key').value            = memberKey;
+    document.getElementById('checkin-amount').value                = isExempt ? 0 : defaultAmt;
+    document.getElementById('checkin-guests').value                = 0;
+    document.getElementById('checkin-kids').value                  = 0;
+    document.getElementById('checkin-guest-fee').textContent       = `${Utils.formatPHP(_event.GuestFee)} each`;
+    document.getElementById('checkin-kids-fee').textContent        = `${Utils.formatPHP(_event.KidsFee || 0)} each`;
+    document.getElementById('checkin-mode').value                  = 'Cash';
+    document.getElementById('checkin-notes').value                 = '';
+    document.getElementById('checkin-notes').style.display         = 'none';
+    document.getElementById('checkin-exempt-note').style.display   = isExempt ? 'block' : 'none';
+
+    // Show kids row only if event has a kids fee set
+    const kidsRow = document.getElementById('checkin-kids-row');
+    if (kidsRow) kidsRow.style.display = _event.KidsFee ? 'flex' : 'none';
+
+    const notesToggle = document.querySelector('.notes-toggle');
+    if (notesToggle) notesToggle.textContent = '+ Add note';
+
+    // Reset payment pills to Cash
+    document.querySelectorAll('.pay-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === 'Cash');
+    });
 
     _updateCheckinTotal();
     Utils.showModal('checkin-modal');
@@ -204,8 +298,10 @@ const FrontDesk = (() => {
   function _updateCheckinTotal() {
     const amount   = Utils.parsePHP(document.getElementById('checkin-amount')?.value || 0);
     const guests   = parseInt(document.getElementById('checkin-guests')?.value || 0, 10);
+    const kids     = parseInt(document.getElementById('checkin-kids')?.value || 0, 10);
     const guestFee = Utils.parsePHP(_event?.GuestFee || 0);
-    const total    = amount + (guests * guestFee);
+    const kidsFee  = Utils.parsePHP(_event?.KidsFee || 0);
+    const total    = amount + (guests * guestFee) + (kids * kidsFee);
     const el       = document.getElementById('checkin-total');
     if (el) el.textContent = Utils.formatPHP(total);
   }
@@ -221,27 +317,28 @@ const FrontDesk = (() => {
         : memberKey;
       const amount    = Utils.parsePHP(document.getElementById('checkin-amount')?.value || 0);
       const guests    = parseInt(document.getElementById('checkin-guests')?.value || 0, 10);
+      const kids      = parseInt(document.getElementById('checkin-kids')?.value || 0, 10);
       const guestFee  = Utils.parsePHP(_event.GuestFee || 0);
-      const guestAmt  = guests * guestFee;
+      const kidsFee   = Utils.parsePHP(_event.KidsFee || 0);
+      const total     = amount + (guests * guestFee) + (kids * kidsFee);
       const mode      = document.getElementById('checkin-mode')?.value || 'Cash';
       const notes     = document.getElementById('checkin-notes')?.value?.trim() || '';
 
-      // Main entry
       const txnId = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN');
-      const _now = new Date();
+      const now   = new Date();
       await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
         TransactionID: txnId,
-        Timestamp:     _now.toISOString(),
+        Timestamp:     now.toISOString(),
         MemberKey:     memberKey,
         MemberName:    name,
         EventID:       _event.EventID,
         EventName:     _event.Title,
-        AmountPaid:    amount + guestAmt,
+        AmountPaid:    total,
         PaymentMode:   mode,
         Category:      'Event',
-        Year:          _now.getFullYear(),
-        Month:         _now.getMonth() + 1,
-        HeadCount:     1 + guests,
+        Year:          now.getFullYear(),
+        Month:         now.getMonth() + 1,
+        HeadCount:     1 + guests + kids,
         Notes:         notes,
         RecordedBy:    Auth.getUserEmail(),
       });
@@ -249,8 +346,8 @@ const FrontDesk = (() => {
       _checkedIn.add(memberKey);
       _txns.push({
         TransactionID: txnId, MemberKey: memberKey, MemberName: name,
-        EventID: _event.EventID, AmountPaid: amount + guestAmt,
-        Category: 'Event', HeadCount: 1 + guests,
+        EventID: _event.EventID, AmountPaid: total, PaymentMode: mode,
+        Category: 'Event', HeadCount: 1 + guests + kids,
       });
 
       Utils.hideModal('checkin-modal');
@@ -298,10 +395,9 @@ const FrontDesk = (() => {
       ?.addEventListener('click', submitCheckin);
     document.getElementById('checkin-modal-close')
       ?.addEventListener('click', () => Utils.hideModal('checkin-modal'));
-    ['checkin-amount','checkin-guests'].forEach(id => {
-      document.getElementById(id)?.addEventListener('input', _updateCheckinTotal);
-    });
+    document.getElementById('checkin-amount')
+      ?.addEventListener('input', _updateCheckinTotal);
   }
 
-  return { render, init, selectEvent, openCheckin, submitCheckin, changeEvent };
+  return { render, init, selectEvent, openCheckin, quickCheckin, submitCheckin, changeEvent, stepCount, selectPayMode, toggleNotes };
 })();

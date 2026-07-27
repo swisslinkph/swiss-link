@@ -782,10 +782,7 @@ const Registrations = (() => {
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
 
-    // Hide the separate Member Key field — slots section covers it
-    document.getElementById('reg-add-mkey-group').style.display = 'none';
-    document.getElementById('reg-add-suggestions').style.display = 'none';
-
+    // Member Key field is hidden by default; slots section replaces it in Edit mode
     // Load members, then render unified slot section
     if (!_members.length) {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
@@ -794,14 +791,8 @@ const Registrations = (() => {
     const qty        = Math.max(1, parseInt(r[C.MEM_QTY], 10) || 1);
     const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
     _renderEditSlots(qty, r[C.MKEY], savedSlots);
-    document.getElementById('reg-edit-slots-section').style.display = 'block';
-
-    // Auto-search slot 0 if primary not yet assigned
-    if (!r[C.MKEY]) {
-      const regName = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(' ');
-      const input   = document.querySelector('#edit-slot-0 .slot-search-input');
-      if (input && regName) { input.value = regName; searchEditSlot(0, regName); }
-    }
+    const editSlotsSection = document.getElementById('reg-edit-slots-section');
+    if (editSlotsSection) editSlotsSection.style.display = 'block';
 
     Utils.showModal('reg-add-modal');
   }
@@ -1181,9 +1172,11 @@ const Registrations = (() => {
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
-    // Restore member key field; hide slots section (slots only used in Edit mode)
-    document.getElementById('reg-add-mkey-group').style.display = '';
-    document.getElementById('reg-edit-slots-section').style.display = 'none';
+    // Show member key field (hidden by default; only used in Add mode)
+    const mkeyGroup = document.getElementById('reg-add-mkey-group');
+    if (mkeyGroup) mkeyGroup.style.display = '';
+    const editSlotsEl = document.getElementById('reg-edit-slots-section');
+    if (editSlotsEl) editSlotsEl.style.display = 'none';
 
     if (!_members.length) {
       Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});

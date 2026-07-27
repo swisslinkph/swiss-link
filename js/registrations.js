@@ -468,37 +468,77 @@ const Registrations = (() => {
       <div class="slot-suggestions" id="confirm-slot-sugg-${slotIdx}"></div>`;
   }
 
-  // ── Edit-modal slot helpers (mirrors confirm slot helpers) ──────────────────
-  // Renders ALL qty slots including slot 0 (primary registrant).
+  // ── Edit-modal slot helpers ────────────────────────────────────────────────
+  // Slot 0 renders into #reg-edit-slot0-wrap (inline with registrant fields).
+  // Slots 1..N-1 render into #reg-edit-slots-container as "Member 2", "Member 3"…
   function _renderEditSlots(qty, primaryKey, savedSlots) {
+    // Slot 0 — link-to-record field for Member 1
+    const slot0Wrap = document.getElementById('reg-edit-slot0-wrap');
+    if (slot0Wrap) {
+      if (primaryKey) {
+        const pm    = _members.find(m => m['Member Key'] === primaryKey);
+        const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : primaryKey;
+        slot0Wrap.innerHTML = `
+          <div id="edit-slot-0">
+            <div class="slot-search-wrap">
+              <div class="slot-assigned">
+                <span class="slot-name">${Utils.escape(pName)}</span>
+                <span class="slot-key">${Utils.escape(primaryKey)}</span>
+                <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(0)">✕</button>
+              </div>
+            </div>
+            <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
+          </div>`;
+      } else {
+        slot0Wrap.innerHTML = `
+          <div id="edit-slot-0">
+            <div class="slot-search-wrap">
+              <input type="text" class="form-control slot-search-input"
+                placeholder="Search to link to member record (optional)…" autocomplete="off"
+                oninput="Registrations.searchEditSlot(0, this.value)">
+              <div class="slot-suggestions" id="edit-slot-sugg-0"></div>
+            </div>
+            <input type="hidden" class="slot-key-input" value="">
+          </div>`;
+      }
+      slot0Wrap.style.display = 'block';
+    }
+
+    // Slots 1..N-1 — Additional Members
+    const section   = document.getElementById('reg-edit-slots-section');
     const container = document.getElementById('reg-edit-slots-container');
-    if (!container) return;
-    container.innerHTML = Array.from({ length: qty }, (_, i) => {
-      const saved = i === 0 ? primaryKey : savedSlots[i - 1];
+    if (!container || !section) return;
+
+    if (qty <= 1) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+
+    container.innerHTML = Array.from({ length: qty - 1 }, (_, i) => {
+      const slotIdx = i + 1;
+      const saved   = savedSlots[i];
       if (saved) {
         const sm    = _members.find(m => m['Member Key'] === saved);
         const sName = sm ? `${sm['First Name']} ${sm['Last Name']}`.trim() : saved;
         return `
-        <div class="confirm-slot" id="edit-slot-${i}">
-          <span class="slot-num">${i + 1}</span>
+        <div class="edit-member-group" id="edit-slot-${slotIdx}">
+          <div class="edit-member-label">Member ${slotIdx + 1}</div>
           <div class="slot-search-wrap">
             <div class="slot-assigned">
               <span class="slot-name">${Utils.escape(sName)}</span>
               <span class="slot-key">${Utils.escape(saved)}</span>
-              <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${i})">✕</button>
+              <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${slotIdx})">✕</button>
             </div>
           </div>
           <input type="hidden" class="slot-key-input" value="${Utils.escape(saved)}">
         </div>`;
       }
       return `
-      <div class="confirm-slot" id="edit-slot-${i}">
-        <span class="slot-num">${i + 1}</span>
+      <div class="edit-member-group" id="edit-slot-${slotIdx}">
+        <div class="edit-member-label">Member ${slotIdx + 1}</div>
         <div class="slot-search-wrap">
           <input type="text" class="form-control slot-search-input"
             placeholder="Search or add member…" autocomplete="off"
-            oninput="Registrations.searchEditSlot(${i}, this.value)">
-          <div class="slot-suggestions" id="edit-slot-sugg-${i}"></div>
+            oninput="Registrations.searchEditSlot(${slotIdx}, this.value)">
+          <div class="slot-suggestions" id="edit-slot-sugg-${slotIdx}"></div>
         </div>
         <input type="hidden" class="slot-key-input" value="">
       </div>`;
@@ -782,7 +822,10 @@ const Registrations = (() => {
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
 
-    // Member Key field is hidden by default; slots section replaces it in Edit mode
+    // Show Edit-mode structural elements (hidden by default)
+    const m1Head = document.getElementById('reg-edit-member1-head');
+    if (m1Head) m1Head.style.display = 'block';
+
     // Load members, then render unified slot section
     if (!_members.length) {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
@@ -798,29 +841,59 @@ const Registrations = (() => {
   }
 
   // ── Link Member modal ─────────────────────────────────────────────────────
+  function _renderLinkSlot(key, name) {
+    const slotEl = document.getElementById('reg-link-slot');
+    if (!slotEl) return;
+    if (key) {
+      slotEl.innerHTML = `
+        <div class="slot-assigned">
+          <span class="slot-name">${Utils.escape(name || key)}</span>
+          <span class="slot-key">${Utils.escape(key)}</span>
+          <button type="button" class="slot-clear" onclick="Registrations.clearLinkSlot()">✕</button>
+        </div>`;
+    } else {
+      slotEl.innerHTML = `
+        <input type="text" id="reg-link-search" class="form-control"
+               placeholder="Search by name…" autocomplete="off"
+               oninput="Registrations.searchLinkMember()">
+        <div id="reg-link-suggestions" class="slot-suggestions"></div>`;
+    }
+  }
+
+  function clearLinkSlot() {
+    document.getElementById('reg-link-key').value = '';
+    const previewEl = document.getElementById('reg-link-member-preview');
+    if (previewEl) previewEl.style.display = 'none';
+    _renderLinkSlot(null);
+  }
+
   async function openLinkMember(regId) {
     const r = _all.find(x => x[C.ID] === regId);
     if (!r) return;
 
-    document.getElementById('reg-link-reg-id').value  = regId;
+    document.getElementById('reg-link-reg-id').value = regId;
     const name = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ');
     document.getElementById('reg-link-reg-name').textContent = name;
-    document.getElementById('reg-link-key').value    = r[C.MKEY] || '';
-    document.getElementById('reg-link-search').value = '';
-    document.getElementById('reg-link-suggestions').style.display = 'none';
+    document.getElementById('reg-link-key').value = r[C.MKEY] || '';
     const previewEl = document.getElementById('reg-link-member-preview');
     if (previewEl) previewEl.style.display = 'none';
 
-    // Show warning if opened because Confirm was blocked by missing member key
     const warningEl = document.getElementById('reg-link-warning');
     if (warningEl) warningEl.style.display = _pendingConfirmId ? '' : 'none';
 
-    // Load members first, then auto-search by registration name
     if (!_members.length) {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
-    searchLinkMember(); // pre-fill suggestions from the registration name
-    if (r[C.MKEY]) _updateMemberPreview(r[C.MKEY]); // show preview for already-linked key
+
+    if (r[C.MKEY]) {
+      const pm   = _members.find(m => m['Member Key'] === r[C.MKEY]);
+      const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : r[C.MKEY];
+      _renderLinkSlot(r[C.MKEY], pName);
+      _updateMemberPreview(r[C.MKEY]);
+    } else {
+      _renderLinkSlot(null);
+      searchLinkMember(); // pre-fill suggestions from registration name
+    }
 
     Utils.showModal('reg-link-modal');
   }
@@ -909,9 +982,8 @@ const Registrations = (() => {
 
     const regName = (document.getElementById('reg-link-reg-name')?.textContent || '').toLowerCase();
     const term    = q || regName;
-    if (!term) { box.style.display = 'none'; return; }
+    if (!term) { box.innerHTML = ''; return; }
 
-    // Use MemberQty of the current registration to rank results by type
     const regId      = document.getElementById('reg-link-reg-id')?.value;
     const reg        = _all.find(x => x[C.ID] === regId);
     const mQty       = parseInt(reg?.[C.MEM_QTY], 10) || 1;
@@ -925,26 +997,25 @@ const Registrations = (() => {
       .sort((a, b) => _memberTypeScore(a, wantsFamily) - _memberTypeScore(b, wantsFamily))
       .slice(0, 6);
 
-    if (!matches.length) { box.style.display = 'none'; return; }
+    if (!matches.length) { box.innerHTML = ''; return; }
 
     box.innerHTML = matches.map(m => {
       const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
       const key  = m['Member Key'] || '';
-      return `<div class="member-key-suggestion-item"
-                   onclick="Registrations.selectLinkSuggestion('${Utils.escape(key)}')">
-        <span class="suggestion-name">${Utils.escape(name)}</span>
+      return `<div class="slot-sugg-item"
+                   onclick="Registrations.selectLinkSuggestion('${Utils.escape(key)}','${Utils.escape(name)}')">
+        <strong>${Utils.escape(name)}</strong>
         <span style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
           ${_memberTypeBadge(m)}
           <span class="suggestion-key">${Utils.escape(key)}</span>
         </span>
       </div>`;
     }).join('');
-    box.style.display = 'block';
   }
 
-  function selectLinkSuggestion(key) {
+  function selectLinkSuggestion(key, name) {
     document.getElementById('reg-link-key').value = key;
-    document.getElementById('reg-link-suggestions').style.display = 'none';
+    _renderLinkSlot(key, name || key);
     _updateMemberPreview(key);
   }
 
@@ -1175,6 +1246,11 @@ const Registrations = (() => {
     // Show member key field (hidden by default; only used in Add mode)
     const mkeyGroup = document.getElementById('reg-add-mkey-group');
     if (mkeyGroup) mkeyGroup.style.display = '';
+    // Hide Edit-mode structural elements
+    const m1Head = document.getElementById('reg-edit-member1-head');
+    if (m1Head) m1Head.style.display = 'none';
+    const slot0Wrap = document.getElementById('reg-edit-slot0-wrap');
+    if (slot0Wrap) slot0Wrap.style.display = 'none';
     const editSlotsEl = document.getElementById('reg-edit-slots-section');
     if (editSlotsEl) editSlotsEl.style.display = 'none';
 
@@ -1242,9 +1318,9 @@ const Registrations = (() => {
       // Collect member assignments from slot UI (Edit mode) or Member Key field (Add mode)
       let memberKey, memberSlots;
       if (_editingRegId) {
-        const slotInputs = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')];
-        memberKey   = slotInputs[0]?.value.trim() || '';
-        memberSlots = slotInputs.slice(1).map(el => el.value.trim()).filter(Boolean).join(',');
+        memberKey   = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value.trim() || '';
+        memberSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
+          .map(el => el.value.trim()).filter(Boolean).join(',');
       } else {
         memberKey   = get('reg-add-member-key');
         memberSlots = '';
@@ -1326,7 +1402,7 @@ const Registrations = (() => {
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
-    openLinkMember, searchLinkMember, selectLinkSuggestion, saveLinkMember, openAddMemberFromReg,
+    openLinkMember, searchLinkMember, selectLinkSuggestion, clearLinkSlot, saveLinkMember, openAddMemberFromReg,
     onLinkKeyInput,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,

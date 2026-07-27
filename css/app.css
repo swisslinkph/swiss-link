@@ -956,6 +956,32 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 .slot-add-fam-label input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
 
+/* Edit Registration — member section headers and slot groups */
+.edit-member-section-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.edit-member-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+.edit-member-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
 .exempt-note {
   background: #fef3c7;
   color: #b45309;

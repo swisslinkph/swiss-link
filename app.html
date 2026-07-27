@@ -1016,18 +1016,13 @@
         A member key is required to confirm payment. Link an existing member or add a new one.
       </div>
       <p id="reg-link-reg-name" style="font-weight:600;margin-bottom:12px;"></p>
-      <div class="form-group">
-        <label for="reg-link-search">Search by name</label>
+      <div id="reg-link-slot" class="slot-search-wrap" style="margin-bottom:8px;">
         <input type="text" id="reg-link-search" class="form-control"
-               placeholder="Type last or first name…"
+               placeholder="Search by name…" autocomplete="off"
                oninput="Registrations.searchLinkMember()">
+        <div id="reg-link-suggestions" class="slot-suggestions"></div>
       </div>
-      <div id="reg-link-suggestions" class="member-key-suggestions" style="display:none;"></div>
-      <div class="form-group">
-        <label for="reg-link-key">Member Key</label>
-        <input type="text" id="reg-link-key" class="form-control" placeholder="e.g. MBR-0001"
-               oninput="Registrations.onLinkKeyInput()">
-      </div>
+      <input type="hidden" id="reg-link-key">
       <div id="reg-link-member-preview" style="display:none;"></div>
       <input type="hidden" id="reg-link-reg-id">
     </div>
@@ -1091,6 +1086,9 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
+        <!-- Edit mode: "Member 1 — Registrant" header, hidden in Add mode -->
+        <div id="reg-edit-member1-head" class="edit-member-section-header" style="display:none;grid-column:1/-1;">Member 1 — Registrant</div>
+
         <div class="form-group">
           <label for="reg-add-last">Last Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="reg-add-last" class="form-control"
@@ -1105,15 +1103,19 @@
           <label for="reg-add-email">Email</label>
           <input type="email" id="reg-add-email" class="form-control">
         </div>
+
+        <!-- Edit mode: slot 0 — link to member record (hidden in Add mode) -->
+        <div id="reg-edit-slot0-wrap" style="display:none;grid-column:1/-1;"></div>
+
         <div class="form-group" id="reg-add-mkey-group" style="grid-column:1/-1;display:none;">
           <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
           <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
         </div>
         <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;grid-column:1/-1;"></div>
 
-        <!-- Member assignment slots — shown in Edit mode when MemberQty > 1 -->
+        <!-- Edit mode: Additional Members (slots 2..N) -->
         <div id="reg-edit-slots-section" style="display:none;grid-column:1/-1;">
-          <div class="confirm-slots-label" style="margin-bottom:6px;">Member Assignments</div>
+          <div class="edit-member-section-header" style="margin-top:8px;margin-bottom:2px;">Additional Members</div>
           <div id="reg-edit-slots-container"></div>
         </div>
 

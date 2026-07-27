@@ -105,7 +105,7 @@ const FrontDesk = (() => {
     container.innerHTML = `
       <div class="fd-header">
         <div class="fd-event-info">
-          <button class="btn btn-sm btn-outline" onclick="FrontDesk.changeEvent()">⬅ Change Event</button>
+          <button class="btn btn-sm fd-change-event-btn" onclick="FrontDesk.changeEvent()">⬅ Change Event</button>
           <div class="fd-event-name">${Utils.escape(_event.Title)}</div>
           <div class="fd-event-meta">${Utils.formatDate(_event.Date)} · ${Utils.escape(_event.Location)}</div>
         </div>

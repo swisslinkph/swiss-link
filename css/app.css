@@ -667,6 +667,20 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .fd-event-name { font-size: 20px; font-weight: 700; margin: 8px 0 2px; }
 .fd-event-meta { font-size: 13px; opacity: .7; }
 
+.fd-change-event-btn {
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1.5px solid rgba(255,255,255,0.55);
+  color: #fff;
+  background: transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s;
+}
+.fd-change-event-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 .fd-live-stats {
   display: flex;
   gap: 24px;

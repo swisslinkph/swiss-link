@@ -741,8 +741,18 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
-.fd-checkedin-item span:nth-child(2) { flex: 1; font-weight: 500; }
+.fd-ci-name { flex: 1; font-weight: 500; }
 .fd-mode { color: var(--text-muted); font-size: 12px; }
+.fd-undo-btn {
+  background: none; border: none;
+  color: var(--text-muted); font-size: 12px; font-weight: 600;
+  cursor: pointer; padding: 4px 8px;
+  border-radius: 6px; opacity: 0;
+  transition: opacity .15s, background .1s, color .1s;
+  white-space: nowrap;
+}
+.fd-checkedin-item:hover .fd-undo-btn { opacity: 1; }
+.fd-undo-btn:hover { background: #fee2e2; color: #991b1b; }
 
 /* Check-in modal ─────────────────── */
 .checkin-summary {

@@ -381,10 +381,40 @@ const FrontDesk = (() => {
     container.innerHTML = list.map(t => `
       <div class="fd-checkedin-item">
         <div class="fd-avatar sm">${Utils.initials(t.MemberName || '')}</div>
-        <span>${Utils.escape(t.MemberName || t.MemberKey)}</span>
+        <span class="fd-ci-name">${Utils.escape(t.MemberName || t.MemberKey)}</span>
         <span class="amount">${Utils.formatPHP(t.AmountPaid)}</span>
         <span class="fd-mode">${Utils.escape(t.PaymentMode || '')}</span>
+        <button class="fd-undo-btn" title="Undo check-in"
+          onclick="FrontDesk.undoCheckin('${Utils.escape(t.TransactionID)}')">↩ Undo</button>
       </div>`).join('');
+  }
+
+  // ── Undo a check-in ───────────────────────────────────────────────────────
+  async function undoCheckin(txnId) {
+    const ok = await Utils.confirm('Remove this check-in? The transaction record will be deleted.');
+    if (!ok) return;
+    try {
+      // Re-fetch to get row index (locally-added items don't carry _rowIndex)
+      const allTxns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS);
+      const txn = allTxns.find(t => t.TransactionID === txnId);
+      if (!txn) { Utils.toast('Transaction not found.', 'error'); return; }
+
+      await Sheets.deleteRow(CONFIG.SHEETS.TRANSACTIONS, txn._rowIndex);
+
+      const memberKey = txn.MemberKey;
+      _txns = _txns.filter(t => t.TransactionID !== txnId);
+
+      const stillIn = _txns.some(t =>
+        t.EventID === _event.EventID && t.Category === 'Event' && t.MemberKey === memberKey
+      );
+      if (!stillIn) _checkedIn.delete(memberKey);
+
+      _updateLiveStats();
+      _renderCheckedIn();
+      Utils.toast('Check-in removed.');
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    }
   }
 
   function changeEvent() { _event = null; _renderEventPicker(); }
@@ -399,5 +429,5 @@ const FrontDesk = (() => {
       ?.addEventListener('input', _updateCheckinTotal);
   }
 
-  return { render, init, selectEvent, openCheckin, quickCheckin, submitCheckin, changeEvent, stepCount, selectPayMode, toggleNotes };
+  return { render, init, selectEvent, openCheckin, quickCheckin, submitCheckin, undoCheckin, changeEvent, stepCount, selectPayMode, toggleNotes };
 })();

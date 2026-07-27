@@ -1003,40 +1003,6 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
-     LINK MEMBER MODAL — Quick member key assignment from reg table
-═══════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="reg-link-modal">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-header">
-      <h2>Link Member</h2>
-      <button class="modal-close" onclick="Utils.hideModal('reg-link-modal')" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="reg-link-warning" class="reg-link-warning" style="display:none;">
-        A member key is required to confirm payment. Link an existing member or add a new one.
-      </div>
-      <p id="reg-link-reg-name" style="font-weight:600;margin-bottom:12px;"></p>
-      <div id="reg-link-slot" class="slot-search-wrap" style="margin-bottom:8px;">
-        <input type="text" id="reg-link-search" class="form-control"
-               placeholder="Search by name…" autocomplete="off"
-               oninput="Registrations.searchLinkMember()">
-        <div id="reg-link-suggestions" class="slot-suggestions"></div>
-      </div>
-      <input type="hidden" id="reg-link-key">
-      <div id="reg-link-member-preview" style="display:none;"></div>
-      <input type="hidden" id="reg-link-reg-id">
-    </div>
-    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
-      <button class="btn btn-outline" style="margin-right:auto;"
-              onclick="Registrations.openAddMemberFromReg()">+ New Member</button>
-      <button class="btn btn-outline" onclick="Utils.hideModal('reg-link-modal')">Cancel</button>
-      <button class="btn btn-primary" id="reg-link-save-btn" onclick="Registrations.saveLinkMember()">Link &amp; Continue</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- ═══════════════════════════════════════════════════════════════
      ADD MEMBER FROM SLOT MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="reg-slot-add-modal">

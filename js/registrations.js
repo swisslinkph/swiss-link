@@ -12,7 +12,6 @@ const Registrations = (() => {
   let _events         = [];   // all events (for name lookup)
   let _members        = [];   // for member key lookup
   let _editingRegId     = null;
-  let _pendingConfirmId = null;
   let _slotAddContext    = null;  // { type: 'confirm'|'edit', slotIdx: number }
   let _slotAddPrimaryKey = null; // primary member key for optional family link
 
@@ -241,11 +240,8 @@ const Registrations = (() => {
         </td>
         <td>
           ${mkey
-            ? `<span style="font-family:monospace;font-size:12px;">${Utils.escape(mkey)}</span>
-               <button class="btn btn-sm btn-outline" style="margin-left:4px;padding:2px 6px;"
-                       onclick="Registrations.openLinkMember('${safeId}')">✎</button>`
-            : `<button class="btn btn-sm btn-outline" style="color:var(--red);border-color:var(--red);"
-                       onclick="Registrations.openLinkMember('${safeId}')">Link</button>`}
+            ? `<span style="font-family:monospace;font-size:12px;">${Utils.escape(mkey)}</span>`
+            : `<span class="text-muted" style="font-size:12px;">—</span>`}
         </td>
         <td style="white-space:nowrap;">${pax}</td>
         <td class="amount">${Utils.formatPHP(r[C.TOTAL])}</td>
@@ -330,10 +326,8 @@ const Registrations = (() => {
     const r = _all.find(x => x[C.ID] === regId);
     if (!r) return;
 
-    // Member key is required before confirming payment
     if (!r[C.MKEY]) {
-      _pendingConfirmId = regId;
-      openLinkMember(regId);
+      Utils.toast('Assign a member in Edit before confirming payment.', 'error');
       return;
     }
 
@@ -840,64 +834,6 @@ const Registrations = (() => {
     Utils.showModal('reg-add-modal');
   }
 
-  // ── Link Member modal ─────────────────────────────────────────────────────
-  function _renderLinkSlot(key, name) {
-    const slotEl = document.getElementById('reg-link-slot');
-    if (!slotEl) return;
-    if (key) {
-      slotEl.innerHTML = `
-        <div class="slot-assigned">
-          <span class="slot-name">${Utils.escape(name || key)}</span>
-          <span class="slot-key">${Utils.escape(key)}</span>
-          <button type="button" class="slot-clear" onclick="Registrations.clearLinkSlot()">✕</button>
-        </div>`;
-    } else {
-      slotEl.innerHTML = `
-        <input type="text" id="reg-link-search" class="form-control"
-               placeholder="Search by name…" autocomplete="off"
-               oninput="Registrations.searchLinkMember()">
-        <div id="reg-link-suggestions" class="slot-suggestions"></div>`;
-    }
-  }
-
-  function clearLinkSlot() {
-    document.getElementById('reg-link-key').value = '';
-    const previewEl = document.getElementById('reg-link-member-preview');
-    if (previewEl) previewEl.style.display = 'none';
-    _renderLinkSlot(null);
-  }
-
-  async function openLinkMember(regId) {
-    const r = _all.find(x => x[C.ID] === regId);
-    if (!r) return;
-
-    document.getElementById('reg-link-reg-id').value = regId;
-    const name = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ');
-    document.getElementById('reg-link-reg-name').textContent = name;
-    document.getElementById('reg-link-key').value = r[C.MKEY] || '';
-    const previewEl = document.getElementById('reg-link-member-preview');
-    if (previewEl) previewEl.style.display = 'none';
-
-    const warningEl = document.getElementById('reg-link-warning');
-    if (warningEl) warningEl.style.display = _pendingConfirmId ? '' : 'none';
-
-    if (!_members.length) {
-      _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
-    }
-
-    if (r[C.MKEY]) {
-      const pm   = _members.find(m => m['Member Key'] === r[C.MKEY]);
-      const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : r[C.MKEY];
-      _renderLinkSlot(r[C.MKEY], pName);
-      _updateMemberPreview(r[C.MKEY]);
-    } else {
-      _renderLinkSlot(null);
-      searchLinkMember(); // pre-fill suggestions from registration name
-    }
-
-    Utils.showModal('reg-link-modal');
-  }
-
   function _memberTypeCls(type) {
     return { Family: 'sug-family', Individual: 'sug-individual', Single: 'sug-single', Honorary: 'sug-honorary' }[type] || 'sug-other';
   }
@@ -907,57 +843,6 @@ const Registrations = (() => {
     const isFamHead = m['Family Head'] === m['Member Key'];
     const label     = type === 'Family' ? (isFamHead ? 'Family' : 'Family member') : type;
     return label ? `<span class="suggestion-type ${_memberTypeCls(type)}">${Utils.escape(label)}</span>` : '';
-  }
-
-  // Show member info + mismatch warning below the key field in the link modal
-  function _updateMemberPreview(key) {
-    const el = document.getElementById('reg-link-member-preview');
-    if (!el) return;
-    if (!key) { el.style.display = 'none'; return; }
-
-    const member = _members.find(m => m['Member Key'] === key);
-    if (!member) { el.style.display = 'none'; return; }
-
-    const regId       = document.getElementById('reg-link-reg-id')?.value;
-    const reg         = _all.find(x => x[C.ID] === regId);
-    const mQty        = parseInt(reg?.[C.MEM_QTY], 10) || 1;
-    const type        = member['Membership Type'] || '';
-    const isFamily    = type === 'Family';
-    const isFamHead   = member['Family Head'] === member['Member Key'];
-    const wantsFamily = mQty > 1;
-    const mismatch    = wantsFamily && !isFamily;
-
-    // Describe the family group
-    let groupInfo = '';
-    if (isFamily && isFamHead) {
-      const rels = _members.filter(m => m['Family Head'] === key && m['Member Key'] !== key);
-      groupInfo = rels.length
-        ? rels.map(m => `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim()).join(', ')
-        : 'No other family members linked yet';
-    } else if (isFamily && member['Family Head'] && member['Family Head'] !== key) {
-      const head = _members.find(m => m['Member Key'] === member['Family Head']);
-      groupInfo = head
-        ? `Under ${Utils.escape(`${head['First Name'] || ''} ${head['Last Name'] || ''}`.trim())}'s family`
-        : 'Family member';
-    }
-
-    el.innerHTML = `
-      <div class="member-preview ${mismatch ? 'member-preview-warn' : 'member-preview-ok'}">
-        <div class="member-preview-row">
-          ${_memberTypeBadge(member)}
-          <strong>${Utils.escape(`${member['First Name'] || ''} ${member['Last Name'] || ''}`.trim())}</strong>
-          <span class="preview-key">${Utils.escape(key)}</span>
-        </div>
-        ${groupInfo ? `<div class="preview-detail">${Utils.escape(groupInfo)}</div>` : ''}
-        ${mismatch
-          ? `<div class="preview-warn">⚠ ${mQty} member tickets but this record is ${Utils.escape(type || 'not a family')} — consider linking to a Family record</div>`
-          : ''}
-      </div>`;
-    el.style.display = 'block';
-  }
-
-  function onLinkKeyInput() {
-    _updateMemberPreview((document.getElementById('reg-link-key')?.value || '').trim());
   }
 
   function _memberTypeScore(m, wantsFamily) {
@@ -973,130 +858,6 @@ const Registrations = (() => {
       if (isFamHead) return 1;
       return 2;
     }
-  }
-
-  function searchLinkMember() {
-    const q   = (document.getElementById('reg-link-search')?.value || '').toLowerCase().trim();
-    const box = document.getElementById('reg-link-suggestions');
-    if (!box) return;
-
-    const regName = (document.getElementById('reg-link-reg-name')?.textContent || '').toLowerCase();
-    const term    = q || regName;
-    if (!term) { box.innerHTML = ''; return; }
-
-    const regId      = document.getElementById('reg-link-reg-id')?.value;
-    const reg        = _all.find(x => x[C.ID] === regId);
-    const mQty       = parseInt(reg?.[C.MEM_QTY], 10) || 1;
-    const wantsFamily = mQty > 1;
-
-    const matches = _members
-      .filter(m => {
-        const full = `${m['First Name'] || ''} ${m['Last Name'] || ''} ${m['Alternative Name'] || ''}`.toLowerCase();
-        return term.split(/\s+/).some(word => word.length > 1 && full.includes(word));
-      })
-      .sort((a, b) => _memberTypeScore(a, wantsFamily) - _memberTypeScore(b, wantsFamily))
-      .slice(0, 6);
-
-    if (!matches.length) { box.innerHTML = ''; return; }
-
-    box.innerHTML = matches.map(m => {
-      const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
-      const key  = m['Member Key'] || '';
-      return `<div class="slot-sugg-item"
-                   onclick="Registrations.selectLinkSuggestion('${Utils.escape(key)}','${Utils.escape(name)}')">
-        <strong>${Utils.escape(name)}</strong>
-        <span style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-          ${_memberTypeBadge(m)}
-          <span class="suggestion-key">${Utils.escape(key)}</span>
-        </span>
-      </div>`;
-    }).join('');
-  }
-
-  function selectLinkSuggestion(key, name) {
-    document.getElementById('reg-link-key').value = key;
-    _renderLinkSlot(key, name || key);
-    _updateMemberPreview(key);
-  }
-
-  async function saveLinkMember() {
-    const btn   = document.getElementById('reg-link-save-btn');
-    btn.disabled = true;
-    try {
-      const regId = document.getElementById('reg-link-reg-id').value;
-      const key   = (document.getElementById('reg-link-key')?.value || '').trim();
-      const r     = _all.find(x => x[C.ID] === regId);
-      if (!r) return;
-
-      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, { ...r, [C.MKEY]: key });
-
-      // If the member has no email on file and this registration has one, sync it over
-      let emailSynced = false;
-      if (key && r[C.EMAIL]) {
-        const member = _members.find(m => m['Member Key'] === key);
-        if (member && !member['Email']) {
-          await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, Email: r[C.EMAIL] });
-          _members = []; // invalidate cache
-          emailSynced = true;
-        }
-      }
-
-      Utils.hideModal('reg-link-modal');
-      Utils.toast(key
-        ? `Linked to ${key}${emailSynced ? ' · Email saved to member record.' : ''}`
-        : 'Member key cleared.');
-      await render(); // reloads _all with updated MemberKey
-
-      // If this link was triggered by a blocked Confirm, auto-open Confirm now
-      if (_pendingConfirmId && _pendingConfirmId === regId && key) {
-        const pendingId = _pendingConfirmId;
-        _pendingConfirmId = null;
-        openConfirmPayment(pendingId);
-      } else {
-        _pendingConfirmId = null;
-      }
-    } catch (e) {
-      Utils.toast(e.message, 'error');
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  // ── Add as New Member from Link modal ─────────────────────────────────────
-  async function openAddMemberFromReg() {
-    const regId = document.getElementById('reg-link-reg-id')?.value;
-    const r = _all.find(x => x[C.ID] === regId);
-    if (!r) return;
-
-    if (!_members.length) {
-      _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
-    }
-
-    // Calculate next member key from local cache
-    const nums = _members
-      .map(m => m['Member Key'])
-      .filter(k => /^MBR-\d+$/.test(k))
-      .map(k => parseInt(k.slice(4), 10));
-    const nextNum = nums.length ? Math.max(...nums) + 1 : 1;
-    const suggestedKey = `MBR-${String(nextNum).padStart(4, '0')}`;
-
-    _pendingConfirmId = regId; // keep set so Confirm auto-opens after
-    Utils.hideModal('reg-link-modal');
-
-    Members.openAdd(
-      { key: suggestedKey, firstName: r[C.FIRST], lastName: r[C.LAST], email: r[C.EMAIL], status: 'Member' },
-      async (newKey) => {
-        _members = []; // stale — will reload on next name search
-        const allRegs = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
-        const regRow  = allRegs.find(x => x[C.ID] === regId);
-        if (regRow) {
-          await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, regRow._rowIndex, { ...regRow, [C.MKEY]: newKey });
-        }
-        _pendingConfirmId = null;
-        await render();
-        openConfirmPayment(regId);
-      }
-    );
   }
 
   // ── Walk-in modal ─────────────────────────────────────────────────────────
@@ -1402,8 +1163,6 @@ const Registrations = (() => {
     openAddRegistration, onAddSourceChange, onAddWalkInChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
-    openLinkMember, searchLinkMember, selectLinkSuggestion, clearLinkSlot, saveLinkMember, openAddMemberFromReg,
-    onLinkKeyInput,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn,
     backToEvents,

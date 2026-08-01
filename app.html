@@ -1506,6 +1506,53 @@
   </div>
 </div>
 
+<!-- Add Person to Registration Modal ──────────────────────────── -->
+<div class="modal-overlay" id="fd-addslot-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Add Person</h2>
+      <button class="modal-close" onclick="Utils.hideModal('fd-addslot-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fd-addslot-type" value="guest">
+
+      <div class="form-group">
+        <label class="field-label">Type</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="pay-pill addslot-type-pill" data-slottype="member"
+            onclick="FrontDesk.selectAddSlotType('member')">Member</button>
+          <button type="button" class="pay-pill addslot-type-pill active" data-slottype="guest"
+            onclick="FrontDesk.selectAddSlotType('guest')">Guest</button>
+          <button type="button" class="pay-pill addslot-type-pill" data-slottype="kids"
+            onclick="FrontDesk.selectAddSlotType('kids')">Child</button>
+        </div>
+      </div>
+
+      <div id="fd-addslot-member-row" style="display:none;">
+        <div class="form-group">
+          <label class="field-label">Search Member</label>
+          <input type="text" id="fd-addslot-search" class="form-control"
+            placeholder="Name or member key…" autocomplete="off"
+            oninput="FrontDesk.onAddSlotSearch()">
+          <div id="fd-addslot-sugg" class="slot-suggestions"></div>
+          <div id="fd-addslot-selected"></div>
+        </div>
+      </div>
+
+      <div id="fd-addslot-guest-row">
+        <div class="form-group">
+          <label class="field-label">Guest Name <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+          <input type="text" id="fd-addslot-gname" class="form-control" placeholder="e.g. Maria Santos" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('fd-addslot-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fd-addslot-save-btn" onclick="FrontDesk.saveAddSlot()">Add</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════
      EMAIL PREVIEW MODAL
 ═══════════════════════════════════════════════════════════════ -->

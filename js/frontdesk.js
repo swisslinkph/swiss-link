@@ -249,11 +249,13 @@ const FrontDesk = (() => {
         </div>` : ''}
       </div>
       <div class="fd-slot-list">${rows.join('')}</div>
-      ${status !== 'Confirmed' ? `
-        <div class="fd-reg-footer">
+      <div class="fd-reg-footer">
+        <button class="btn btn-outline btn-sm"
+          onclick="FrontDesk.openAddSlot('${safeId}')">+ Add Person</button>
+        ${status !== 'Confirmed' ? `
           <button class="btn btn-primary btn-sm"
-            onclick="FrontDesk.openRegPayment('${safeId}')">Collect Payment</button>
-        </div>` : ''}
+            onclick="FrontDesk.openRegPayment('${safeId}')">Collect Payment</button>` : ''}
+      </div>
     </div>`;
   }
 
@@ -997,6 +999,122 @@ const FrontDesk = (() => {
     }
   }
 
+  // ── Add person to existing registration ─────────────────────────────────
+  let _addSlotRegId = null;
+  let _addSlotMemberKey = '';
+
+  function openAddSlot(regId) {
+    _addSlotRegId    = regId;
+    _addSlotMemberKey = '';
+    // Reset form
+    document.getElementById('fd-addslot-type').value    = 'guest';
+    document.getElementById('fd-addslot-gname').value   = '';
+    document.getElementById('fd-addslot-search').value  = '';
+    document.getElementById('fd-addslot-sugg').innerHTML = '';
+    document.getElementById('fd-addslot-selected').innerHTML = '';
+    document.querySelectorAll('.addslot-type-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.slottype === 'guest');
+    });
+    _updateAddSlotView('guest');
+    Utils.showModal('fd-addslot-modal');
+  }
+
+  function selectAddSlotType(type) {
+    document.getElementById('fd-addslot-type').value = type;
+    document.querySelectorAll('.addslot-type-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.slottype === type);
+    });
+    _addSlotMemberKey = '';
+    document.getElementById('fd-addslot-search').value  = '';
+    document.getElementById('fd-addslot-sugg').innerHTML = '';
+    document.getElementById('fd-addslot-selected').innerHTML = '';
+    _updateAddSlotView(type);
+  }
+
+  function _updateAddSlotView(type) {
+    const memberRow = document.getElementById('fd-addslot-member-row');
+    const guestRow  = document.getElementById('fd-addslot-guest-row');
+    if (memberRow) memberRow.style.display = type === 'member' ? '' : 'none';
+    if (guestRow)  guestRow.style.display  = type === 'guest'  ? '' : 'none';
+  }
+
+  function onAddSlotSearch() {
+    const q    = document.getElementById('fd-addslot-search').value.trim();
+    const sugg = document.getElementById('fd-addslot-sugg');
+    if (!q) { sugg.innerHTML = ''; return; }
+    const found = Utils.filterRows(_members, q, ['First Name','Last Name','Alternative Name','Member Key']).slice(0, 5);
+    sugg.innerHTML = found.map(m => {
+      const key  = m['Member Key'];
+      const name = `${m['First Name']} ${m['Last Name']}`.trim();
+      return `<div class="slot-sugg-item"
+        onclick="FrontDesk.selectAddSlotMember('${Utils.escape(key)}','${Utils.escape(name)}')">
+        <strong>${Utils.escape(name)}</strong> <span>${Utils.escape(key)}</span>
+      </div>`;
+    }).join('') || '<div class="fd-assign-empty">No members found</div>';
+  }
+
+  function selectAddSlotMember(key, name) {
+    _addSlotMemberKey = key;
+    document.getElementById('fd-addslot-search').value  = '';
+    document.getElementById('fd-addslot-sugg').innerHTML = '';
+    document.getElementById('fd-addslot-selected').innerHTML =
+      `<div class="slot-assigned" style="margin-top:6px;">
+        <span class="slot-name">${Utils.escape(name)}</span>
+        <span class="slot-key">${Utils.escape(key)}</span>
+        <button type="button" class="slot-clear"
+          onclick="FrontDesk._clearAddSlotMember()">✕</button>
+      </div>`;
+  }
+
+  function _clearAddSlotMember() {
+    _addSlotMemberKey = '';
+    document.getElementById('fd-addslot-selected').innerHTML = '';
+  }
+
+  async function saveAddSlot() {
+    const btn  = document.getElementById('fd-addslot-save-btn');
+    const reg  = _registrations.find(r => r.RegistrationID === _addSlotRegId);
+    if (!reg) return;
+    const type = document.getElementById('fd-addslot-type').value;
+
+    btn.disabled = true;
+    try {
+      const updates = { ...reg };
+
+      if (type === 'member') {
+        const newQty   = (parseInt(reg.MemberQty) || 0) + 1;
+        updates.MemberQty = newQty;
+        if (_addSlotMemberKey) {
+          const existing = (reg.MemberSlots || '').split(',').map(s => s.trim()).filter(Boolean);
+          existing.push(_addSlotMemberKey);
+          updates.MemberSlots = existing.join(',');
+        }
+      } else if (type === 'guest') {
+        const gName  = document.getElementById('fd-addslot-gname').value.trim();
+        updates.GuestQty = (parseInt(reg.GuestQty) || 0) + 1;
+        if (gName) {
+          const existing = (reg.GuestNames || '').split(',').map(s => s.trim());
+          existing.push(gName);
+          updates.GuestNames = existing.join(',');
+        }
+      } else {
+        updates.KidsQty = (parseInt(reg.KidsQty) || 0) + 1;
+      }
+
+      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, updates);
+      Object.assign(reg, updates);
+      Utils.hideModal('fd-addslot-modal');
+      const cardEl = document.getElementById(`fd-reg-${_addSlotRegId}`);
+      if (cardEl) cardEl.outerHTML = _regCardHtml(reg);
+      _updateLiveStats();
+      Utils.toast('Person added.');
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   // ── Assign member to unassigned slot ─────────────────────────────────────
   function openAssignSlot(regId, slotIdx) {
     _assignRegId   = regId;
@@ -1221,5 +1339,6 @@ const FrontDesk = (() => {
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
     openWalkinGuest, selectWiType, selectWiMode, submitWalkinGuest,
     openEditTxn, selectEtxnMode, saveEditTxn,
+    openAddSlot, selectAddSlotType, onAddSlotSearch, selectAddSlotMember, _clearAddSlotMember, saveAddSlot,
   };
 })();

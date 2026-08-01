@@ -1026,8 +1026,6 @@ const Registrations = (() => {
     const qty        = Math.max(1, parseInt(r[C.MEM_QTY], 10) || 1);
     const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
     _renderEditSlots(qty, r[C.MKEY], savedSlots);
-    const editSlotsSection = document.getElementById('reg-edit-slots-section');
-    if (editSlotsSection) editSlotsSection.style.display = 'block';
 
     Utils.showModal('reg-add-modal');
   }

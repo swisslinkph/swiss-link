@@ -825,6 +825,16 @@ const Registrations = (() => {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
 
+    // Background email sync: if member has no email but registration does, copy it now
+    if (r[C.MKEY] && r[C.EMAIL]) {
+      const pm = _members.find(m => m['Member Key'] === r[C.MKEY]);
+      if (pm && !pm['Email']) {
+        Sheets.update(CONFIG.SHEETS.MEMBERS, pm._rowIndex, { ...pm, Email: r[C.EMAIL] })
+          .then(() => { _members = []; })
+          .catch(() => {});
+      }
+    }
+
     const qty        = Math.max(1, parseInt(r[C.MEM_QTY], 10) || 1);
     const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
     _renderEditSlots(qty, r[C.MKEY], savedSlots);

@@ -151,7 +151,7 @@ const Members = (() => {
     if (!tbody) return;
 
     if (!_filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No members found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No members found.</td></tr>';
       return;
     }
 
@@ -170,6 +170,7 @@ const Members = (() => {
         ? `<span class="badge badge-head">👑 Head</span>`
         : famName ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(famName)}</span>` : '';
       return `<tr data-key="${key}">
+        <td class="col-key" style="font-family:monospace;font-size:12px;">${Utils.escape(key)}</td>
         <td class="member-cell-link col-first" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.FIRST])}</td>
         <td class="member-cell-link col-last" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.LAST])}</td>
         <td class="col-email">${Utils.escape(m[C.EMAIL])}</td>

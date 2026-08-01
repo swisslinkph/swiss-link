@@ -208,7 +208,7 @@ const FrontDesk = (() => {
         : key || `Member ${i + 1} — unassigned`;
       const isIn   = checkedSlots.has(slotId);
       const isPaid = paidSlots.has(slotId);
-      rows.push(_slotRowHtml(reg.RegistrationID, slotId, label, key, isIn, 'member', '', isPaid));
+      rows.push(_slotRowHtml(reg.RegistrationID, slotId, label, key, isIn, 'member', '', isPaid, m));
     }
 
     // Guest slots
@@ -271,24 +271,28 @@ const FrontDesk = (() => {
     </div>`;
   }
 
-  function _slotRowHtml(regId, slotId, label, memberKey, isIn, type, guestName, isPaid) {
+  function _slotRowHtml(regId, slotId, label, memberKey, isIn, type, guestName, isPaid, memberObj) {
     const hasGuestName = type === 'guest' && !!guestName;
     const avatarText = memberKey        ? Utils.initials(label)
       : hasGuestName                   ? Utils.initials(label)
       : type === 'guest'               ? 'G'
       : type === 'kids'                ? 'K'
       : '?';
-    const safeRegId  = Utils.escape(regId);
-    const safeSlot   = Utils.escape(slotId);
-    const gIdx       = type === 'guest' ? parseInt(safeSlot.slice(1)) : 0;
-    const paidBtn    = `<button class="fd-slot-paid-btn ${isPaid ? 'is-paid' : 'not-paid'}"
+    const safeRegId   = Utils.escape(regId);
+    const safeSlot    = Utils.escape(slotId);
+    const gIdx        = type === 'guest' ? parseInt(safeSlot.slice(1)) : 0;
+    const paidBtn     = `<button class="fd-slot-paid-btn ${isPaid ? 'is-paid' : 'not-paid'}"
         title="${isPaid ? 'Mark unpaid' : 'Mark paid'}"
         onclick="FrontDesk.toggleSlotPaid('${safeRegId}','${safeSlot}')">₱</button>`;
+    const statusChip  = memberObj
+      ? Utils.statusBadge(memberObj['Membership Status'], memberObj['Renewal Year'])
+      : '';
     return `<div class="fd-slot-row ${isIn ? 'slot-checked-in' : ''}" id="fd-slot-${safeRegId}-${safeSlot}">
       <div class="fd-avatar sm fd-slot-avatar ${type}">${avatarText}</div>
       <div class="fd-slot-info">
         <span class="fd-slot-name">${Utils.escape(label)}</span>
         ${memberKey ? `<span class="fd-slot-key">${Utils.escape(memberKey)}</span>` : ''}
+        ${statusChip ? `<span class="fd-slot-status">${statusChip}</span>` : ''}
       </div>
       ${isIn
         ? `<div class="fd-slot-in-wrap">

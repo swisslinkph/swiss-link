@@ -458,7 +458,7 @@ const Registrations = (() => {
     const q = query.trim();
     if (!q) { suggBox.innerHTML = ''; return; }
 
-    const found = Utils.filterRows(_members, q, ['First Name','Last Name','Member Key']).slice(0, 5);
+    const found = Utils.filterRows(_members, q, ['First Name','Last Name','Alternative Name','Member Key']).slice(0, 5);
     const primaryKey = (document.getElementById('reg-add-member-key')?.value || '').trim();
     const memberItems = found.map(m => {
       const key  = m['Member Key'];

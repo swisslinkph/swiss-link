@@ -705,52 +705,36 @@ const Registrations = (() => {
       const r = _all.find(x => x[C.ID] === regId);
       if (!r) return;
 
-      // Collect assigned member keys from slots (if member assignment section is visible)
-      const section  = document.getElementById('reg-confirm-members-section');
-      const slots    = section?.style.display !== 'none'
-        ? [...document.querySelectorAll('#reg-confirm-members .slot-key-input')].map(el => el.value.trim()).filter(Boolean)
-        : [r[C.MKEY]];
+      // One transaction under the payee (primary member key or registrant name)
+      const payeeKey  = r[C.MKEY] || '';
+      const regName   = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(' ');
+      const member    = payeeKey ? _members.find(m => m['Member Key'] === payeeKey) : null;
+      const payeeName = member ? `${member['First Name']} ${member['Last Name']}`.trim() : regName;
 
-      // Create one transaction per assigned member.
-      // Each secondary member gets the event member fee; slot 1 gets the remainder
-      // (absorbs guest/kids fees or any adjustment).
-      if (slots.length > 0) {
-        const mFee     = parseFloat(_event?.MemberFee) || 0;
-        const secTotal = mFee * (slots.length - 1);
-        const now      = new Date();
+      const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
+      const paxNote  = [
+        parseInt(r[C.MEM_QTY])   > 0 ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
+        parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
+        parseInt(r[C.KIDS_QTY])  > 0 ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
+      ].filter(Boolean).join(' · ');
 
-        for (let i = 0; i < slots.length; i++) {
-          const key    = slots[i];
-          const member = _members.find(m => m['Member Key'] === key);
-          const mName  = member
-            ? `${member['First Name']} ${member['Last Name']}`.trim()
-            : key;
-          const txnAmt = i === 0 ? Math.max(0, amount - secTotal) : mFee;
-
-          const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
-          const paxNote  = [
-            parseInt(r[C.MEM_QTY]) > 0  ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
-            parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
-            parseInt(r[C.KIDS_QTY]) > 0  ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
-          ].filter(Boolean).join(' · ');
-          await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
-            TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
-            Timestamp:     now.toISOString(),
-            MemberKey:     key,
-            MemberName:    mName,
-            EventID:       _eventId,
-            EventName:     _event?.Title || '',
-            AmountPaid:    txnAmt,
-            PaymentMode:   mode,
-            Category:      'Event',
-            Year:          now.getFullYear(),
-            Month:         now.getMonth() + 1,
-            HeadCount:     i === 0 ? totalPax : 1,
-            Notes:         i === 0 ? [paxNote, notes].filter(Boolean).join(' — ') : (notes || `Reg: ${regId}`),
-            RecordedBy:    Auth.getUserEmail(),
-          });
-        }
-      }
+      const now = new Date();
+      await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+        TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
+        Timestamp:     now.toISOString(),
+        MemberKey:     payeeKey,
+        MemberName:    payeeName,
+        EventID:       _eventId,
+        EventName:     _event?.Title || '',
+        AmountPaid:    amount,
+        PaymentMode:   mode,
+        Category:      'Event',
+        Year:          now.getFullYear(),
+        Month:         now.getMonth() + 1,
+        HeadCount:     totalPax,
+        Notes:         [paxNote, notes].filter(Boolean).join(' — '),
+        RecordedBy:    Auth.getUserEmail(),
+      });
 
       await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, {
         ...r,
@@ -780,80 +764,64 @@ const Registrations = (() => {
       Utils.toast('Only confirmed registrations can be synced.', 'error'); return;
     }
 
-    // Collect all member keys that should have transactions
-    const primary    = r[C.MKEY];
-    const extraSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allKeys    = [primary, ...extraSlots].filter(Boolean);
+    // One transaction under the payee (primary member key or registrant name)
+    const payeeKey  = r[C.MKEY] || '';
+    const regName   = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(' ');
 
-    if (!allKeys.length) {
-      Utils.toast('No member keys assigned — edit the registration first to assign members.', 'error');
-      return;
-    }
-
-    // Check which keys already have a transaction for this event
-    if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    // Check if a transaction already exists for this registration
     const existingTxns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []);
-    const alreadyHave  = new Set(
-      existingTxns
-        .filter(t => t.EventID === r[C.EVID])
-        .map(t => t.MemberKey)
+    const alreadyHave  = existingTxns.some(
+      t => t.EventID === r[C.EVID] && (payeeKey ? t.MemberKey === payeeKey : t.MemberName === regName)
     );
 
-    const missing = allKeys.filter(k => !alreadyHave.has(k));
-    if (!missing.length) {
-      Utils.toast(`All ${allKeys.length} transaction${allKeys.length > 1 ? 's' : ''} already exist.`);
+    if (alreadyHave) {
+      Utils.toast('Transaction already exists for this registration.');
       return;
     }
 
+    if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    const member   = payeeKey ? _members.find(m => m['Member Key'] === payeeKey) : null;
+    const payeeName = member
+      ? `${member['First Name']} ${member['Last Name']}`.trim()
+      : regName;
+
+    const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
+    const paxNote  = [
+      parseInt(r[C.MEM_QTY])   > 0 ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
+      parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
+      parseInt(r[C.KIDS_QTY])  > 0 ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
+    ].filter(Boolean).join(' · ');
+
+    const amount = parseFloat(r[C.AMOUNT]) || 0;
+    const mode   = r[C.PAY_MODE] || '';
+    const notes  = r[C.NOTES]    || '';
+
     const ok = await Utils.confirm(
-      `Write ${missing.length} missing transaction${missing.length > 1 ? 's' : ''} for:\n${missing.join(', ')}\n\nThis will use the amount and mode already on the registration.`
+      `Write 1 transaction for ${payeeName}${payeeKey ? ` (${payeeKey})` : ''}?\n\n` +
+      `${paxNote} · ₱${amount.toLocaleString()} via ${mode || '—'}\n\n` +
+      `This records the full payment under the payee's member history.`
     );
     if (!ok) return;
 
     try {
-      const amount   = parseFloat(r[C.AMOUNT]) || 0;
-      const mode     = r[C.PAY_MODE] || '';
-      const notes    = r[C.NOTES]    || '';
-      const mFee     = parseFloat(_event?.MemberFee) || 0;
-      const secTotal = mFee * (allKeys.length - 1);
-      const now      = new Date();
-
-      const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
-      const paxNote  = [
-        parseInt(r[C.MEM_QTY])   > 0 ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
-        parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
-        parseInt(r[C.KIDS_QTY])  > 0 ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
-      ].filter(Boolean).join(' · ');
-
-      let written = 0;
-      for (let i = 0; i < allKeys.length; i++) {
-        const key = allKeys[i];
-        if (alreadyHave.has(key)) continue;
-        const member = _members.find(m => m['Member Key'] === key);
-        const mName  = member ? `${member['First Name']} ${member['Last Name']}`.trim() : key;
-        const txnAmt = i === 0 ? Math.max(0, amount - secTotal) : mFee;
-        await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
-          TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
-          Timestamp:     r[C.TS] || now.toISOString(), // use original registration timestamp
-          MemberKey:     key,
-          MemberName:    mName,
-          EventID:       r[C.EVID],
-          EventName:     r[C.EVNAME] || _event?.Title || '',
-          AmountPaid:    txnAmt,
-          PaymentMode:   mode,
-          Category:      'Event',
-          Year:          new Date(r[C.TS] || now).getFullYear(),
-          Month:         new Date(r[C.TS] || now).getMonth() + 1,
-          HeadCount:     i === 0 ? totalPax : 1,
-          Notes:         i === 0
-            ? [paxNote, `Reg: ${regId}`, notes].filter(Boolean).join(' — ')
-            : `Reg: ${regId}`,
-          RecordedBy:    Auth.getUserEmail(),
-        });
-        written++;
-      }
-
-      Utils.toast(`✅ ${written} transaction${written > 1 ? 's' : ''} written.`);
+      const now = new Date();
+      await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+        TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
+        Timestamp:     r[C.TS] || now.toISOString(),
+        MemberKey:     payeeKey,
+        MemberName:    payeeName,
+        EventID:       r[C.EVID],
+        EventName:     r[C.EVNAME] || _event?.Title || '',
+        AmountPaid:    amount,
+        PaymentMode:   mode,
+        Category:      'Event',
+        Year:          new Date(r[C.TS] || now).getFullYear(),
+        Month:         new Date(r[C.TS] || now).getMonth() + 1,
+        HeadCount:     totalPax,
+        Notes:         [paxNote, `Reg: ${regId}`, notes].filter(Boolean).join(' — '),
+        RecordedBy:    Auth.getUserEmail(),
+      });
+      Utils.toast(`✅ Transaction written for ${payeeName}.`);
       _members = [];
     } catch (e) {
       Utils.toast(e.message, 'error');

@@ -173,7 +173,7 @@ const Members = (() => {
         <td class="col-family">${famCell}</td>
         <td class="amount col-ytd">${Utils.formatPHP(ytd)}</td>
         <td class="actions">
-          <button class="btn-icon btn-history" title="Transaction history" onclick="Members.openDetail('${key}')"><i class="ti ti-receipt"></i></button>
+          <button class="btn-icon btn-history" title="Transaction history" onclick="Members.openDetail('${key}')">🧾</button>
           <button class="btn-icon" title="Edit" onclick="Members.openEdit('${key}')">✏️</button>
           <button class="btn-icon btn-danger" title="Delete" onclick="Members.confirmDelete('${key}')">🗑️</button>
         </td>

@@ -202,7 +202,7 @@ const Sheets = (() => {
       'RegistrationID','Timestamp','Source','EventID','EventName',
       'LastName','FirstName','Email','MemberKey','MemberSlots',
       'MemberQty','GuestQty','KidsQty','IsWalkIn',
-      'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes','CheckedIn',
+      'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes','CheckedIn','GuestNames',
     ];
     const range = encodeURIComponent(`${CONFIG.SHEETS.REGISTRATIONS}!A1`);
     await request(`/values/${range}?valueInputOption=USER_ENTERED`, {

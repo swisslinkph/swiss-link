@@ -14,8 +14,10 @@ const FrontDesk = (() => {
   let _famMembers    = [];
   let _famSelected   = new Set();
   let _famHead       = null;
-  let _assignRegId   = null;
-  let _assignSlotIdx = null;
+  let _assignRegId     = null;
+  let _assignSlotIdx   = null;
+  let _nameGuestRegId  = null;
+  let _nameGuestSlotIdx = null;
 
   // ── Render / init ─────────────────────────────────────────────────────────
   async function render() {
@@ -208,10 +210,12 @@ const FrontDesk = (() => {
     }
 
     // Guest slots
+    const guestNames = (reg.GuestNames || '').split(',').map(s => s.trim());
     for (let i = 0; i < gQty; i++) {
       const slotId = `g${i + 1}`;
+      const gName  = guestNames[i] || '';
       const isIn   = checkedSlots.has(slotId);
-      rows.push(_slotRowHtml(reg.RegistrationID, slotId, `Guest ${i + 1}`, '', isIn, 'guest'));
+      rows.push(_slotRowHtml(reg.RegistrationID, slotId, gName || `Guest ${i + 1}`, '', isIn, 'guest', gName));
     }
 
     // Kids slots
@@ -248,10 +252,16 @@ const FrontDesk = (() => {
     </div>`;
   }
 
-  function _slotRowHtml(regId, slotId, label, memberKey, isIn, type) {
-    const avatarText = memberKey ? Utils.initials(label) : (type === 'guest' ? 'G' : type === 'kids' ? 'K' : '?');
+  function _slotRowHtml(regId, slotId, label, memberKey, isIn, type, guestName) {
+    const hasGuestName = type === 'guest' && !!guestName;
+    const avatarText = memberKey        ? Utils.initials(label)
+      : hasGuestName                   ? Utils.initials(label)
+      : type === 'guest'               ? 'G'
+      : type === 'kids'                ? 'K'
+      : '?';
     const safeRegId  = Utils.escape(regId);
     const safeSlot   = Utils.escape(slotId);
+    const gIdx       = type === 'guest' ? parseInt(safeSlot.slice(1)) : 0;
     return `<div class="fd-slot-row ${isIn ? 'slot-checked-in' : ''}" id="fd-slot-${safeRegId}-${safeSlot}">
       <div class="fd-avatar sm fd-slot-avatar ${type}">${avatarText}</div>
       <div class="fd-slot-info">
@@ -267,6 +277,10 @@ const FrontDesk = (() => {
              ${!memberKey && type === 'member'
                ? `<button class="btn btn-sm btn-outline fd-assign-btn"
                     onclick="FrontDesk.openAssignSlot('${safeRegId}',${parseInt(safeSlot.slice(1))})">Assign</button>`
+               : ''}
+             ${type === 'guest'
+               ? `<button class="btn btn-sm btn-outline fd-assign-btn"
+                    onclick="FrontDesk.openNameGuest('${safeRegId}',${gIdx})">${hasGuestName ? 'Rename' : 'Name'}</button>`
                : ''}
              <button class="btn btn-sm ${type === 'member' ? 'btn-primary' : 'btn-outline'} fd-slot-btn"
                onclick="FrontDesk.checkinSlot('${safeRegId}','${safeSlot}')">Check In</button>
@@ -339,7 +353,9 @@ const FrontDesk = (() => {
         const m   = key ? _members.find(x => x['Member Key'] === key) : null;
         label = m ? `${m['First Name']} ${m['Last Name']}`.trim() : (key || `Member ${mIdx + 1}`);
       } else if (slotId.startsWith('g')) {
-        label = `Guest ${slotId.slice(1)}`;
+        const gIdx    = parseInt(slotId.slice(1));
+        const gNames  = (reg.GuestNames || '').split(',').map(s => s.trim());
+        label = gNames[gIdx - 1] || `Guest ${gIdx}`;
       } else if (slotId.startsWith('k')) {
         label = `Child ${slotId.slice(1)}`;
       }
@@ -960,6 +976,44 @@ const FrontDesk = (() => {
     }
   }
 
+  // ── Name a guest slot ────────────────────────────────────────────────────
+  function openNameGuest(regId, guestIdx) {
+    _nameGuestRegId   = regId;
+    _nameGuestSlotIdx = guestIdx;
+    const reg  = _registrations.find(r => r.RegistrationID === regId);
+    const regName = reg ? [reg.LastName, reg.FirstName].filter(Boolean).join(', ') : regId;
+    const guestNames = (reg?.GuestNames || '').split(',').map(s => s.trim());
+    document.getElementById('fd-name-guest-label').textContent = `${regName} — Guest ${guestIdx}`;
+    document.getElementById('fd-guest-name-input').value = guestNames[guestIdx - 1] || '';
+    Utils.showModal('fd-name-guest-modal');
+    setTimeout(() => document.getElementById('fd-guest-name-input')?.focus(), 100);
+  }
+
+  async function saveNameGuest() {
+    const reg = _registrations.find(r => r.RegistrationID === _nameGuestRegId);
+    if (!reg) return;
+    const name = document.getElementById('fd-guest-name-input').value.trim();
+    const btn  = document.getElementById('fd-name-guest-confirm');
+    btn.disabled = true;
+    try {
+      const names = (reg.GuestNames || '').split(',').map(s => s.trim());
+      while (names.length < _nameGuestSlotIdx) names.push('');
+      names[_nameGuestSlotIdx - 1] = name;
+      reg.GuestNames = names.join(',');
+      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, { ...reg });
+      Utils.hideModal('fd-name-guest-modal');
+      const cardEl = document.getElementById(`fd-reg-${_nameGuestRegId}`);
+      if (cardEl) cardEl.outerHTML = _regCardHtml(reg);
+      Utils.toast(name ? `Guest ${_nameGuestSlotIdx} named "${name}".` : `Guest ${_nameGuestSlotIdx} name cleared.`);
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      _nameGuestRegId   = null;
+      _nameGuestSlotIdx = null;
+    }
+  }
+
   function changeEvent() { _event = null; _registrations = []; _renderEventPicker(); }
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -976,6 +1030,7 @@ const FrontDesk = (() => {
     render, init, selectEvent, changeEvent,
     checkinSlot, undoSlot, openRegPayment,
     openAssignSlot, onAssignInput, selectAssignMember,
+    openNameGuest, saveNameGuest,
     openCheckin, quickCheckin, submitCheckin, undoCheckin, stepCount, selectPayMode, toggleNotes,
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
     openWalkinGuest, selectWiMode, submitWalkinGuest,

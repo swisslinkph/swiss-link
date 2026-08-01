@@ -1326,6 +1326,33 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     NAME GUEST MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="fd-name-guest-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div>
+        <h2>Name Guest</h2>
+        <p id="fd-name-guest-label" style="font-size:13px;color:var(--text-muted);margin-top:2px;"></p>
+      </div>
+      <button class="modal-close" onclick="Utils.hideModal('fd-name-guest-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="fd-guest-name-input">Guest Name</label>
+        <input type="text" id="fd-guest-name-input" class="form-control"
+               placeholder="e.g. Jane Smith"
+               onkeydown="if(event.key==='Enter') FrontDesk.saveNameGuest()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('fd-name-guest-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fd-name-guest-confirm" onclick="FrontDesk.saveNameGuest()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      WALK-IN GUEST MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="fd-walkin-modal">

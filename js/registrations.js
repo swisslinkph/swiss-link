@@ -361,6 +361,21 @@ const Registrations = (() => {
   // ── Edit-modal slot helpers ────────────────────────────────────────────────
   // Slot 0 renders into #reg-edit-slot0-wrap (inline with registrant fields).
   // Slots 1..N-1 render into #reg-edit-slots-container as "Member 2", "Member 3"…
+  function _memberInfoChips(key) {
+    const m = _members.find(x => x['Member Key'] === key);
+    if (!m) return '';
+    const famHead = m['Family Head'] ? _members.find(x => x['Member Key'] === m['Family Head']) : null;
+    const famName = famHead ? `${famHead['First Name']} ${famHead['Last Name']}`.trim() : '';
+    const loc     = m['Location (Metro Manila/Province)'] || '';
+    const chips   = [
+      Utils.statusBadge(m['Membership Status'], m['Renewal Year']),
+      Utils.typeBadge(m['Membership Type']),
+      loc     ? `<span class="badge slot-info-chip">📍 ${Utils.escape(loc)}</span>` : '',
+      famName ? `<span class="badge slot-info-chip">👨‍👩‍👧 ${Utils.escape(famName)}</span>` : '',
+    ].filter(Boolean).join('');
+    return chips ? `<div class="slot-member-chips">${chips}</div>` : '';
+  }
+
   function _renderEditSlots(qty, primaryKey, savedSlots) {
     // Slot 0 — link-to-record field for Member 1
     const slot0Wrap = document.getElementById('reg-edit-slot0-wrap');
@@ -376,6 +391,7 @@ const Registrations = (() => {
                 <span class="slot-key">${Utils.escape(primaryKey)}</span>
                 <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(0)">✕</button>
               </div>
+              ${_memberInfoChips(primaryKey)}
             </div>
             <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
           </div>`;
@@ -466,7 +482,8 @@ const Registrations = (() => {
         <span class="slot-name">${Utils.escape(name)}</span>
         <span class="slot-key">${Utils.escape(key)}</span>
         <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${slotIdx})">✕</button>
-      </div>`;
+      </div>
+      ${slotIdx === 0 ? _memberInfoChips(key) : ''}`;
   }
 
   function clearEditSlot(slotIdx) {
@@ -802,6 +819,8 @@ const Registrations = (() => {
            padding: 1px 4px; border-radius: 3px; min-width: 22px; text-align: center; flex-shrink: 0; }
   .sname { font-size: 10px; }
   .slot-key { font-family: monospace; font-size: 8px; color: #888; margin-left: 2px; }
+  .slot-member-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .slot-info-chip { background: #f1f5f9; color: #475569; font-size: 10px; }
   .slot-member .sid { background: #0e2a47; }
   .slot-guest  .sid { background: #b91c1c; }
   .slot-kids   .sid { background: #7c3aed; }

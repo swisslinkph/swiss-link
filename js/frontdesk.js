@@ -714,14 +714,28 @@ const FrontDesk = (() => {
     if (!_event) return;
     document.getElementById('fd-wi-name').value       = '';
     document.getElementById('fd-wi-member-key').value = '';
-    document.getElementById('fd-wi-amount').value     = parseFloat(_event.GuestFee) || 0;
     document.getElementById('fd-wi-notes').value      = '';
+    document.getElementById('fd-wi-mode').value       = 'Cash';
     document.querySelectorAll('.wi-pay-pill').forEach(b => {
       b.classList.toggle('active', b.dataset.mode === 'Cash');
     });
-    document.getElementById('fd-wi-mode').value = 'Cash';
+    // Reset to Guest type
+    selectWiType('guest');
     Utils.showModal('fd-walkin-modal');
     document.getElementById('fd-wi-name')?.focus();
+  }
+
+  function selectWiType(type) {
+    document.getElementById('fd-wi-type').value = type;
+    document.querySelectorAll('.wi-type-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.witype === type);
+    });
+    const isGuest  = type === 'guest';
+    const guestFee  = parseFloat(_event?.GuestFee       || 0);
+    const memberFee = parseFloat(_event?.WalkInMemberFee || _event?.MemberFee || 0);
+    document.getElementById('fd-wi-amount').value = isGuest ? guestFee : memberFee;
+    const keyRow = document.getElementById('fd-wi-key-row');
+    if (keyRow) keyRow.style.display = isGuest ? 'none' : '';
   }
 
   function selectWiMode(mode) {
@@ -732,15 +746,18 @@ const FrontDesk = (() => {
   }
 
   async function submitWalkinGuest() {
-    const btn    = document.getElementById('fd-wi-submit');
-    const name   = document.getElementById('fd-wi-name')?.value.trim();
-    if (!name) { Utils.toast('Enter a name for the walk-in guest.', 'error'); return; }
+    const btn  = document.getElementById('fd-wi-submit');
+    const name = document.getElementById('fd-wi-name')?.value.trim();
+    if (!name) { Utils.toast('Enter a name.', 'error'); return; }
     btn.disabled = true;
     try {
-      const memberKey = document.getElementById('fd-wi-member-key')?.value.trim() || '';
+      const type      = document.getElementById('fd-wi-type')?.value || 'guest';
+      const isGuest   = type === 'guest';
+      const memberKey = isGuest ? '' : (document.getElementById('fd-wi-member-key')?.value.trim() || '');
       const amount    = parseFloat(document.getElementById('fd-wi-amount')?.value) || 0;
       const mode      = document.getElementById('fd-wi-mode')?.value || 'Cash';
       const notes     = document.getElementById('fd-wi-notes')?.value.trim() || '';
+      const category  = isGuest ? 'Walk-in Guest' : 'Walk-in Member';
       const txnId     = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN');
       const now       = new Date();
       await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
@@ -752,7 +769,7 @@ const FrontDesk = (() => {
         EventName:     _event.Title,
         AmountPaid:    amount,
         PaymentMode:   mode,
-        Category:      'Walk-in Guest',
+        Category:      category,
         Year:          now.getFullYear(),
         Month:         now.getMonth() + 1,
         HeadCount:     1,
@@ -761,7 +778,7 @@ const FrontDesk = (() => {
       });
       _txns.push({ TransactionID: txnId, MemberKey: memberKey, MemberName: name,
         EventID: _event.EventID, AmountPaid: amount, PaymentMode: mode,
-        Category: 'Walk-in Guest', HeadCount: 1 });
+        Category: category, HeadCount: 1 });
       Utils.hideModal('fd-walkin-modal');
       _updateLiveStats();
       _renderCheckedIn();
@@ -1135,6 +1152,6 @@ const FrontDesk = (() => {
     openNameGuest, saveNameGuest,
     openCheckin, quickCheckin, submitCheckin, undoCheckin, stepCount, selectPayMode, toggleNotes,
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
-    openWalkinGuest, selectWiMode, submitWalkinGuest,
+    openWalkinGuest, selectWiType, selectWiMode, submitWalkinGuest,
   };
 })();

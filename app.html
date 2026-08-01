@@ -1394,9 +1394,9 @@
   <div class="modal modal-sm">
     <div class="modal-header">
       <div>
-        <h2>Walk-in Guest</h2>
+        <h2>Walk-in</h2>
         <p style="font-size:13px;color:var(--text-muted);margin-top:2px;">
-          Log anyone arriving at the door — member or not.
+          Log anyone arriving at the door.
         </p>
       </div>
       <button class="modal-close" onclick="Utils.hideModal('fd-walkin-modal')" aria-label="Close">✕</button>
@@ -1404,16 +1404,27 @@
     <div class="modal-body">
 
       <div class="form-group">
+        <label class="field-label">Type</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="pay-pill wi-type-pill active" data-witype="guest"
+            onclick="FrontDesk.selectWiType('guest')">Guest</button>
+          <button type="button" class="pay-pill wi-type-pill" data-witype="member"
+            onclick="FrontDesk.selectWiType('member')">Member</button>
+        </div>
+        <input type="hidden" id="fd-wi-type" value="guest">
+      </div>
+
+      <div class="form-group">
         <label class="field-label" for="fd-wi-name">Full Name <span style="color:var(--red)">*</span></label>
         <input type="text" id="fd-wi-name" class="form-control" placeholder="e.g. Maria Santos"
                autocomplete="off">
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="fd-wi-key-row">
         <label class="field-label" for="fd-wi-member-key">Member Key <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
         <input type="text" id="fd-wi-member-key" class="form-control" placeholder="e.g. SCH-2024-042"
                autocomplete="off">
-        <p class="field-hint">If they are a member, enter their key so this logs to their history.</p>
+        <p class="field-hint">Enter their key so this logs to their history.</p>
       </div>
 
       <div class="checkin-field-row">

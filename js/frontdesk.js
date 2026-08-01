@@ -639,13 +639,15 @@ const FrontDesk = (() => {
     // Walk-in transactions (member walk-ins + walk-in guests)
     const regKeys = new Set(_registrations.flatMap(_slotKeys));
     _txns.filter(t => t.EventID === _event?.EventID &&
-        (t.Category === 'Event' || t.Category === 'Walk-in Guest' || t.Category === 'Walk-in') &&
+        (t.Category === 'Event' || t.Category === 'Walk-in Guest' ||
+         t.Category === 'Walk-in' || t.Category === 'Walk-in Member') &&
         !regKeys.has(t.MemberKey))
       .forEach(t => rows.push({
         label:   t.MemberName || t.MemberKey,
-        regName: t.Category === 'Walk-in Guest' ? 'Walk-in guest' : 'Walk-in',
+        regName: t.Category === 'Walk-in Guest' ? 'Walk-in guest' : 'Walk-in member',
         txnId:   t.TransactionID,
         amount:  Utils.parsePHP(t.AmountPaid),
+        mode:    t.PaymentMode || '',
       }));
 
     if (!rows.length) {
@@ -653,15 +655,28 @@ const FrontDesk = (() => {
       return;
     }
 
-    container.innerHTML = rows.slice(-30).reverse().map(r => `
+    container.innerHTML = rows.slice(-30).reverse().map(r => {
+      const reg     = r.regId ? _registrations.find(x => x.RegistrationID === r.regId) : null;
+      const mode    = r.mode || (reg?.PaymentMode) || '';
+      const amount  = r.amount != null ? r.amount : (reg ? Utils.parsePHP(reg.AmountPaid) : null);
+      const amtStr  = amount != null && amount > 0 ? Utils.formatPHP(amount) : '';
+      const modeStr = mode ? `<span class="fd-ci-mode">${Utils.escape(mode)}</span>` : '';
+      const editBtn = r.txnId
+        ? `<button class="fd-edit-btn" onclick="FrontDesk.openEditTxn('${Utils.escape(r.txnId)}')">Edit</button>`
+        : (r.regId ? `<button class="fd-edit-btn" onclick="FrontDesk.openRegPayment('${Utils.escape(r.regId)}')">Edit</button>` : '');
+      const undoBtn = r.txnId
+        ? `<button class="fd-undo-btn" onclick="FrontDesk.undoCheckin('${Utils.escape(r.txnId)}')">Undo</button>`
+        : `<button class="fd-undo-btn" onclick="FrontDesk.undoSlot('${Utils.escape(r.regId)}','${Utils.escape(r.slotId)}')">Undo</button>`;
+      return `
       <div class="fd-checkedin-item">
         <div class="fd-avatar sm">${Utils.initials(r.label)}</div>
-        <span class="fd-ci-name">${Utils.escape(r.label)}</span>
-        <span class="fd-ci-reg">${Utils.escape(r.regName)}</span>
-        ${r.txnId
-          ? `<button class="fd-undo-btn" onclick="FrontDesk.undoCheckin('${Utils.escape(r.txnId)}')">Undo</button>`
-          : `<button class="fd-undo-btn" onclick="FrontDesk.undoSlot('${Utils.escape(r.regId)}','${Utils.escape(r.slotId)}')">Undo</button>`}
-      </div>`).join('');
+        <div class="fd-ci-info">
+          <span class="fd-ci-name">${Utils.escape(r.label)}</span>
+          <span class="fd-ci-reg">${Utils.escape(r.regName)}${amtStr ? ' · ' + amtStr : ''}${modeStr ? ' · ' : ''}${modeStr}</span>
+        </div>
+        <div class="fd-ci-actions">${editBtn}${undoBtn}</div>
+      </div>`;
+    }).join('');
   }
 
   // ── Undo slot check-in (registered attendee) ─────────────────────────────
@@ -706,6 +721,58 @@ const FrontDesk = (() => {
       Utils.toast('Check-in removed.');
     } catch (e) {
       Utils.toast(e.message, 'error');
+    }
+  }
+
+  // ── Edit walk-in transaction ─────────────────────────────────────────────
+  function openEditTxn(txnId) {
+    const txn = _txns.find(t => t.TransactionID === txnId);
+    if (!txn) return;
+    document.getElementById('fd-etxn-id').value     = txnId;
+    document.getElementById('fd-etxn-name').value   = txn.MemberName || '';
+    document.getElementById('fd-etxn-amount').value = parseFloat(txn.AmountPaid) || 0;
+    document.getElementById('fd-etxn-notes').value  = txn.Notes || '';
+    const mode = txn.PaymentMode || 'Cash';
+    document.getElementById('fd-etxn-mode').value = mode;
+    document.querySelectorAll('.etxn-pay-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    Utils.showModal('fd-edit-txn-modal');
+  }
+
+  function selectEtxnMode(mode) {
+    document.getElementById('fd-etxn-mode').value = mode;
+    document.querySelectorAll('.etxn-pay-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+  }
+
+  async function saveEditTxn() {
+    const btn   = document.getElementById('fd-etxn-save-btn');
+    const txnId = document.getElementById('fd-etxn-id').value;
+    const txn   = _txns.find(t => t.TransactionID === txnId);
+    if (!txn) return;
+    btn.disabled = true;
+    try {
+      const amount = parseFloat(document.getElementById('fd-etxn-amount').value) || 0;
+      const mode   = document.getElementById('fd-etxn-mode').value || 'Cash';
+      const notes  = document.getElementById('fd-etxn-notes').value.trim();
+      const name   = document.getElementById('fd-etxn-name').value.trim();
+      await Sheets.update(CONFIG.SHEETS.TRANSACTIONS, txn._rowIndex, {
+        ...txn, AmountPaid: amount, PaymentMode: mode, Notes: notes, MemberName: name,
+      });
+      txn.AmountPaid  = amount;
+      txn.PaymentMode = mode;
+      txn.Notes       = notes;
+      txn.MemberName  = name;
+      Utils.hideModal('fd-edit-txn-modal');
+      _updateLiveStats();
+      _renderCheckedIn();
+      Utils.toast('Transaction updated.');
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -1153,5 +1220,6 @@ const FrontDesk = (() => {
     openCheckin, quickCheckin, submitCheckin, undoCheckin, stepCount, selectPayMode, toggleNotes,
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
     openWalkinGuest, selectWiType, selectWiMode, submitWalkinGuest,
+    openEditTxn, selectEtxnMode, saveEditTxn,
   };
 })();

@@ -1461,6 +1461,51 @@
   </div>
 </div>
 
+<!-- Edit Transaction Modal ─────────────────────────── -->
+<div class="modal-overlay" id="fd-edit-txn-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Edit Transaction</h2>
+      <button class="modal-close" onclick="Utils.hideModal('fd-edit-txn-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fd-etxn-id">
+
+      <div class="form-group">
+        <label class="field-label" for="fd-etxn-name">Name</label>
+        <input type="text" id="fd-etxn-name" class="form-control" autocomplete="off">
+      </div>
+
+      <div class="checkin-field-row">
+        <label>Amount Paid</label>
+        <div class="checkin-amount-wrap">
+          <input type="number" id="fd-etxn-amount" class="form-control checkin-amount-input" min="0" step="50">
+        </div>
+      </div>
+
+      <div class="checkin-field-row" style="border-bottom:none;">
+        <label>Payment Mode</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button type="button" class="pay-pill etxn-pay-pill active" data-mode="Cash"          onclick="FrontDesk.selectEtxnMode('Cash')">Cash</button>
+          <button type="button" class="pay-pill etxn-pay-pill"        data-mode="GCash"         onclick="FrontDesk.selectEtxnMode('GCash')">GCash</button>
+          <button type="button" class="pay-pill etxn-pay-pill"        data-mode="Bank Transfer" onclick="FrontDesk.selectEtxnMode('Bank Transfer')">Bank</button>
+          <button type="button" class="pay-pill etxn-pay-pill"        data-mode="Other"         onclick="FrontDesk.selectEtxnMode('Other')">Other</button>
+          <input type="hidden" id="fd-etxn-mode" value="Cash">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label class="field-label" for="fd-etxn-notes">Notes</label>
+        <input type="text" id="fd-etxn-notes" class="form-control" placeholder="Optional">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('fd-edit-txn-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fd-etxn-save-btn" onclick="FrontDesk.saveEditTxn()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════
      EMAIL PREVIEW MODAL
 ═══════════════════════════════════════════════════════════════ -->

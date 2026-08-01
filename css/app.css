@@ -861,18 +861,22 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
-.fd-ci-name { flex: 1; font-weight: 500; }
-.fd-mode { color: var(--text-muted); font-size: 12px; }
-.fd-undo-btn {
+.fd-ci-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fd-ci-name { font-weight: 500; }
+.fd-ci-reg  { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.fd-ci-mode { font-size: 11px; color: var(--text-muted); }
+.fd-ci-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+.fd-checkedin-item:hover .fd-ci-actions { opacity: 1; }
+.fd-undo-btn, .fd-edit-btn {
   background: none; border: none;
   color: var(--text-muted); font-size: 12px; font-weight: 600;
   cursor: pointer; padding: 4px 8px;
-  border-radius: 6px; opacity: 0;
-  transition: opacity .15s, background .1s, color .1s;
+  border-radius: 6px;
+  transition: background .1s, color .1s;
   white-space: nowrap;
 }
-.fd-checkedin-item:hover .fd-undo-btn { opacity: 1; }
 .fd-undo-btn:hover { background: #fee2e2; color: #991b1b; }
+.fd-edit-btn:hover { background: var(--bg); color: var(--navy); }
 
 /* Check-in modal ─────────────────── */
 .checkin-summary {

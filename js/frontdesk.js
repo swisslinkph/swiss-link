@@ -242,6 +242,11 @@ const FrontDesk = (() => {
           <span style="font-size:12px;">${paidLine}</span>
           <span class="fd-slot-count ${allIn ? 'all-in' : ''}">${checkedSlots.size}/${totalSlots} checked in</span>
         </div>
+        ${reg.PaymentNote || reg.AdminNotes ? `
+        <div class="fd-reg-notes">
+          ${reg.PaymentNote ? `<span class="fd-note-reg">💬 ${Utils.escape(reg.PaymentNote)}</span>` : ''}
+          ${reg.AdminNotes  ? `<span class="fd-note-admin">📋 ${Utils.escape(reg.AdminNotes)}</span>`  : ''}
+        </div>` : ''}
       </div>
       <div class="fd-slot-list">${rows.join('')}</div>
       ${status !== 'Confirmed' ? `

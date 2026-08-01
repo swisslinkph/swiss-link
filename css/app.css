@@ -818,6 +818,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .fd-slot-name { font-size: 14px; font-weight: 600; display: block; }
 .fd-slot-key  { font-size: 11px; color: var(--text-muted); font-family: monospace; }
 .fd-slot-btn  { font-size: 12px; padding: 6px 14px; white-space: nowrap; flex-shrink: 0; }
+.fd-reg-notes { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 2px; }
+.fd-note-reg, .fd-note-admin { font-size: 12px; color: var(--text-muted); }
+.fd-note-admin { font-style: italic; }
 .fd-reg-footer { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
 .fd-walkin-card { border: 1.5px dashed var(--border); }
 .fd-ci-reg { font-size: 11px; color: var(--text-muted); white-space: nowrap; }

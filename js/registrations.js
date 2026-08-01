@@ -250,7 +250,7 @@ const Registrations = (() => {
             title="${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '')}">
           ${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '—')}
         </td>
-        <td style="white-space:nowrap;">
+        <td style="white-space:nowrap;text-align:right;">
           <button class="btn btn-sm btn-outline" onclick="Registrations.openEditRegistration('${safeId}')">
             Process
           </button>
@@ -258,10 +258,7 @@ const Registrations = (() => {
             <button class="btn btn-sm btn-primary" style="margin-left:4px;"
                     onclick="Registrations.openConfirmPayment('${safeId}')">
               Confirm
-            </button>` : `
-            <span class="text-muted" style="font-size:12px;margin-left:4px;">
-              ${Utils.formatPHP(r[C.AMOUNT])} via ${Utils.escape(r[C.PAY_MODE] || '—')}
-            </span>`}
+            </button>` : ''}
           ${status !== 'Cancelled' ? `
             <button class="btn btn-sm btn-danger-outline" style="margin-left:4px;"
                     onclick="Registrations.cancelRegistration('${safeId}')">

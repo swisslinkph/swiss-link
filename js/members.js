@@ -30,7 +30,6 @@ const Members = (() => {
     TYPE:     'Membership Type',
     FAM:      'Family Group',   // legacy column kept for search
     FAM_HEAD: 'Family Head',    // member key of the family head
-    NAME:     'Full Name',
   };
 
   // Annual membership rates — keyed by tier id

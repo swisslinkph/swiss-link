@@ -188,8 +188,7 @@ const FrontDesk = (() => {
   function _regCardHtml(reg) {
     const name         = [reg.LastName, reg.FirstName].filter(Boolean).join(', ');
     const status       = reg.PaymentStatus || 'Pending';
-    const checkedSlots = new Set((reg.CheckedIn     || '').split(',').filter(Boolean));
-    const paidSlots    = new Set((reg.SlotPayments  || '').split(',').filter(Boolean));
+    const checkedSlots = new Set((reg.CheckedIn || '').split(',').filter(Boolean));
     const mQty         = parseInt(reg.MemberQty) || 0;
     const gQty         = parseInt(reg.GuestQty)  || 0;
     const kQty         = parseInt(reg.KidsQty)   || 0;
@@ -207,8 +206,7 @@ const FrontDesk = (() => {
         ? `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim()
         : key || `Member ${i + 1} — unassigned`;
       const isIn   = checkedSlots.has(slotId);
-      const isPaid = paidSlots.has(slotId);
-      rows.push(_slotRowHtml(reg.RegistrationID, slotId, label, key, isIn, 'member', '', isPaid, m));
+      rows.push(_slotRowHtml(reg.RegistrationID, slotId, label, key, isIn, 'member', '', m));
     }
 
     // Guest slots
@@ -217,32 +215,21 @@ const FrontDesk = (() => {
       const slotId = `g${i + 1}`;
       const gName  = guestNames[i] || '';
       const isIn   = checkedSlots.has(slotId);
-      const isPaid = paidSlots.has(slotId);
-      rows.push(_slotRowHtml(reg.RegistrationID, slotId, gName || `Guest ${i + 1}`, '', isIn, 'guest', gName, isPaid));
+      rows.push(_slotRowHtml(reg.RegistrationID, slotId, gName || `Guest ${i + 1}`, '', isIn, 'guest', gName));
     }
 
     // Kids slots
     for (let i = 0; i < kQty; i++) {
       const slotId = `k${i + 1}`;
       const isIn   = checkedSlots.has(slotId);
-      const isPaid = paidSlots.has(slotId);
-      rows.push(_slotRowHtml(reg.RegistrationID, slotId, `Child ${i + 1}`, '', isIn, 'kids', '', isPaid));
+      rows.push(_slotRowHtml(reg.RegistrationID, slotId, `Child ${i + 1}`, '', isIn, 'kids'));
     }
 
-    const allIn       = checkedSlots.size >= totalSlots && totalSlots > 0;
-    const allPaid     = totalSlots > 0 && paidSlots.size >= totalSlots;
-    const somePaid    = paidSlots.size > 0 && !allPaid;
-    const safeId      = Utils.escape(reg.RegistrationID);
-    const paidLine    = status === 'Confirmed'
+    const allIn    = checkedSlots.size >= totalSlots && totalSlots > 0;
+    const safeId   = Utils.escape(reg.RegistrationID);
+    const paidLine = status === 'Confirmed'
       ? `${Utils.formatPHP(reg.AmountPaid)} · ${Utils.escape(reg.PaymentMode || '—')}`
       : `${Utils.formatPHP(reg.TotalDue)} due`;
-    const slotPaidBadge = totalSlots > 1
-      ? (allPaid
-          ? `<span class="fd-slot-paid-count all-paid">${paidSlots.size}/${totalSlots} paid</span>`
-          : somePaid
-            ? `<span class="fd-slot-paid-count some-paid">${paidSlots.size}/${totalSlots} paid</span>`
-            : '')
-      : '';
 
     return `<div class="fd-reg-card ${allIn ? 'fd-reg-all-in' : ''}" id="fd-reg-${safeId}">
       <div class="fd-reg-header">
@@ -253,7 +240,6 @@ const FrontDesk = (() => {
         <div class="fd-reg-meta">
           ${reg.Email ? `<span class="text-muted" style="font-size:12px;">${Utils.escape(reg.Email)}</span>` : ''}
           <span style="font-size:12px;">${paidLine}</span>
-          ${slotPaidBadge}
           <span class="fd-slot-count ${allIn ? 'all-in' : ''}">${checkedSlots.size}/${totalSlots} checked in</span>
         </div>
         ${reg.PaymentNote || reg.AdminNotes ? `
@@ -263,7 +249,7 @@ const FrontDesk = (() => {
         </div>` : ''}
       </div>
       <div class="fd-slot-list">${rows.join('')}</div>
-      ${!allPaid ? `
+      ${status !== 'Confirmed' ? `
         <div class="fd-reg-footer">
           <button class="btn btn-primary btn-sm"
             onclick="FrontDesk.openRegPayment('${safeId}')">Collect Payment</button>
@@ -271,20 +257,17 @@ const FrontDesk = (() => {
     </div>`;
   }
 
-  function _slotRowHtml(regId, slotId, label, memberKey, isIn, type, guestName, isPaid, memberObj) {
+  function _slotRowHtml(regId, slotId, label, memberKey, isIn, type, guestName, memberObj) {
     const hasGuestName = type === 'guest' && !!guestName;
     const avatarText = memberKey        ? Utils.initials(label)
       : hasGuestName                   ? Utils.initials(label)
       : type === 'guest'               ? 'G'
       : type === 'kids'                ? 'K'
       : '?';
-    const safeRegId   = Utils.escape(regId);
-    const safeSlot    = Utils.escape(slotId);
-    const gIdx        = type === 'guest' ? parseInt(safeSlot.slice(1)) : 0;
-    const paidBtn     = `<button class="fd-slot-paid-btn ${isPaid ? 'is-paid' : 'not-paid'}"
-        title="${isPaid ? 'Mark unpaid' : 'Mark paid'}"
-        onclick="FrontDesk.toggleSlotPaid('${safeRegId}','${safeSlot}')">₱</button>`;
-    const statusChip  = memberObj
+    const safeRegId  = Utils.escape(regId);
+    const safeSlot   = Utils.escape(slotId);
+    const gIdx       = type === 'guest' ? parseInt(safeSlot.slice(1)) : 0;
+    const statusChip = memberObj
       ? Utils.statusBadge(memberObj['Membership Status'], memberObj['Renewal Year'])
       : '';
     return `<div class="fd-slot-row ${isIn ? 'slot-checked-in' : ''}" id="fd-slot-${safeRegId}-${safeSlot}">
@@ -296,7 +279,6 @@ const FrontDesk = (() => {
       </div>
       ${isIn
         ? `<div class="fd-slot-in-wrap">
-             ${paidBtn}
              <span class="fd-checked-badge">✅ In</span>
              <button class="fd-slot-undo-btn" onclick="FrontDesk.undoSlot('${safeRegId}','${safeSlot}')" title="Undo check-in">Undo</button>
            </div>`
@@ -309,7 +291,6 @@ const FrontDesk = (() => {
                ? `<button class="btn btn-sm btn-outline fd-assign-btn"
                     onclick="FrontDesk.openNameGuest('${safeRegId}',${gIdx})">${hasGuestName ? 'Rename' : 'Name'}</button>`
                : ''}
-             ${paidBtn}
              <button class="btn btn-sm ${type === 'member' ? 'btn-primary' : 'btn-outline'} fd-slot-btn"
                onclick="FrontDesk.checkinSlot('${safeRegId}','${safeSlot}')">Check In</button>
            </div>`}
@@ -394,36 +375,6 @@ const FrontDesk = (() => {
       const cardEl2 = document.getElementById(`fd-reg-${regId}`);
       if (cardEl2) cardEl2.outerHTML = _regCardHtml(reg);
       _updateLiveStats();
-      Utils.toast(e.message, 'error');
-    }
-  }
-
-  // ── Per-slot payment toggle ───────────────────────────────────────────────
-  async function toggleSlotPaid(regId, slotId) {
-    const reg = _registrations.find(r => r.RegistrationID === regId);
-    if (!reg) return;
-
-    const current = (reg.SlotPayments || '').split(',').filter(Boolean);
-    const idx = current.indexOf(slotId);
-    if (idx === -1) current.push(slotId);
-    else current.splice(idx, 1);
-    const newSlotPayments = current.join(',');
-
-    reg.SlotPayments = newSlotPayments;
-    const cardEl = document.getElementById(`fd-reg-${regId}`);
-    if (cardEl) cardEl.outerHTML = _regCardHtml(reg);
-
-    try {
-      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, { ...reg, SlotPayments: newSlotPayments });
-      const wasPaid = idx === -1;
-      Utils.toast(wasPaid ? `₱ Slot marked paid` : `₱ Slot marked unpaid`);
-    } catch (e) {
-      // Roll back
-      reg.SlotPayments = current.indexOf(slotId) === -1
-        ? [...current, slotId].join(',')
-        : current.filter(s => s !== slotId).join(',');
-      const cardEl2 = document.getElementById(`fd-reg-${regId}`);
-      if (cardEl2) cardEl2.outerHTML = _regCardHtml(reg);
       Utils.toast(e.message, 'error');
     }
   }
@@ -1178,7 +1129,7 @@ const FrontDesk = (() => {
 
   return {
     render, init, selectEvent, changeEvent,
-    checkinSlot, undoSlot, toggleSlotPaid, openRegPayment,
+    checkinSlot, undoSlot, openRegPayment,
     openAssignSlot, onAssignInput, selectAssignMember,
     openFdAddMember, saveFdAddMember,
     openNameGuest, saveNameGuest,

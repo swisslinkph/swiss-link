@@ -1188,7 +1188,7 @@ const Registrations = (() => {
       const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
       const key  = m['Member Key'] || '';
       return `<div class="member-key-suggestion-item"
-                   onclick="Registrations.selectMemberSuggestion('${Utils.escape(key)}', '${Utils.escape(name)}')">
+                   onclick="Registrations.selectMemberSuggestion('${Utils.escape(key)}')">
         <span class="suggestion-name">${Utils.escape(name)}</span>
         <span style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
           ${_memberTypeBadge(m)}
@@ -1199,9 +1199,20 @@ const Registrations = (() => {
     box.style.display = 'block';
   }
 
-  function selectMemberSuggestion(key, name) {
-    const keyEl = document.getElementById('reg-add-member-key');
-    if (keyEl) keyEl.value = key;
+  function selectMemberSuggestion(key) {
+    const m = _members.find(x => x['Member Key'] === key);
+    if (!m) return;
+
+    const lastEl  = document.getElementById('reg-add-last');
+    const firstEl = document.getElementById('reg-add-first');
+    const emailEl = document.getElementById('reg-add-email');
+    const keyEl   = document.getElementById('reg-add-member-key');
+
+    if (lastEl)  lastEl.value  = m['Last Name']  || '';
+    if (firstEl) firstEl.value = m['First Name'] || '';
+    if (emailEl && !emailEl.value.trim()) emailEl.value = m['Email'] || '';
+    if (keyEl)   keyEl.value   = key;
+
     clearMemberSuggestions();
   }
 

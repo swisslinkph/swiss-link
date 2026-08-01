@@ -164,14 +164,14 @@ const Members = (() => {
         ? `<span class="badge badge-head">👑 Head</span>`
         : famName ? `<span class="badge badge-fam">👨‍👩‍👧 ${Utils.escape(famName)}</span>` : '';
       return `<tr data-key="${key}">
-        <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.FIRST])}</td>
-        <td class="member-cell-link" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.LAST])}</td>
-        <td>${Utils.escape(m[C.EMAIL])}</td>
-        <td>${Utils.escape(m[C.LOC])}</td>
-        <td>${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}</td>
-        <td>${Utils.typeBadge(m[C.TYPE])}</td>
-        <td>${famCell}</td>
-        <td class="amount">${Utils.formatPHP(ytd)}</td>
+        <td class="member-cell-link col-first" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.FIRST])}</td>
+        <td class="member-cell-link col-last" onclick="Members.openDetail('${key}')">${Utils.escape(m[C.LAST])}</td>
+        <td class="col-email">${Utils.escape(m[C.EMAIL])}</td>
+        <td class="col-location">${Utils.escape(m[C.LOC])}</td>
+        <td class="col-status">${Utils.statusBadge(m[C.STATUS], m[C.RENEWAL])}</td>
+        <td class="col-type">${Utils.typeBadge(m[C.TYPE])}</td>
+        <td class="col-family">${famCell}</td>
+        <td class="amount col-ytd">${Utils.formatPHP(ytd)}</td>
         <td class="actions">
           <button class="btn-icon" title="View profile" onclick="Members.openDetail('${key}')">👤</button>
           <button class="btn-icon" title="Edit" onclick="Members.openEdit('${key}')">✏️</button>
@@ -972,6 +972,52 @@ const Members = (() => {
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
+  // ── Column visibility ─────────────────────────────────────────────────────
+  const _ALL_COLS = ['first','last','email','location','status','type','family','ytd'];
+  let _hiddenCols = new Set(JSON.parse(localStorage.getItem('members-hidden-cols') || '[]'));
+
+  function _applyColVisibility() {
+    let el = document.getElementById('members-col-style');
+    if (!el) {
+      el = document.createElement('style');
+      el.id = 'members-col-style';
+      document.head.appendChild(el);
+    }
+    el.textContent = [..._hiddenCols]
+      .map(k => `#members-table .col-${k} { display: none; }`)
+      .join('\n');
+    _ALL_COLS.forEach(k => {
+      const cb = document.getElementById(`col-toggle-${k}`);
+      if (cb) cb.checked = !_hiddenCols.has(k);
+    });
+  }
+
+  function toggleCol(key) {
+    if (_hiddenCols.has(key)) _hiddenCols.delete(key);
+    else _hiddenCols.add(key);
+    localStorage.setItem('members-hidden-cols', JSON.stringify([..._hiddenCols]));
+    _applyColVisibility();
+  }
+
+  function toggleColPanel() {
+    const panel = document.getElementById('members-col-panel');
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (!open) {
+      // Close on outside click
+      setTimeout(() => {
+        const close = e => {
+          if (!panel.contains(e.target) && !e.target.closest('[onclick*="toggleColPanel"]')) {
+            panel.style.display = 'none';
+          }
+          document.removeEventListener('click', close);
+        };
+        document.addEventListener('click', close);
+      }, 0);
+    }
+  }
+
   function init() {
     document.getElementById('member-search')
       ?.addEventListener('input', e => _onSearch(e.target.value));
@@ -1000,6 +1046,7 @@ const Members = (() => {
     document.querySelectorAll('#members-table th[data-sort]').forEach(th => {
       th.addEventListener('click', () => sort(th.dataset.sort));
     });
+    _applyColVisibility();
   }
 
   return {
@@ -1009,6 +1056,6 @@ const Members = (() => {
     openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
-    applyStatusFilter,
+    applyStatusFilter, toggleCol, toggleColPanel,
   };
 })();

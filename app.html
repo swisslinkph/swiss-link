@@ -159,6 +159,19 @@
           <option value="Exempt">Exempt</option>
         </select>
         <span class="record-count" id="member-count"></span>
+        <div style="position:relative;">
+          <button class="btn btn-outline btn-sm" onclick="Members.toggleColPanel()">Columns</button>
+          <div id="members-col-panel" style="display:none;">
+            <label><input type="checkbox" id="col-toggle-first"    onchange="Members.toggleCol('first')">    First Name</label>
+            <label><input type="checkbox" id="col-toggle-last"     onchange="Members.toggleCol('last')">     Last Name</label>
+            <label><input type="checkbox" id="col-toggle-email"    onchange="Members.toggleCol('email')">    Email</label>
+            <label><input type="checkbox" id="col-toggle-location" onchange="Members.toggleCol('location')"> Location</label>
+            <label><input type="checkbox" id="col-toggle-status"   onchange="Members.toggleCol('status')">   Status</label>
+            <label><input type="checkbox" id="col-toggle-type"     onchange="Members.toggleCol('type')">     Type</label>
+            <label><input type="checkbox" id="col-toggle-family"   onchange="Members.toggleCol('family')">   Family</label>
+            <label><input type="checkbox" id="col-toggle-ytd"      onchange="Members.toggleCol('ytd')">      YTD Paid</label>
+          </div>
+        </div>
         <button class="btn btn-outline btn-sm" id="member-export-btn">⬇ Export CSV</button>
         <button class="btn btn-primary btn-sm" id="add-member-btn">+ Add Member</button>
       </div>
@@ -173,14 +186,14 @@
         <table class="data-table" id="members-table">
           <thead>
             <tr>
-              <th data-sort="First Name">First Name</th>
-              <th data-sort="Last Name">Last Name</th>
-              <th data-sort="Email">Email</th>
-              <th data-sort="Location (Metro Manila/Province)">Location</th>
-              <th data-sort="Membership Status">Status</th>
-              <th data-sort="Membership Type">Type</th>
-              <th data-sort="Family Group">Family</th>
-              <th>YTD Paid</th>
+              <th data-sort="First Name" class="col-first">First Name</th>
+              <th data-sort="Last Name" class="col-last">Last Name</th>
+              <th data-sort="Email" class="col-email">Email</th>
+              <th data-sort="Location (Metro Manila/Province)" class="col-location">Location</th>
+              <th data-sort="Membership Status" class="col-status">Status</th>
+              <th data-sort="Membership Type" class="col-type">Type</th>
+              <th data-sort="Family Group" class="col-family">Family</th>
+              <th class="col-ytd">YTD Paid</th>
               <th>Actions</th>
             </tr>
           </thead>

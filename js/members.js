@@ -813,7 +813,7 @@ const Members = (() => {
     const famRow = document.getElementById('mf-fam-head')?.closest('.form-group');
     if (famRow) famRow.style.opacity = type === 'Family' ? '1' : '0.4';
     const sel = document.getElementById('mf-fam-head');
-    if (sel && !sel.disabled) sel.disabled = type !== 'Family';
+    if (sel && sel.dataset.lockedHead !== 'true') sel.disabled = type !== 'Family';
   }
 
   function _buildFamilySelect(memberKey, currentHeadKey) {
@@ -826,9 +826,11 @@ const Members = (() => {
     if (isHead) {
       sel.innerHTML = `<option value="${Utils.escape(memberKey)}">👑 Head of own family</option>`;
       sel.disabled  = true;
+      sel.dataset.lockedHead = 'true';
       if (hint) { hint.textContent = 'To reassign the head, use the Family Groups view.'; hint.style.display = ''; }
     } else {
       sel.disabled = false;
+      sel.dataset.lockedHead = 'false';
       if (hint) hint.style.display = 'none';
       const heads = _all
         .filter(m => m[C.FAM_HEAD] === m[C.KEY] && m[C.KEY] !== memberKey)

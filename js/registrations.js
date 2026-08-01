@@ -252,7 +252,7 @@ const Registrations = (() => {
         </td>
         <td style="white-space:nowrap;">
           <button class="btn btn-sm btn-outline" onclick="Registrations.openEditRegistration('${safeId}')">
-            Edit
+            Process
           </button>
           ${status !== 'Confirmed' ? `
             <button class="btn btn-sm btn-primary" style="margin-left:4px;"
@@ -261,12 +261,7 @@ const Registrations = (() => {
             </button>` : `
             <span class="text-muted" style="font-size:12px;margin-left:4px;">
               ${Utils.formatPHP(r[C.AMOUNT])} via ${Utils.escape(r[C.PAY_MODE] || '—')}
-            </span>
-            <button class="btn btn-sm btn-outline" style="margin-left:4px;"
-                    title="Write missing transactions for this registration"
-                    onclick="Registrations.syncTransactions('${safeId}')">
-              Sync Txns
-            </button>`}
+            </span>`}
           ${status !== 'Cancelled' ? `
             <button class="btn btn-sm btn-danger-outline" style="margin-left:4px;"
                     onclick="Registrations.cancelRegistration('${safeId}')">
@@ -1121,7 +1116,7 @@ const Registrations = (() => {
       <p>Go to <strong>Registrations</strong>.<br>
       Find each ⚠ Pending row and click <strong>Confirm</strong>.<br>
       Enter the amount and mode collected at the door.<br>
-      Then click <strong>Sync Txns</strong> to write the transaction record.</p>
+      The transaction record is written automatically on save.</p>
     </div>
     <div class="guide-col">
       <h4>3. Log walk-in guests</h4>
@@ -1485,7 +1480,47 @@ const Registrations = (() => {
       if (_editingRegId) {
         const existing = _all.find(x => x[C.ID] === _editingRegId);
         if (!existing) throw new Error('Registration not found.');
-        await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, existing._rowIndex, { ...existing, ...obj });
+        const saved = { ...existing, ...obj };
+        await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, existing._rowIndex, saved);
+
+        // Silently sync transaction if confirmed and none exists yet
+        if (saved[C.STATUS] === 'Confirmed' && saved[C.AMOUNT]) {
+          if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+          const allTxns  = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []);
+          const payeeKey = saved[C.MKEY] || '';
+          const regName  = [saved[C.LAST], saved[C.FIRST]].filter(Boolean).join(' ');
+          const hasTxn   = allTxns.some(t =>
+            t.EventID === saved[C.EVID] &&
+            (payeeKey ? t.MemberKey === payeeKey : t.MemberName === regName)
+          );
+          if (!hasTxn) {
+            const member    = payeeKey ? _members.find(m => m['Member Key'] === payeeKey) : null;
+            const payeeName = member ? `${member['First Name']} ${member['Last Name']}`.trim() : regName;
+            const totalPax  = (parseInt(saved[C.MEM_QTY]) || 1) + (parseInt(saved[C.GUEST_QTY]) || 0) + (parseInt(saved[C.KIDS_QTY]) || 0);
+            const paxNote   = [
+              parseInt(saved[C.MEM_QTY])   > 0 ? `${saved[C.MEM_QTY]} Member${saved[C.MEM_QTY] > 1 ? 's' : ''}` : null,
+              parseInt(saved[C.GUEST_QTY]) > 0 ? `${saved[C.GUEST_QTY]} Guest${saved[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
+              parseInt(saved[C.KIDS_QTY])  > 0 ? `${saved[C.KIDS_QTY]} Kid${saved[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
+            ].filter(Boolean).join(' · ');
+            const now = new Date();
+            await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+              TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
+              Timestamp:     saved[C.TS] || now.toISOString(),
+              MemberKey:     payeeKey,
+              MemberName:    payeeName,
+              EventID:       saved[C.EVID],
+              EventName:     saved[C.EVNAME] || _event?.Title || '',
+              AmountPaid:    parseFloat(saved[C.AMOUNT]) || 0,
+              PaymentMode:   saved[C.PAY_MODE] || '',
+              Category:      'Event',
+              Year:          new Date(saved[C.TS] || now).getFullYear(),
+              Month:         new Date(saved[C.TS] || now).getMonth() + 1,
+              HeadCount:     totalPax,
+              Notes:         [paxNote, `Reg: ${_editingRegId}`, saved[C.NOTES]].filter(Boolean).join(' — '),
+              RecordedBy:    Auth.getUserEmail(),
+            });
+          }
+        }
 
         // Sync registration email to member record if the member has none
         const regEmail = obj[C.EMAIL];

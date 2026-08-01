@@ -599,7 +599,7 @@ const FrontDesk = (() => {
           label = `Child ${slotId.slice(1)}`;
         }
         const regName = [reg.LastName, reg.FirstName].filter(Boolean).join(', ');
-        rows.push({ label, regName, status: reg.PaymentStatus });
+        rows.push({ label, regName, status: reg.PaymentStatus, regId: reg.RegistrationID, slotId });
       });
     });
 
@@ -625,7 +625,9 @@ const FrontDesk = (() => {
         <div class="fd-avatar sm">${Utils.initials(r.label)}</div>
         <span class="fd-ci-name">${Utils.escape(r.label)}</span>
         <span class="fd-ci-reg">${Utils.escape(r.regName)}</span>
-        ${r.txnId ? `<button class="fd-undo-btn" onclick="FrontDesk.undoCheckin('${Utils.escape(r.txnId)}')">Undo</button>` : ''}
+        ${r.txnId
+          ? `<button class="fd-undo-btn" onclick="FrontDesk.undoCheckin('${Utils.escape(r.txnId)}')">Undo</button>`
+          : `<button class="fd-undo-btn" onclick="FrontDesk.undoSlot('${Utils.escape(r.regId)}','${Utils.escape(r.slotId)}')">Undo</button>`}
       </div>`).join('');
   }
 

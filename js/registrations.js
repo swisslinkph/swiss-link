@@ -1249,6 +1249,16 @@ const Registrations = (() => {
     recalcAddTotal();
   }
 
+  function onMemberQtyChange() {
+    recalcAddTotal();
+    if (!_editingRegId) return;
+    const qty        = Math.max(1, parseInt(document.getElementById('reg-add-member-qty')?.value, 10) || 1);
+    const primaryKey = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value?.trim() || '';
+    const currentSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
+      .map(el => el.value.trim());
+    _renderEditSlots(qty, primaryKey, currentSlots);
+  }
+
   function recalcAddTotal() {
     if (!_event) return;
     const isWalkIn = document.getElementById('reg-add-walkin')?.checked;
@@ -1426,7 +1436,7 @@ const Registrations = (() => {
     searchEditSlot, selectEditSlot, clearEditSlot,
     openAddFromSlot, saveAddFromSlot,
     cancelRegistration,
-    openAddRegistration, onAddSourceChange, onAddWalkInChange,
+    openAddRegistration, onAddSourceChange, onAddWalkInChange, onMemberQtyChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,

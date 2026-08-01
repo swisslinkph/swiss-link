@@ -1116,7 +1116,7 @@
 
         <div class="form-group">
           <label for="reg-add-member-qty">Member tickets</label>
-          <input type="number" id="reg-add-member-qty" class="form-control" value="0" min="0" oninput="Registrations.recalcAddTotal()">
+          <input type="number" id="reg-add-member-qty" class="form-control" value="0" min="0" oninput="Registrations.onMemberQtyChange()">
         </div>
         <div class="form-group">
           <label for="reg-add-guest-qty">Guest tickets</label>
@@ -1131,34 +1131,39 @@
           <input type="number" id="reg-add-total" class="form-control" min="0" step="0.01" placeholder="Auto-calculated">
         </div>
 
-        <div style="grid-column:1/-1;border-top:1px solid var(--border);margin:4px 0;"></div>
+        <!-- ── Payment section ─────────────────────────────────── -->
+        <div class="reg-payment-card" style="grid-column:1/-1;">
+          <div class="reg-payment-card-header">Payment</div>
+          <div class="form-grid" style="gap:12px;">
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="reg-add-pay-note">Note from registrant</label>
+              <input type="text" id="reg-add-pay-note" class="form-control" placeholder="e.g. MS Paid, GCash sent">
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="reg-add-status">Payment Status</label>
+              <select id="reg-add-status" class="form-control reg-status-select" onchange="Registrations.onAddStatusChange()">
+                <option value="Pending">Pending</option>
+                <option value="Confirmed">Confirmed</option>
+              </select>
+            </div>
+            <div class="form-group" id="reg-add-mode-row" style="display:none;">
+              <label for="reg-add-mode">Payment Mode</label>
+              <select id="reg-add-mode" class="form-control">
+                <option>BDO</option>
+                <option>GCash</option>
+                <option>PayPal</option>
+                <option>Cash</option>
+                <option>Bank Transfer</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-group" id="reg-add-amount-row" style="display:none;">
+              <label for="reg-add-amount">Amount Paid (₱)</label>
+              <input type="number" id="reg-add-amount" class="form-control reg-amount-input" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
 
-        <div class="form-group" style="grid-column:1/-1">
-          <label for="reg-add-pay-note">Payment Note <span class="text-muted" style="font-weight:400;">(what registrant wrote / indicated)</span></label>
-          <input type="text" id="reg-add-pay-note" class="form-control" placeholder="e.g. MS Paid, GCash sent">
-        </div>
-        <div class="form-group">
-          <label for="reg-add-status">Payment Status</label>
-          <select id="reg-add-status" class="form-control" onchange="Registrations.onAddStatusChange()">
-            <option value="Pending">Pending</option>
-            <option value="Confirmed">Confirmed</option>
-          </select>
-        </div>
-        <div class="form-group" id="reg-add-mode-row" style="display:none;">
-          <label for="reg-add-mode">Payment Mode</label>
-          <select id="reg-add-mode" class="form-control">
-            <option>BDO</option>
-            <option>GCash</option>
-            <option>PayPal</option>
-            <option>Cash</option>
-            <option>Bank Transfer</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div class="form-group" id="reg-add-amount-row" style="display:none;">
-          <label for="reg-add-amount">Amount Paid (₱)</label>
-          <input type="number" id="reg-add-amount" class="form-control" min="0" step="0.01">
-        </div>
         <div class="form-group" style="grid-column:1/-1">
           <label for="reg-add-notes">Admin Notes</label>
           <input type="text" id="reg-add-notes" class="form-control" placeholder="Optional">

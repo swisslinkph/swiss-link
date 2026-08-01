@@ -1488,6 +1488,45 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .badge-reg-confirmed { background: #dcfce7; color: #166534; }
 .badge-reg-pending   { background: #fef3c7; color: #92400e; }
 .badge-reg-cancelled { background: #fee2e2; color: #991b1b; }
+
+/* ── Payment card inside Edit Registration modal ── */
+.reg-payment-card {
+  border: 2px solid var(--navy);
+  border-radius: 8px;
+  padding: 16px;
+  background: #f0f4fa;
+}
+@media (prefers-color-scheme: dark) {
+  .reg-payment-card { background: #1a2540; border-color: #4a6fa5; }
+}
+:root[data-theme="dark"]  .reg-payment-card { background: #1a2540; border-color: #4a6fa5; }
+:root[data-theme="light"] .reg-payment-card { background: #f0f4fa; border-color: var(--navy); }
+
+.reg-payment-card-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  .reg-payment-card-header { color: #93b4e0; }
+}
+:root[data-theme="dark"]  .reg-payment-card-header { color: #93b4e0; }
+:root[data-theme="light"] .reg-payment-card-header { color: var(--navy); }
+
+.reg-status-select {
+  font-size: 15px;
+  font-weight: 600;
+  height: 42px;
+}
+.reg-amount-input {
+  font-size: 20px;
+  font-weight: 700;
+  height: 48px;
+  letter-spacing: .01em;
+}
 .badge-walkin        { background: #ede9fe; color: #5b21b6; font-size: 10px; }
 
 .reg-link-warning {

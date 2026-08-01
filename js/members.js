@@ -17,6 +17,13 @@ const Members = (() => {
   let _afterSaveCallback = null; // optional cross-module callback set by openAdd(prefill, cb)
   let _rates      = {}; // loaded from Rates sheet, falls back to MEMBERSHIP_RATES
 
+  // Merge state
+  let _mergeCanonicalKey = null;
+  let _mergeDupKey       = null;
+  let _mergeStep         = 1;
+  let _mergeConflicts    = []; // [{field, keepVal, dupVal, chosen}]
+  let _mergeResolved     = {}; // field -> chosen value
+
   const C = {
     KEY:      'Member Key',
     LAST:     'Last Name',
@@ -557,6 +564,7 @@ const Members = (() => {
         <div style="display:flex;gap:8px;flex-shrink:0;">
           <button class="btn btn-primary btn-sm" onclick="Members.openRecordDues('${Utils.escape(key)}')">💰 Record Transaction</button>
           <button class="btn btn-outline btn-sm" onclick="Members.openEdit('${Utils.escape(key)}')">✏️ Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="Members.openMerge('${Utils.escape(key)}')">⇌ Merge Duplicate</button>
         </div>
       </div>
 
@@ -1032,6 +1040,279 @@ const Members = (() => {
     }
   }
 
+  // ── Merge Duplicate ───────────────────────────────────────────────────────
+
+  const MERGE_FIELDS = [
+    { field: C.LAST,    label: 'Last Name' },
+    { field: C.FIRST,   label: 'First Name' },
+    { field: C.ALT,     label: 'Alternative Name' },
+    { field: C.EMAIL,   label: 'Email' },
+    { field: C.MOBILE,  label: 'Mobile' },
+    { field: C.LOC,     label: 'Location' },
+    { field: C.STATUS,  label: 'Membership Status' },
+    { field: C.RENEWAL, label: 'Renewal Year' },
+    { field: C.TYPE,    label: 'Membership Type' },
+    { field: C.FAM_HEAD,label: 'Family Head' },
+  ];
+
+  function _memberCard(m) {
+    const name = `${m[C.FIRST] || ''} ${m[C.LAST] || ''}`.trim() || m[C.KEY];
+    const lines = [
+      `<div class="merge-card-name">${Utils.escape(name)}</div>`,
+      `<div class="merge-card-key">${Utils.escape(m[C.KEY])}</div>`,
+      m[C.EMAIL]  ? `<div class="merge-card-detail">${Utils.escape(m[C.EMAIL])}</div>` : '',
+      m[C.STATUS] ? Utils.statusBadge(m[C.STATUS], m[C.RENEWAL]) : '',
+      m[C.TYPE]   ? Utils.typeBadge(m[C.TYPE]) : '',
+    ].filter(Boolean);
+    return lines.join('');
+  }
+
+  function openMerge(canonicalKey) {
+    _mergeCanonicalKey = canonicalKey;
+    _mergeDupKey       = null;
+    _mergeStep         = 1;
+    _mergeConflicts    = [];
+    _mergeResolved     = {};
+
+    const canonical = _all.find(m => m[C.KEY] === canonicalKey);
+    if (!canonical) return;
+
+    document.getElementById('merge-step1').style.display = '';
+    document.getElementById('merge-step2').style.display = 'none';
+    document.getElementById('merge-step3').style.display = 'none';
+    document.getElementById('merge-search-input').value = '';
+    document.getElementById('merge-search-sugg').innerHTML = '';
+    document.getElementById('merge-selected-preview').style.display = 'none';
+    document.getElementById('merge-next-btn').style.display = 'none';
+    document.getElementById('merge-confirm-btn').style.display = 'none';
+
+    document.getElementById('merge-keep-card-body').innerHTML = _memberCard(canonical);
+
+    Utils.showModal('merge-modal');
+  }
+
+  function onMergeSearch(q) {
+    const sugg = document.getElementById('merge-search-sugg');
+    if (!q || q.length < 2) { sugg.innerHTML = ''; return; }
+    const results = Utils.filterRows(_all, q, [C.FIRST, C.LAST, C.ALT, C.EMAIL, C.KEY])
+      .filter(m => m[C.KEY] !== _mergeCanonicalKey)
+      .slice(0, 6);
+    if (!results.length) { sugg.innerHTML = '<div class="suggestion-item">No matches</div>'; return; }
+    sugg.innerHTML = results.map(m => {
+      const name = `${m[C.FIRST] || ''} ${m[C.LAST] || ''}`.trim() || m[C.KEY];
+      return `<div class="suggestion-item" onclick="Members.selectMergeDup('${Utils.escape(m[C.KEY])}')">
+        <span class="sug-name">${Utils.escape(name)}</span>
+        <span class="sug-key">${Utils.escape(m[C.KEY])}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function selectMergeDup(dupKey) {
+    _mergeDupKey = dupKey;
+    document.getElementById('merge-search-sugg').innerHTML = '';
+
+    const dup = _all.find(m => m[C.KEY] === dupKey);
+    if (!dup) return;
+
+    const input = document.getElementById('merge-search-input');
+    input.value = `${dup[C.FIRST] || ''} ${dup[C.LAST] || ''}`.trim() || dupKey;
+
+    document.getElementById('merge-dup-card-body').innerHTML = _memberCard(dup);
+    document.getElementById('merge-selected-preview').style.display = '';
+    document.getElementById('merge-next-btn').style.display = '';
+  }
+
+  function mergeNext() {
+    if (_mergeStep === 1) {
+      if (!_mergeDupKey) return;
+      const canonical = _all.find(m => m[C.KEY] === _mergeCanonicalKey);
+      const dup       = _all.find(m => m[C.KEY] === _mergeDupKey);
+      if (!canonical || !dup) return;
+
+      // Find conflicts
+      _mergeConflicts = MERGE_FIELDS.filter(f => {
+        const cv = (canonical[f.field] || '').trim();
+        const dv = (dup[f.field]       || '').trim();
+        return cv && dv && cv !== dv;
+      }).map(f => ({
+        field:   f.field,
+        label:   f.label,
+        keepVal: (canonical[f.field] || '').trim(),
+        dupVal:  (dup[f.field]       || '').trim(),
+        chosen:  'keep',
+      }));
+
+      // Pre-fill resolved with auto-merge values
+      _mergeResolved = {};
+      MERGE_FIELDS.forEach(f => {
+        const cv = (canonical[f.field] || '').trim();
+        const dv = (dup[f.field]       || '').trim();
+        // Conflict: user must pick — start with canonical
+        if (cv && dv && cv !== dv) { _mergeResolved[f.field] = cv; return; }
+        // No conflict: take whichever is non-empty
+        _mergeResolved[f.field] = cv || dv;
+      });
+
+      if (_mergeConflicts.length) {
+        _mergeStep = 2;
+        _renderConflicts();
+        document.getElementById('merge-step1').style.display = 'none';
+        document.getElementById('merge-step2').style.display = '';
+        document.getElementById('merge-next-btn').textContent = 'Review Summary';
+      } else {
+        _mergeStep = 3;
+        _renderSummary();
+        document.getElementById('merge-step1').style.display = 'none';
+        document.getElementById('merge-step3').style.display = '';
+        document.getElementById('merge-next-btn').style.display = 'none';
+        document.getElementById('merge-confirm-btn').style.display = '';
+      }
+    } else if (_mergeStep === 2) {
+      // Collect conflict choices
+      document.querySelectorAll('.merge-conflict-row').forEach(row => {
+        const field  = row.dataset.field;
+        const chosen = row.querySelector('.merge-choice-btn.active')?.dataset.choice;
+        if (field && chosen) {
+          _mergeResolved[field] = chosen === 'keep'
+            ? _mergeConflicts.find(c => c.field === field)?.keepVal
+            : _mergeConflicts.find(c => c.field === field)?.dupVal;
+        }
+      });
+      _mergeStep = 3;
+      _renderSummary();
+      document.getElementById('merge-step2').style.display = 'none';
+      document.getElementById('merge-step3').style.display = '';
+      document.getElementById('merge-next-btn').style.display = 'none';
+      document.getElementById('merge-confirm-btn').style.display = '';
+    }
+  }
+
+  function _renderConflicts() {
+    const container = document.getElementById('merge-conflicts');
+    container.innerHTML = _mergeConflicts.map(c => `
+      <div class="merge-conflict-row" data-field="${Utils.escape(c.field)}">
+        <div class="merge-conflict-label">${Utils.escape(c.label)}</div>
+        <div class="merge-conflict-choices">
+          <button class="merge-choice-btn active" data-choice="keep"
+            onclick="Members._mergePickChoice(this, 'keep')">
+            <span class="merge-choice-source">Keep</span>
+            <span class="merge-choice-val">${Utils.escape(c.keepVal)}</span>
+          </button>
+          <button class="merge-choice-btn" data-choice="dup"
+            onclick="Members._mergePickChoice(this, 'dup')">
+            <span class="merge-choice-source">Duplicate</span>
+            <span class="merge-choice-val">${Utils.escape(c.dupVal)}</span>
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  function _mergePickChoice(btn, choice) {
+    const row = btn.closest('.merge-conflict-row');
+    row.querySelectorAll('.merge-choice-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function _renderSummary() {
+    const dup    = _all.find(m => m[C.KEY] === _mergeDupKey);
+    const dupKey = _mergeDupKey;
+
+    const txnCount  = _txns.filter(t => t.MemberKey === dupKey).length;
+    const regs      = [];
+    // We'll count these after we load registrations — for now show what we know
+    const container = document.getElementById('merge-summary');
+    container.innerHTML = `
+      <div class="merge-summary-section">
+        <div class="merge-summary-title">Merged member record</div>
+        ${MERGE_FIELDS.map(f => {
+          const val = _mergeResolved[f.field];
+          if (!val) return '';
+          return `<div class="merge-summary-row"><span class="merge-summary-field">${Utils.escape(f.label)}</span><span class="merge-summary-val">${Utils.escape(val)}</span></div>`;
+        }).filter(Boolean).join('')}
+      </div>
+      <div class="merge-summary-section">
+        <div class="merge-summary-title">References to re-link from <code>${Utils.escape(dupKey)}</code></div>
+        <div class="merge-summary-row"><span class="merge-summary-field">Transactions</span><span class="merge-summary-val">${txnCount} record${txnCount !== 1 ? 's' : ''}</span></div>
+        <div class="merge-summary-row"><span class="merge-summary-field">Duplicate member row</span><span class="merge-summary-val">Will be deleted</span></div>
+        <div class="merge-summary-row merge-summary-warn"><span class="merge-summary-field">Registrations + Family Head refs</span><span class="merge-summary-val">Scanned &amp; updated on confirm</span></div>
+      </div>`;
+  }
+
+  async function executeMerge() {
+    const canonical = _all.find(m => m[C.KEY] === _mergeCanonicalKey);
+    const dup       = _all.find(m => m[C.KEY] === _mergeDupKey);
+    if (!canonical || !dup) return;
+
+    const btn = document.getElementById('merge-confirm-btn');
+    btn.disabled = true;
+    Utils.setLoading(true, 'Merging…');
+
+    try {
+      const canonicalKey = _mergeCanonicalKey;
+      const dupKey       = _mergeDupKey;
+
+      // 1. Update the canonical member record with resolved values
+      const updatedMember = { ...canonical };
+      MERGE_FIELDS.forEach(f => {
+        if (_mergeResolved[f.field] !== undefined) updatedMember[f.field] = _mergeResolved[f.field];
+      });
+      await Sheets.update(CONFIG.SHEETS.MEMBERS, canonical._rowIndex, updatedMember);
+
+      // 2. Re-link Transactions
+      const allTxns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []);
+      for (const t of allTxns) {
+        if (t.MemberKey === dupKey) {
+          await Sheets.update(CONFIG.SHEETS.TRANSACTIONS, t._rowIndex, { ...t, MemberKey: canonicalKey });
+        }
+      }
+
+      // 3. Re-link Registrations (MemberKey + MemberSlots)
+      const allRegs = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+      for (const r of allRegs) {
+        let changed = false;
+        const updated = { ...r };
+        if (r.MemberKey === dupKey) {
+          updated.MemberKey = canonicalKey;
+          changed = true;
+        }
+        if (r.MemberSlots) {
+          const slots = r.MemberSlots.split(',').map(s => s.trim());
+          const newSlots = slots.map(s => s === dupKey ? canonicalKey : s);
+          if (newSlots.join(',') !== slots.join(',')) {
+            updated.MemberSlots = newSlots.join(',');
+            changed = true;
+          }
+        }
+        if (changed) await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, updated);
+      }
+
+      // 4. Re-link Family Head references on other members
+      const allMembers = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+      for (const m of allMembers) {
+        if (m[C.FAM_HEAD] === dupKey && m[C.KEY] !== dupKey) {
+          await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, { ...m, [C.FAM_HEAD]: canonicalKey });
+        }
+      }
+
+      // 5. Delete the duplicate row
+      await Sheets.deleteRow(CONFIG.SHEETS.MEMBERS, dup._rowIndex);
+
+      Utils.hideModal('merge-modal');
+      Utils.toast('Members merged successfully.');
+      await render();
+      if (_detailKey === dupKey) {
+        _detailKey = canonicalKey;
+      }
+      if (_detailKey) _renderDetail(_detailKey);
+
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      Utils.setLoading(false);
+    }
+  }
+
   function init() {
     document.getElementById('member-search')
       ?.addEventListener('input', e => _onSearch(e.target.value));
@@ -1071,5 +1352,6 @@ const Members = (() => {
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
     applyStatusFilter, toggleCol, toggleColPanel,
+    openMerge, onMergeSearch, selectMergeDup, mergeNext, _mergePickChoice, executeMerge,
   };
 })();

@@ -1555,6 +1555,62 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     MERGE MEMBER MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="merge-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h2>Merge Duplicate Member</h2>
+      <button class="modal-close" onclick="Utils.hideModal('merge-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Step 1: Search for duplicate -->
+      <div id="merge-step1">
+        <p class="merge-hint">This record is the <strong>canonical</strong> (kept) record. Search for the <strong>duplicate</strong> to merge into it.</p>
+        <div class="form-group">
+          <label>Search for duplicate</label>
+          <input type="text" id="merge-search-input" class="form-control"
+            placeholder="Name, member key, or email…" autocomplete="off"
+            oninput="Members.onMergeSearch(this.value)">
+          <div id="merge-search-sugg" class="slot-suggestions"></div>
+        </div>
+        <div id="merge-selected-preview" style="display:none;">
+          <div class="merge-pair-cards">
+            <div class="merge-card merge-card-keep">
+              <div class="merge-card-label">Keep (canonical)</div>
+              <div id="merge-keep-card-body"></div>
+            </div>
+            <div class="merge-card merge-card-dup">
+              <div class="merge-card-label">Discard (duplicate)</div>
+              <div id="merge-dup-card-body"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Conflict resolution -->
+      <div id="merge-step2" style="display:none;">
+        <p class="merge-hint">Some fields have different values. Choose which to keep for each conflict.</p>
+        <div id="merge-conflicts"></div>
+      </div>
+
+      <!-- Step 3: Summary -->
+      <div id="merge-step3" style="display:none;">
+        <p class="merge-hint">Review what will change, then confirm.</p>
+        <div id="merge-summary"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('merge-modal')">Cancel</button>
+      <button id="merge-next-btn" class="btn btn-primary" style="display:none;" onclick="Members.mergeNext()">Next</button>
+      <button id="merge-confirm-btn" class="btn btn-danger" style="display:none;" onclick="Members.executeMerge()">Merge & Delete Duplicate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      EMAIL PREVIEW MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="email-preview-modal">

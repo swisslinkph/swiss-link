@@ -206,7 +206,7 @@ const Settings = (() => {
     try {
       for (const m of toReset) {
         await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, {
-          ...m, 'Membership Status': 'TBC',
+          ...m, 'Membership Status': 'TBC', 'Renewal Year': '',
         });
       }
       Utils.toast(`${toReset.length} member(s) set to TBC for ${year}.`);

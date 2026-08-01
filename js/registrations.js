@@ -1112,7 +1112,22 @@ const Registrations = (() => {
         const existing = _all.find(x => x[C.ID] === _editingRegId);
         if (!existing) throw new Error('Registration not found.');
         await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, existing._rowIndex, { ...existing, ...obj });
-        Utils.toast('Registration updated.');
+
+        // Sync registration email to member record if the member has none
+        const regEmail = obj[C.EMAIL];
+        if (memberKey && regEmail) {
+          if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+          const member = _members.find(m => m['Member Key'] === memberKey);
+          if (member && !member['Email']) {
+            await Sheets.update(CONFIG.SHEETS.MEMBERS, member._rowIndex, { ...member, Email: regEmail });
+            _members = [];
+            Utils.toast('Registration updated · Email saved to member record.');
+          } else {
+            Utils.toast('Registration updated.');
+          }
+        } else {
+          Utils.toast('Registration updated.');
+        }
       } else {
         const rows    = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
         const maxNum  = rows.map(r => parseInt((r[C.ID] || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));

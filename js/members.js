@@ -522,10 +522,13 @@ const Members = (() => {
           const desc  = Utils.escape(t['EventName'] || t['Category'] || '—');
           const notes = t['Notes'] ? `<div class="txn-notes">${Utils.escape(t['Notes'])}</div>` : '';
           const tid   = Utils.escape(t['TransactionID']);
+          const hc = parseInt(t['HeadCount'], 10) || 1;
           return `<tr>
             <td>${date}</td>
             <td>${desc}${notes}</td>
             <td>${_categoryBadge(t['Category'])}</td>
+            <td style="text-align:center;">${Utils.escape(t['Year'] || '—')}</td>
+            <td style="text-align:center;">${hc}</td>
             <td>${Utils.escape(t['PaymentMode'] || '—')}</td>
             <td class="amount">${Utils.formatPHP(t['AmountPaid'])}</td>
             <td class="actions">
@@ -534,7 +537,7 @@ const Members = (() => {
             </td>
           </tr>`;
         }).join('')
-      : `<tr><td colspan="6" class="empty-state">No transactions recorded yet.</td></tr>`;
+      : `<tr><td colspan="8" class="empty-state">No transactions recorded yet.</td></tr>`;
 
     document.getElementById('member-detail-content').innerHTML = `
       <div class="member-detail-header">
@@ -568,7 +571,7 @@ const Members = (() => {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Date</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th><th></th>
+              <th>Date</th><th>Description</th><th>Category</th><th>Year</th><th>Pax</th><th>Mode</th><th>Amount</th><th></th>
             </tr>
           </thead>
           <tbody>${txnRows}</tbody>

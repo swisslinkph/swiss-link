@@ -929,7 +929,11 @@ const FrontDesk = (() => {
       })
       .slice(0, 6);
     if (!hits.length) {
-      box.innerHTML = '<div class="fd-assign-empty">No members found</div>'; return;
+      box.innerHTML = `<div class="fd-assign-empty">No members found
+        <button class="btn btn-sm btn-outline" style="margin-left:8px;"
+          onclick="FrontDesk.openFdAddMember(document.getElementById('fd-assign-search').value)">+ Add New Member</button>
+      </div>`;
+      return;
     }
     box.innerHTML = hits.map(m => {
       const key  = Utils.escape(m['Member Key']);
@@ -973,6 +977,94 @@ const FrontDesk = (() => {
       btn.disabled = false;
       _assignRegId = null;
       _assignSlotIdx = null;
+    }
+  }
+
+  // ── Add new member from assign slot ──────────────────────────────────────
+  function openFdAddMember(query) {
+    const parts = (query || '').trim().split(/\s+/);
+    const last  = parts.length > 1 ? parts.pop() : '';
+    const first = parts.join(' ');
+
+    const nums = _members
+      .map(m => m['Member Key'])
+      .filter(k => /^MBR-\d+$/.test(k))
+      .map(k => parseInt(k.slice(4), 10));
+    const nextNum      = nums.length ? Math.max(...nums) + 1 : 1;
+    const suggestedKey = `MBR-${String(nextNum).padStart(4, '0')}`;
+
+    // Offer family link under the registration's primary member
+    const reg        = _assignRegId ? _registrations.find(r => r.RegistrationID === _assignRegId) : null;
+    const primaryKey = reg?.MemberKey || '';
+    const primaryMember = primaryKey ? _members.find(m => m['Member Key'] === primaryKey) : null;
+    const primaryName   = primaryMember
+      ? `${primaryMember['First Name']} ${primaryMember['Last Name']}`.trim()
+      : primaryKey;
+
+    document.getElementById('fd-add-mem-first').value      = first;
+    document.getElementById('fd-add-mem-last').value       = last;
+    document.getElementById('fd-add-mem-key').value        = suggestedKey;
+    document.getElementById('fd-add-mem-family').checked   = !!primaryKey;
+
+    const famRow   = document.getElementById('fd-add-mem-fam-row');
+    const famLabel = document.getElementById('fd-add-mem-fam-label');
+    if (famRow)   famRow.style.display   = primaryKey ? '' : 'none';
+    if (famLabel) famLabel.textContent   = `Link as family under ${primaryName}`;
+
+    Utils.showModal('fd-add-member-modal');
+    setTimeout(() => document.getElementById('fd-add-mem-first')?.focus(), 100);
+  }
+
+  async function saveFdAddMember() {
+    const btn   = document.getElementById('fd-add-mem-save-btn');
+    btn.disabled = true;
+    try {
+      const first      = document.getElementById('fd-add-mem-first').value.trim();
+      const last       = document.getElementById('fd-add-mem-last').value.trim();
+      const key        = document.getElementById('fd-add-mem-key').value.trim();
+      const linkFamily = document.getElementById('fd-add-mem-family').checked;
+
+      if (!last) { Utils.toast('Last name is required.', 'error'); btn.disabled = false; return; }
+      if (!key)  { Utils.toast('Member Key is required.', 'error'); btn.disabled = false; return; }
+      if (_members.some(m => m['Member Key'] === key)) {
+        Utils.toast('That Member Key is already in use.', 'error'); btn.disabled = false; return;
+      }
+
+      const reg        = _assignRegId ? _registrations.find(r => r.RegistrationID === _assignRegId) : null;
+      const primaryKey = reg?.MemberKey || '';
+      const famHead    = linkFamily && primaryKey ? primaryKey : '';
+
+      await Sheets.append(CONFIG.SHEETS.MEMBERS, {
+        'Member Key':  key,
+        'First Name':  first,
+        'Last Name':   last,
+        'Family Head': famHead,
+        'Membership Status': 'Member',
+      });
+
+      // Make the primary member a self-referential head if not already set
+      if (famHead) {
+        const primary = _members.find(m => m['Member Key'] === primaryKey);
+        if (primary && !primary['Family Head']) {
+          await Sheets.update(CONFIG.SHEETS.MEMBERS, primary._rowIndex, {
+            ...primary, 'Family Head': primaryKey,
+          });
+        }
+      }
+
+      _members.push({
+        'Member Key': key, 'First Name': first, 'Last Name': last,
+        'Family Head': famHead, 'Membership Status': 'Member',
+      });
+
+      Utils.hideModal('fd-add-member-modal');
+      const name = [first, last].filter(Boolean).join(' ');
+      await selectAssignMember(key, name);
+      Utils.toast(`${name} added as ${key}${famHead ? ' · linked to family.' : '.'}`);
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -1030,6 +1122,7 @@ const FrontDesk = (() => {
     render, init, selectEvent, changeEvent,
     checkinSlot, undoSlot, openRegPayment,
     openAssignSlot, onAssignInput, selectAssignMember,
+    openFdAddMember, saveFdAddMember,
     openNameGuest, saveNameGuest,
     openCheckin, quickCheckin, submitCheckin, undoCheckin, stepCount, selectPayMode, toggleNotes,
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,

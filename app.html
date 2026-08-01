@@ -1326,6 +1326,44 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     FRONT DESK — ADD NEW MEMBER MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="fd-add-member-modal" style="z-index:400;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header">
+      <h2>New Member</h2>
+      <button class="modal-close" onclick="Utils.hideModal('fd-add-member-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="fd-add-mem-first">First Name</label>
+          <input type="text" id="fd-add-mem-first" class="form-control" placeholder="First name">
+        </div>
+        <div class="form-group">
+          <label for="fd-add-mem-last">Last Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="fd-add-mem-last" class="form-control" placeholder="Last name">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="fd-add-mem-key">Member Key</label>
+        <input type="text" id="fd-add-mem-key" class="form-control" placeholder="MBR-0001">
+      </div>
+      <div id="fd-add-mem-fam-row" class="slot-add-fam-row" style="display:none;">
+        <label class="slot-add-fam-label">
+          <input type="checkbox" id="fd-add-mem-family">
+          <span id="fd-add-mem-fam-label">Link as family</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('fd-add-member-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fd-add-mem-save-btn" onclick="FrontDesk.saveFdAddMember()">Create Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      NAME GUEST MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="fd-name-guest-modal">

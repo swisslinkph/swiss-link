@@ -14,6 +14,8 @@ const FrontDesk = (() => {
   let _famMembers    = [];
   let _famSelected   = new Set();
   let _famHead       = null;
+  let _assignRegId   = null;
+  let _assignSlotIdx = null;
 
   const PAYMENT_MODES = ['Cash','GCash','BDO','PayPal','Bank Transfer','Other'];
 
@@ -263,8 +265,14 @@ const FrontDesk = (() => {
              <span class="fd-checked-badge">✅ In</span>
              <button class="fd-slot-undo-btn" onclick="FrontDesk.undoSlot('${safeRegId}','${safeSlot}')" title="Undo check-in">Undo</button>
            </div>`
-        : `<button class="btn btn-sm ${type === 'member' ? 'btn-primary' : 'btn-outline'} fd-slot-btn"
-             onclick="FrontDesk.checkinSlot('${safeRegId}','${safeSlot}')">Check In</button>`}
+        : `<div class="fd-slot-actions">
+             ${!memberKey && type === 'member'
+               ? `<button class="btn btn-sm btn-outline fd-assign-btn"
+                    onclick="FrontDesk.openAssignSlot('${safeRegId}',${parseInt(safeSlot.slice(1))})">Assign</button>`
+               : ''}
+             <button class="btn btn-sm ${type === 'member' ? 'btn-primary' : 'btn-outline'} fd-slot-btn"
+               onclick="FrontDesk.checkinSlot('${safeRegId}','${safeSlot}')">Check In</button>
+           </div>`}
     </div>`;
   }
 
@@ -881,6 +889,78 @@ const FrontDesk = (() => {
     }
   }
 
+  // ── Assign member to unassigned slot ─────────────────────────────────────
+  function openAssignSlot(regId, slotIdx) {
+    _assignRegId   = regId;
+    _assignSlotIdx = slotIdx;
+    const reg  = _registrations.find(r => r.RegistrationID === regId);
+    const name = reg ? [reg.LastName, reg.FirstName].filter(Boolean).join(', ') : regId;
+    document.getElementById('fd-assign-reg-name').textContent = name;
+    document.getElementById('fd-assign-slot-label').textContent = `Member ${slotIdx + 1}`;
+    document.getElementById('fd-assign-search').value = '';
+    document.getElementById('fd-assign-suggestions').innerHTML = '';
+    Utils.showModal('fd-assign-modal');
+    setTimeout(() => document.getElementById('fd-assign-search')?.focus(), 100);
+  }
+
+  function onAssignInput() {
+    const q = document.getElementById('fd-assign-search').value.trim().toLowerCase();
+    const box = document.getElementById('fd-assign-suggestions');
+    if (!q) { box.innerHTML = ''; return; }
+    const hits = _members
+      .filter(m => {
+        const full = `${m['First Name']} ${m['Last Name']} ${m['Member Key']}`.toLowerCase();
+        return full.includes(q);
+      })
+      .slice(0, 6);
+    if (!hits.length) {
+      box.innerHTML = '<div class="fd-assign-empty">No members found</div>'; return;
+    }
+    box.innerHTML = hits.map(m => {
+      const key  = Utils.escape(m['Member Key']);
+      const name = Utils.escape(`${m['First Name']} ${m['Last Name']}`.trim());
+      return `<div class="fd-assign-opt" onclick="FrontDesk.selectAssignMember('${key}','${name}')">
+        <div class="fd-avatar sm" style="background:var(--navy);color:#fff;flex-shrink:0;">${Utils.initials(name)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${name}</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:monospace;">${key}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function selectAssignMember(memberKey, memberName) {
+    const reg = _registrations.find(r => r.RegistrationID === _assignRegId);
+    if (!reg) return;
+
+    const btn = document.getElementById('fd-assign-confirm');
+    btn.disabled = true;
+
+    try {
+      if (_assignSlotIdx === 0) {
+        reg.MemberKey = memberKey;
+      } else {
+        const slots = (reg.MemberSlots || '').split(',').map(s => s.trim());
+        while (slots.length < _assignSlotIdx) slots.push('');
+        slots[_assignSlotIdx - 1] = memberKey;
+        reg.MemberSlots = slots.join(',');
+      }
+
+      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, { ...reg });
+
+      Utils.hideModal('fd-assign-modal');
+      const cardEl = document.getElementById(`fd-reg-${_assignRegId}`);
+      if (cardEl) cardEl.outerHTML = _regCardHtml(reg);
+      Utils.toast(`${memberName} assigned to slot ${_assignSlotIdx + 1}.`);
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      _assignRegId = null;
+      _assignSlotIdx = null;
+    }
+  }
+
   function changeEvent() { _event = null; _registrations = []; _renderEventPicker(); }
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -896,6 +976,7 @@ const FrontDesk = (() => {
   return {
     render, init, selectEvent, changeEvent,
     checkinSlot, undoSlot, openRegPayment,
+    openAssignSlot, onAssignInput, selectAssignMember,
     openCheckin, quickCheckin, submitCheckin, undoCheckin, stepCount, selectPayMode, toggleNotes,
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
     openWalkinGuest, selectWiMode, submitWalkinGuest,

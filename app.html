@@ -1294,6 +1294,36 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
+     ASSIGN SLOT MEMBER MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="fd-assign-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div>
+        <h2>Assign Member</h2>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:2px;">
+          <span id="fd-assign-slot-label">Member</span> slot ·
+          <span id="fd-assign-reg-name"></span>
+        </p>
+      </div>
+      <button class="modal-close" onclick="Utils.hideModal('fd-assign-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:8px;">
+        <input type="search" id="fd-assign-search" class="form-control"
+               placeholder="Search by name or member key…"
+               oninput="FrontDesk.onAssignInput()" autocomplete="off">
+      </div>
+      <div id="fd-assign-suggestions" class="fd-assign-suggestions"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('fd-assign-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fd-assign-confirm" style="display:none;">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      WALK-IN GUEST MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="fd-walkin-modal">

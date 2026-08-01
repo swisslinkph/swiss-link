@@ -805,6 +805,14 @@ const Members = (() => {
   }
 
   // ── Add modal ─────────────────────────────────────────────────────────────
+  function onTypeChange() {
+    const type   = document.getElementById('mf-type')?.value || '';
+    const famRow = document.getElementById('mf-fam-head')?.closest('.form-group');
+    if (famRow) famRow.style.opacity = type === 'Family' ? '1' : '0.4';
+    const sel = document.getElementById('mf-fam-head');
+    if (sel && !sel.disabled) sel.disabled = type !== 'Family';
+  }
+
   function _buildFamilySelect(memberKey, currentHeadKey) {
     const sel  = document.getElementById('mf-fam-head');
     const hint = document.getElementById('mf-fam-hint');
@@ -842,6 +850,7 @@ const Members = (() => {
     document.getElementById('member-form').reset();
     document.getElementById('mf-key').value = '';
     _buildFamilySelect('', '');
+    onTypeChange();
     if (prefill) {
       const set = (id, val) => { if (val) { const el = document.getElementById(id); if (el) el.value = val; } };
       set('mf-key',    prefill.key);
@@ -875,6 +884,7 @@ const Members = (() => {
     set('mf-status', m[C.STATUS]);
     set('mf-type',   m[C.TYPE]);
     _buildFamilySelect(m[C.KEY], m[C.FAM_HEAD]);
+    onTypeChange();
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -1051,7 +1061,7 @@ const Members = (() => {
   return {
     render, init, switchView,
     openDetail, closeDetail,
-    openAdd, openEdit, confirmDelete, exportCSV,
+    openAdd, openEdit, confirmDelete, exportCSV, onTypeChange,
     openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,

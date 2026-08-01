@@ -261,7 +261,12 @@ const Registrations = (() => {
             </button>` : `
             <span class="text-muted" style="font-size:12px;margin-left:4px;">
               ${Utils.formatPHP(r[C.AMOUNT])} via ${Utils.escape(r[C.PAY_MODE] || '—')}
-            </span>`}
+            </span>
+            <button class="btn btn-sm btn-outline" style="margin-left:4px;"
+                    title="Write missing transactions for this registration"
+                    onclick="Registrations.syncTransactions('${safeId}')">
+              Sync Txns
+            </button>`}
           ${status !== 'Cancelled' ? `
             <button class="btn btn-sm btn-danger-outline" style="margin-left:4px;"
                     onclick="Registrations.cancelRegistration('${safeId}')">
@@ -767,6 +772,94 @@ const Registrations = (() => {
     }
   }
 
+  // ── Sync missing transactions for a confirmed registration ───────────────
+  async function syncTransactions(regId) {
+    const r = _all.find(x => x[C.ID] === regId);
+    if (!r) return;
+    if (r[C.STATUS] !== 'Confirmed') {
+      Utils.toast('Only confirmed registrations can be synced.', 'error'); return;
+    }
+
+    // Collect all member keys that should have transactions
+    const primary    = r[C.MKEY];
+    const extraSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
+    const allKeys    = [primary, ...extraSlots].filter(Boolean);
+
+    if (!allKeys.length) {
+      Utils.toast('No member keys assigned — edit the registration first to assign members.', 'error');
+      return;
+    }
+
+    // Check which keys already have a transaction for this event
+    if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    const existingTxns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []);
+    const alreadyHave  = new Set(
+      existingTxns
+        .filter(t => t.EventID === r[C.EVID])
+        .map(t => t.MemberKey)
+    );
+
+    const missing = allKeys.filter(k => !alreadyHave.has(k));
+    if (!missing.length) {
+      Utils.toast(`All ${allKeys.length} transaction${allKeys.length > 1 ? 's' : ''} already exist.`);
+      return;
+    }
+
+    const ok = await Utils.confirm(
+      `Write ${missing.length} missing transaction${missing.length > 1 ? 's' : ''} for:\n${missing.join(', ')}\n\nThis will use the amount and mode already on the registration.`
+    );
+    if (!ok) return;
+
+    try {
+      const amount   = parseFloat(r[C.AMOUNT]) || 0;
+      const mode     = r[C.PAY_MODE] || '';
+      const notes    = r[C.NOTES]    || '';
+      const mFee     = parseFloat(_event?.MemberFee) || 0;
+      const secTotal = mFee * (allKeys.length - 1);
+      const now      = new Date();
+
+      const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
+      const paxNote  = [
+        parseInt(r[C.MEM_QTY])   > 0 ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
+        parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
+        parseInt(r[C.KIDS_QTY])  > 0 ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
+      ].filter(Boolean).join(' · ');
+
+      let written = 0;
+      for (let i = 0; i < allKeys.length; i++) {
+        const key = allKeys[i];
+        if (alreadyHave.has(key)) continue;
+        const member = _members.find(m => m['Member Key'] === key);
+        const mName  = member ? `${member['First Name']} ${member['Last Name']}`.trim() : key;
+        const txnAmt = i === 0 ? Math.max(0, amount - secTotal) : mFee;
+        await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+          TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
+          Timestamp:     r[C.TS] || now.toISOString(), // use original registration timestamp
+          MemberKey:     key,
+          MemberName:    mName,
+          EventID:       r[C.EVID],
+          EventName:     r[C.EVNAME] || _event?.Title || '',
+          AmountPaid:    txnAmt,
+          PaymentMode:   mode,
+          Category:      'Event',
+          Year:          new Date(r[C.TS] || now).getFullYear(),
+          Month:         new Date(r[C.TS] || now).getMonth() + 1,
+          HeadCount:     i === 0 ? totalPax : 1,
+          Notes:         i === 0
+            ? [paxNote, `Reg: ${regId}`, notes].filter(Boolean).join(' — ')
+            : `Reg: ${regId}`,
+          RecordedBy:    Auth.getUserEmail(),
+        });
+        written++;
+      }
+
+      Utils.toast(`✅ ${written} transaction${written > 1 ? 's' : ''} written.`);
+      _members = [];
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    }
+  }
+
   // ── Cancel registration ───────────────────────────────────────────────────
   async function cancelRegistration(regId) {
     const r = _all.find(x => x[C.ID] === regId);
@@ -1186,7 +1279,7 @@ const Registrations = (() => {
   return {
     render, init,
     applyFilter,
-    openConfirmPayment, saveConfirmPayment,
+    openConfirmPayment, saveConfirmPayment, syncTransactions,
     searchConfirmSlot, selectConfirmSlot, clearConfirmSlot,
     searchEditSlot, selectEditSlot, clearEditSlot,
     openAddFromSlot, saveAddFromSlot,

@@ -722,6 +722,12 @@ const Registrations = (() => {
             : key;
           const txnAmt = i === 0 ? Math.max(0, amount - secTotal) : mFee;
 
+          const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
+          const paxNote  = [
+            parseInt(r[C.MEM_QTY]) > 0  ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
+            parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
+            parseInt(r[C.KIDS_QTY]) > 0  ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
+          ].filter(Boolean).join(' · ');
           await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
             TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
             Timestamp:     now.toISOString(),
@@ -734,8 +740,8 @@ const Registrations = (() => {
             Category:      'Event',
             Year:          now.getFullYear(),
             Month:         now.getMonth() + 1,
-            HeadCount:     1,
-            Notes:         notes,
+            HeadCount:     i === 0 ? totalPax : 1,
+            Notes:         i === 0 ? [paxNote, notes].filter(Boolean).join(' — ') : (notes || `Reg: ${regId}`),
             RecordedBy:    Auth.getUserEmail(),
           });
         }

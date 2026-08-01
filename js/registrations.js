@@ -1027,6 +1027,9 @@ const Registrations = (() => {
     const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
     _renderEditSlots(qty, r[C.MKEY], savedSlots);
 
+    const gQty = parseInt(r[C.GUEST_QTY], 10) || 0;
+    _renderEditGuestNames(gQty, r['GuestNames'] || '');
+
     Utils.showModal('reg-add-modal');
   }
 
@@ -1256,6 +1259,7 @@ const Registrations = (() => {
     if (slot0Wrap) slot0Wrap.style.display = 'none';
     const editSlotsEl = document.getElementById('reg-edit-slots-section');
     if (editSlotsEl) editSlotsEl.style.display = 'none';
+    _renderEditGuestNames(0, '');
 
     if (!_members.length) {
       Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
@@ -1283,6 +1287,29 @@ const Registrations = (() => {
     const currentSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
       .map(el => el.value.trim());
     _renderEditSlots(qty, primaryKey, currentSlots);
+  }
+
+  function onGuestQtyChange() {
+    recalcAddTotal();
+    if (!_editingRegId) return;
+    const qty = parseInt(document.getElementById('reg-add-guest-qty')?.value, 10) || 0;
+    const currentNames = [...document.querySelectorAll('#reg-edit-guest-names-section .edit-guest-name-input')]
+      .map(el => el.value.trim());
+    _renderEditGuestNames(qty, currentNames.join(','));
+  }
+
+  function _renderEditGuestNames(qty, guestNamesStr) {
+    const section = document.getElementById('reg-edit-guest-names-section');
+    if (!section) return;
+    if (!qty) { section.style.display = 'none'; section.innerHTML = ''; return; }
+    const names = (guestNamesStr || '').split(',').map(s => s.trim());
+    section.style.display = '';
+    section.innerHTML = Array.from({ length: qty }, (_, i) => `
+      <div class="form-group">
+        <label>Guest ${i + 1} name</label>
+        <input type="text" class="form-control edit-guest-name-input"
+          placeholder="Optional name" value="${Utils.escape(names[i] || '')}">
+      </div>`).join('');
   }
 
   function recalcAddTotal() {
@@ -1329,14 +1356,17 @@ const Registrations = (() => {
       const amount   = status === 'Confirmed' ? (get('reg-add-amount') || total) : '';
 
       // Collect member assignments from slot UI (Edit mode) or Member Key field (Add mode)
-      let memberKey, memberSlots;
+      let memberKey, memberSlots, guestNames;
       if (_editingRegId) {
         memberKey   = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value.trim() || '';
         memberSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
           .map(el => el.value.trim()).filter(Boolean).join(',');
+        guestNames  = [...document.querySelectorAll('#reg-edit-guest-names-section .edit-guest-name-input')]
+          .map(el => el.value.trim()).join(',');
       } else {
         memberKey   = get('reg-add-member-key');
         memberSlots = '';
+        guestNames  = '';
       }
 
       const obj = {
@@ -1350,6 +1380,7 @@ const Registrations = (() => {
         [C.SLOTS]:     memberSlots,
         [C.MEM_QTY]:   mQty,
         [C.GUEST_QTY]: gQty,
+        GuestNames:    guestNames,
         [C.KIDS_QTY]:  kQty,
         [C.WALKIN]:    isWalkIn ? 'Yes' : 'No',
         [C.TOTAL]:     total,
@@ -1462,7 +1493,7 @@ const Registrations = (() => {
     searchEditSlot, selectEditSlot, clearEditSlot,
     openAddFromSlot, saveAddFromSlot,
     cancelRegistration,
-    openAddRegistration, onAddSourceChange, onAddWalkInChange, onMemberQtyChange,
+    openAddRegistration, onAddSourceChange, onAddWalkInChange, onMemberQtyChange, onGuestQtyChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,

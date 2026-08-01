@@ -433,6 +433,7 @@ const Registrations = (() => {
               <span class="slot-key">${Utils.escape(saved)}</span>
               <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${slotIdx})">✕</button>
             </div>
+            ${_memberInfoChips(saved)}
           </div>
           <input type="hidden" class="slot-key-input" value="${Utils.escape(saved)}">
         </div>`;
@@ -483,7 +484,7 @@ const Registrations = (() => {
         <span class="slot-key">${Utils.escape(key)}</span>
         <button type="button" class="slot-clear" onclick="Registrations.clearEditSlot(${slotIdx})">✕</button>
       </div>
-      ${slotIdx === 0 ? _memberInfoChips(key) : ''}`;
+      ${_memberInfoChips(key)}`;
   }
 
   function clearEditSlot(slotIdx) {

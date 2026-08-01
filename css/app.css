@@ -1491,30 +1491,29 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 /* ── Payment card inside Edit Registration modal ── */
 .reg-payment-card {
-  border: 2px solid var(--navy);
-  border-radius: 8px;
-  padding: 16px;
-  background: #f0f4fa;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+  margin-top: 4px;
 }
-@media (prefers-color-scheme: dark) {
-  .reg-payment-card { background: #1a2540; border-color: #4a6fa5; }
-}
-:root[data-theme="dark"]  .reg-payment-card { background: #1a2540; border-color: #4a6fa5; }
-:root[data-theme="light"] .reg-payment-card { background: #f0f4fa; border-color: var(--navy); }
-
 .reg-payment-card-header {
+  background: var(--navy);
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .08em;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--navy);
-  margin-bottom: 14px;
+  padding: 8px 16px;
+}
+.reg-payment-card-body {
+  background: #dce8f8;
+  padding: 16px;
 }
 @media (prefers-color-scheme: dark) {
-  .reg-payment-card-header { color: #93b4e0; }
+  .reg-payment-card-body { background: #1c2e4a; }
 }
-:root[data-theme="dark"]  .reg-payment-card-header { color: #93b4e0; }
-:root[data-theme="light"] .reg-payment-card-header { color: var(--navy); }
+:root[data-theme="dark"]  .reg-payment-card-body { background: #1c2e4a; }
+:root[data-theme="light"] .reg-payment-card-body { background: #dce8f8; }
 
 .reg-status-select {
   font-size: 15px;

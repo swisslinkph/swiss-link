@@ -927,6 +927,14 @@ const Members = (() => {
       };
 
       if (_editingRow) {
+        // Guard against accidentally reassigning a key that belongs to a different row
+        const conflict = _all.find(m => m[C.KEY] === key && m._rowIndex !== _editingRow);
+        if (conflict) {
+          const cName = `${conflict[C.FIRST] || ''} ${conflict[C.LAST] || ''}`.trim() || key;
+          Utils.toast(`Member key "${key}" is already used by ${cName}. Choose a different key.`, 'error');
+          btn.disabled = false;
+          return;
+        }
         const merged = existing ? { ...existing, ...obj } : obj;
         await Sheets.update(CONFIG.SHEETS.MEMBERS, _editingRow, merged);
         Utils.toast('Member updated.');

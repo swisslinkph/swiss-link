@@ -878,6 +878,303 @@ const Registrations = (() => {
     }
   }
 
+  // ── Print Roster ──────────────────────────────────────────────────────────
+  function printRoster() {
+    if (!_event) { Utils.toast('No event selected.', 'error'); return; }
+
+    // Sort by last name
+    const sorted = [..._all]
+      .filter(r => r[C.STATUS] !== 'Cancelled')
+      .sort((a, b) => (a[C.LAST] || '').localeCompare(b[C.LAST] || ''));
+
+    const confirmed = sorted.filter(r => r[C.STATUS] === 'Confirmed');
+    const pending   = sorted.filter(r => r[C.STATUS] !== 'Confirmed');
+    const allSorted = [...confirmed, ...pending];
+
+    function slotLabel(slotId, reg) {
+      if (slotId.startsWith('g')) return `Guest ${slotId.slice(1)}`;
+      if (slotId.startsWith('k')) return `Child ${slotId.slice(1)}`;
+      const idx  = parseInt(slotId.slice(1));
+      const keys = [reg[C.MKEY], ...(reg[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean)];
+      const key  = keys[idx] || '';
+      const m    = _members.find(x => x['Member Key'] === key);
+      const name = m ? `${m['First Name']} ${m['Last Name']}`.trim() : (key || `Member ${idx + 1}`);
+      return `${name}${key ? ` <span class="slot-key">${key}</span>` : ''}`;
+    }
+
+    function slotsHtml(reg) {
+      const mQty = parseInt(reg[C.MEM_QTY]) || 0;
+      const gQty = parseInt(reg[C.GUEST_QTY]) || 0;
+      const kQty = parseInt(reg[C.KIDS_QTY]) || 0;
+      const slots = [];
+      for (let i = 0; i < mQty; i++) slots.push({ id: `m${i}`, type: 'member' });
+      for (let i = 1; i <= gQty; i++) slots.push({ id: `g${i}`, type: 'guest' });
+      for (let i = 1; i <= kQty; i++) slots.push({ id: `k${i}`, type: 'kids' });
+      return slots.map(s => `
+        <div class="slot-row slot-${s.type}">
+          <span class="cb">☐</span>
+          <span class="sid">${s.id}</span>
+          <span class="sname">${slotLabel(s.id, reg)}</span>
+        </div>`).join('');
+    }
+
+    const rows = allSorted.map((r, i) => {
+      const name     = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ');
+      const isPaid   = r[C.STATUS] === 'Confirmed';
+      const mQty     = parseInt(r[C.MEM_QTY]) || 0;
+      const gQty     = parseInt(r[C.GUEST_QTY]) || 0;
+      const kQty     = parseInt(r[C.KIDS_QTY]) || 0;
+      const paxParts = [
+        mQty ? `${mQty}M` : '', gQty ? `${gQty}G` : '', kQty ? `${kQty}K` : '',
+      ].filter(Boolean).join('+');
+      return `
+        <tr class="${isPaid ? 'paid' : 'pending'}">
+          <td class="num">${i + 1}</td>
+          <td class="name-cell">
+            <div class="reg-name">${name || '—'}</div>
+            <div class="reg-id">${r[C.ID]}</div>
+          </td>
+          <td class="slots-cell">${slotsHtml(r)}</td>
+          <td class="pax-cell">${paxParts}</td>
+          <td class="pay-cell">
+            <span class="pay-status ${isPaid ? 'status-paid' : 'status-pending'}">
+              ${isPaid ? '✓ Paid' : '⚠ Pending'}
+            </span>
+            <div class="pay-amount">₱${parseFloat(r[C.AMOUNT] || r[C.TOTAL] || 0).toLocaleString()}</div>
+            <div class="pay-mode">${r[C.PAY_MODE] || (isPaid ? '' : 'Pay at door')}</div>
+          </td>
+          <td class="notes-cell">${r[C.PAY_NOTE] || r[C.NOTES] || ''}</td>
+        </tr>`;
+    }).join('');
+
+    // Walk-in blank rows
+    const walkInRows = Array.from({ length: 10 }, (_, i) => `
+      <tr class="walkin-row">
+        <td class="num wi-num">${i + 1}</td>
+        <td class="name-cell"><div class="wi-line"></div></td>
+        <td class="slots-cell">
+          <div class="slot-row">
+            <span class="cb">☐</span>
+            <span class="sid">—</span>
+            <span class="sname wi-line" style="width:140px;"></span>
+          </div>
+        </td>
+        <td class="pax-cell"></td>
+        <td class="pay-cell">
+          <div class="wi-line" style="width:60px;"></div>
+          <div style="font-size:9px;color:#888;margin-top:2px;">amt / mode</div>
+        </td>
+        <td class="notes-cell"><div class="wi-line"></div></td>
+      </tr>`).join('');
+
+    const eventDate = _event.Date
+      ? new Date(_event.Date).toLocaleDateString('en-PH', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+      : '';
+    const printedAt = new Date().toLocaleString('en-PH');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Roster — ${_event.Title}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #111; background: #fff; }
+  @page { size: A4 landscape; margin: 12mm 14mm; }
+
+  /* ── Page header ── */
+  .page-hdr { border-bottom: 2px solid #0e2a47; padding-bottom: 8px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:flex-end; }
+  .event-title { font-size: 18px; font-weight: 700; color: #0e2a47; }
+  .event-meta  { font-size: 10px; color: #555; margin-top: 3px; }
+  .print-meta  { font-size: 9px; color: #888; text-align: right; }
+  .legend { display:flex; gap:16px; font-size:9px; color:#555; margin-top:3px; }
+  .legend span { display:flex; align-items:center; gap:4px; }
+
+  /* ── Main table ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #0e2a47; color: #fff; font-size: 9px; font-weight: 700;
+       text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; text-align: left; }
+  td { padding: 6px 8px; vertical-align: top; border-bottom: 1px solid #e5e7eb; }
+  tr.paid   { background: #fff; }
+  tr.pending { background: #fffbeb; }
+  tr:hover  { background: #f0f9ff; }
+
+  .num      { width: 28px; font-size: 10px; color: #888; text-align: right; }
+  .name-cell { width: 170px; }
+  .reg-name  { font-weight: 700; font-size: 12px; }
+  .reg-id    { font-size: 8px; color: #999; font-family: monospace; margin-top: 1px; }
+  .slots-cell { width: auto; }
+  .pax-cell  { width: 44px; font-size: 10px; color: #555; text-align: center; }
+  .pay-cell  { width: 110px; }
+  .pay-status { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; display:inline-block; }
+  .status-paid    { background: #dcfce7; color: #166534; }
+  .status-pending { background: #fef3c7; color: #92400e; }
+  .pay-amount { font-size: 12px; font-weight: 700; color: #0e2a47; margin-top: 2px; }
+  .pay-mode   { font-size: 9px; color: #666; }
+  .notes-cell { width: 130px; font-size: 10px; color: #555; }
+
+  /* ── Slot rows ── */
+  .slot-row   { display: flex; align-items: center; gap: 5px; padding: 1px 0; }
+  .cb    { font-size: 13px; line-height: 1; flex-shrink: 0; }
+  .sid   { font-family: monospace; font-size: 9px; font-weight: 700; color: #fff;
+           padding: 1px 4px; border-radius: 3px; min-width: 22px; text-align: center; flex-shrink: 0; }
+  .sname { font-size: 10px; }
+  .slot-key { font-family: monospace; font-size: 8px; color: #888; margin-left: 2px; }
+  .slot-member .sid { background: #0e2a47; }
+  .slot-guest  .sid { background: #b91c1c; }
+  .slot-kids   .sid { background: #7c3aed; }
+
+  /* ── Section divider ── */
+  .section-hdr { background: #f1f5f9; }
+  .section-hdr td { font-size: 10px; font-weight: 700; color: #475569;
+                    text-transform: uppercase; letter-spacing: .5px; padding: 5px 8px;
+                    border-bottom: 1px solid #cbd5e1; }
+
+  /* ── Walk-in rows ── */
+  .walkin-row td { background: #fafafa; padding: 10px 8px; }
+  .wi-line { border-bottom: 1px solid #aaa; height: 16px; width: 100%; display:inline-block; }
+  .wi-num  { color: #bbb; }
+
+  /* ── Summary footer ── */
+  .footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid #e5e7eb;
+            display: flex; justify-content: space-between; font-size: 9px; color: #888; }
+  .totals { display: flex; gap: 18px; }
+  .totals span { font-weight: 700; color: #0e2a47; }
+
+  /* ── Swiss Link entry guide ── */
+  .guide { margin-top: 12px; border: 1px solid #0e2a47; border-radius: 4px; padding: 8px 10px; }
+  .guide h3 { font-size: 10px; font-weight: 700; color: #0e2a47; margin-bottom: 5px; text-transform: uppercase; letter-spacing:.5px; }
+  .guide-cols { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .guide-col h4 { font-size: 9px; font-weight: 700; color: #555; margin-bottom: 3px; }
+  .guide-col p  { font-size: 9px; color: #666; line-height: 1.5; }
+  .guide-col code { font-family: monospace; font-size: 9px; background: #f1f5f9; padding: 0 3px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="page-hdr">
+  <div>
+    <div class="event-title">${_event.Title} — Event Roster</div>
+    <div class="event-meta">${eventDate} &nbsp;·&nbsp; ${_event.Location || ''}</div>
+    <div class="legend">
+      <span><span class="cb">☐</span> = not yet checked in &nbsp;&nbsp;
+            <span style="font-size:13px;">☑</span> = checked in (fill on paper)</span>
+      <span><span class="pay-status status-paid">✓ Paid</span> confirmed before event</span>
+      <span><span class="pay-status status-pending">⚠ Pending</span> collecting at door</span>
+    </div>
+  </div>
+  <div class="print-meta">
+    Printed: ${printedAt}<br>
+    ${confirmed.length} confirmed · ${pending.length} pending · ${allSorted.length} total
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Registrant</th>
+      <th>Slots &amp; Attendees <span style="font-weight:400;opacity:.7">(check each as they arrive)</span></th>
+      <th>Pax</th>
+      <th>Payment</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="section-hdr"><td colspan="6">✓ Confirmed (${confirmed.length})</td></tr>
+    ${confirmed.length ? confirmed.map((r, i) => {
+      const name     = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ');
+      const mQty = parseInt(r[C.MEM_QTY]) || 0;
+      const gQty = parseInt(r[C.GUEST_QTY]) || 0;
+      const kQty = parseInt(r[C.KIDS_QTY]) || 0;
+      const paxParts = [mQty ? `${mQty}M` : '', gQty ? `${gQty}G` : '', kQty ? `${kQty}K` : ''].filter(Boolean).join('+');
+      return `<tr class="paid">
+        <td class="num">${i + 1}</td>
+        <td class="name-cell"><div class="reg-name">${name || '—'}</div><div class="reg-id">${r[C.ID]}</div></td>
+        <td class="slots-cell">${slotsHtml(r)}</td>
+        <td class="pax-cell">${paxParts}</td>
+        <td class="pay-cell">
+          <span class="pay-status status-paid">✓ Paid</span>
+          <div class="pay-amount">₱${parseFloat(r[C.AMOUNT] || r[C.TOTAL] || 0).toLocaleString()}</div>
+          <div class="pay-mode">${r[C.PAY_MODE] || ''}</div>
+        </td>
+        <td class="notes-cell">${r[C.PAY_NOTE] || r[C.NOTES] || ''}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:#999;padding:8px;">No confirmed registrations</td></tr>'}
+
+    <tr class="section-hdr"><td colspan="6">⚠ Pending — Collect Payment at Door (${pending.length})</td></tr>
+    ${pending.length ? pending.map((r, i) => {
+      const name     = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ');
+      const mQty = parseInt(r[C.MEM_QTY]) || 0;
+      const gQty = parseInt(r[C.GUEST_QTY]) || 0;
+      const kQty = parseInt(r[C.KIDS_QTY]) || 0;
+      const paxParts = [mQty ? `${mQty}M` : '', gQty ? `${gQty}G` : '', kQty ? `${kQty}K` : ''].filter(Boolean).join('+');
+      return `<tr class="pending">
+        <td class="num">${i + 1}</td>
+        <td class="name-cell"><div class="reg-name">${name || '—'}</div><div class="reg-id">${r[C.ID]}</div></td>
+        <td class="slots-cell">${slotsHtml(r)}</td>
+        <td class="pax-cell">${paxParts}</td>
+        <td class="pay-cell">
+          <span class="pay-status status-pending">⚠ Pending</span>
+          <div class="pay-amount">₱${parseFloat(r[C.TOTAL] || 0).toLocaleString()}</div>
+          <div class="pay-mode">Collect at door</div>
+          <div style="margin-top:4px;font-size:9px;">Mode: <span class="wi-line" style="width:50px;"></span></div>
+        </td>
+        <td class="notes-cell">${r[C.PAY_NOTE] || r[C.NOTES] || ''}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:#999;padding:8px;">All paid</td></tr>'}
+
+    <tr class="section-hdr"><td colspan="6">Walk-in Guests (not pre-registered) — Log in Swiss Link after event</td></tr>
+    ${walkInRows}
+  </tbody>
+</table>
+
+<div class="footer">
+  <div class="totals">
+    Total registrants: <span>${allSorted.length}</span> &nbsp;·&nbsp;
+    Total pax: <span>${allSorted.reduce((s,r) => s + (parseInt(r[C.MEM_QTY])||0) + (parseInt(r[C.GUEST_QTY])||0) + (parseInt(r[C.KIDS_QTY])||0), 0)}</span> &nbsp;·&nbsp;
+    Expected revenue: <span>₱${confirmed.reduce((s,r) => s + (parseFloat(r[C.AMOUNT])||0), 0).toLocaleString()} confirmed + ₱${pending.reduce((s,r) => s + (parseFloat(r[C.TOTAL])||0), 0).toLocaleString()} pending</span>
+  </div>
+  <div>Swiss Link · ${_event.Title}</div>
+</div>
+
+<div class="guide">
+  <h3>After the event — entering this data into Swiss Link</h3>
+  <div class="guide-cols">
+    <div class="guide-col">
+      <h4>1. Check-in registered slots</h4>
+      <p>Go to <strong>Front Desk → select this event</strong>.<br>
+      Search the registrant's name. Their card shows all slots.<br>
+      Click <strong>Check In</strong> for each checked ☑ slot on this sheet.<br>
+      Slot IDs (e.g. <code>m0</code>, <code>g1</code>) match the labels above.</p>
+    </div>
+    <div class="guide-col">
+      <h4>2. Confirm pending payments</h4>
+      <p>Go to <strong>Registrations</strong>.<br>
+      Find each ⚠ Pending row and click <strong>Confirm</strong>.<br>
+      Enter the amount and mode collected at the door.<br>
+      Then click <strong>Sync Txns</strong> to write the transaction record.</p>
+    </div>
+    <div class="guide-col">
+      <h4>3. Log walk-in guests</h4>
+      <p>Go to <strong>Front Desk</strong>.<br>
+      Click <strong>+ Walk-in Guest</strong> for each person in the walk-in section below.<br>
+      Enter name, optional member key, amount, and mode.<br>
+      These are logged separately for post-event member review.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=1100,height=800');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 600);
+  }
+
   // ── Edit Registration (reuses Add Registration modal) ─────────────────────
   async function openEditRegistration(regId) {
     const r = _all.find(x => x[C.ID] === regId);
@@ -1279,7 +1576,7 @@ const Registrations = (() => {
   return {
     render, init,
     applyFilter,
-    openConfirmPayment, saveConfirmPayment, syncTransactions,
+    openConfirmPayment, saveConfirmPayment, syncTransactions, printRoster,
     searchConfirmSlot, selectConfirmSlot, clearConfirmSlot,
     searchEditSlot, selectEditSlot, clearEditSlot,
     openAddFromSlot, saveAddFromSlot,

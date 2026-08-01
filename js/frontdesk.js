@@ -94,7 +94,8 @@ const FrontDesk = (() => {
 
   function _revenue() {
     return _txns
-      .filter(t => t.EventID === _event.EventID && t.Category === 'Event')
+      .filter(t => t.EventID === _event.EventID &&
+        (t.Category === 'Event' || t.Category === 'Walk-in Guest' || t.Category === 'Walk-in'))
       .reduce((s, t) => s + Utils.parsePHP(t.AmountPaid), 0);
   }
 
@@ -121,6 +122,9 @@ const FrontDesk = (() => {
       <div class="fd-search-bar">
         <input type="search" id="fd-search" class="fd-search-input"
                placeholder="🔍 Search by name, email, or member key…" autocomplete="off" autofocus>
+        <button class="btn btn-outline fd-walkin-guest-btn" onclick="FrontDesk.openWalkinGuest()">
+          + Walk-in Guest
+        </button>
       </div>
 
       <div id="fd-results" class="fd-results"></div>
@@ -255,7 +259,10 @@ const FrontDesk = (() => {
         ${memberKey ? `<span class="fd-slot-key">${Utils.escape(memberKey)}</span>` : ''}
       </div>
       ${isIn
-        ? `<span class="fd-checked-badge">✅ In</span>`
+        ? `<div class="fd-slot-in-wrap">
+             <span class="fd-checked-badge">✅ In</span>
+             <button class="fd-slot-undo-btn" onclick="FrontDesk.undoSlot('${safeRegId}','${safeSlot}')" title="Undo check-in">Undo</button>
+           </div>`
         : `<button class="btn btn-sm ${type === 'member' ? 'btn-primary' : 'btn-outline'} fd-slot-btn"
              onclick="FrontDesk.checkinSlot('${safeRegId}','${safeSlot}')">Check In</button>`}
     </div>`;
@@ -596,10 +603,17 @@ const FrontDesk = (() => {
       });
     });
 
-    // Also include walk-in transactions not in any registration
+    // Walk-in transactions (member walk-ins + walk-in guests)
     const regKeys = new Set(_registrations.flatMap(_slotKeys));
-    _txns.filter(t => t.EventID === _event?.EventID && t.Category === 'Event' && !regKeys.has(t.MemberKey))
-      .forEach(t => rows.push({ label: t.MemberName || t.MemberKey, regName: 'Walk-in', status: 'Confirmed' }));
+    _txns.filter(t => t.EventID === _event?.EventID &&
+        (t.Category === 'Event' || t.Category === 'Walk-in Guest' || t.Category === 'Walk-in') &&
+        !regKeys.has(t.MemberKey))
+      .forEach(t => rows.push({
+        label:   t.MemberName || t.MemberKey,
+        regName: t.Category === 'Walk-in Guest' ? 'Walk-in guest' : 'Walk-in',
+        txnId:   t.TransactionID,
+        amount:  Utils.parsePHP(t.AmountPaid),
+      }));
 
     if (!rows.length) {
       container.innerHTML = '<p class="empty-state">No one checked in yet.</p>';
@@ -611,7 +625,36 @@ const FrontDesk = (() => {
         <div class="fd-avatar sm">${Utils.initials(r.label)}</div>
         <span class="fd-ci-name">${Utils.escape(r.label)}</span>
         <span class="fd-ci-reg">${Utils.escape(r.regName)}</span>
+        ${r.txnId ? `<button class="fd-undo-btn" onclick="FrontDesk.undoCheckin('${Utils.escape(r.txnId)}')">Undo</button>` : ''}
       </div>`).join('');
+  }
+
+  // ── Undo slot check-in (registered attendee) ─────────────────────────────
+  async function undoSlot(regId, slotId) {
+    const reg = _registrations.find(r => r.RegistrationID === regId);
+    if (!reg) return;
+    const current = (reg.CheckedIn || '').split(',').filter(Boolean);
+    if (!current.includes(slotId)) return;
+    const updated = current.filter(s => s !== slotId);
+
+    // Optimistic UI
+    reg.CheckedIn = updated.join(',');
+    const cardEl = document.getElementById(`fd-reg-${regId}`);
+    if (cardEl) cardEl.outerHTML = _regCardHtml(reg);
+    _updateLiveStats();
+    _renderCheckedIn();
+
+    try {
+      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, { ...reg, CheckedIn: reg.CheckedIn });
+      Utils.toast('Check-in undone.');
+    } catch (e) {
+      // Roll back
+      reg.CheckedIn = current.join(',');
+      const cardEl2 = document.getElementById(`fd-reg-${regId}`);
+      if (cardEl2) cardEl2.outerHTML = _regCardHtml(reg);
+      _updateLiveStats();
+      Utils.toast(e.message, 'error');
+    }
   }
 
   // ── Undo (walk-in txns only) ──────────────────────────────────────────────
@@ -629,6 +672,70 @@ const FrontDesk = (() => {
       Utils.toast('Check-in removed.');
     } catch (e) {
       Utils.toast(e.message, 'error');
+    }
+  }
+
+  // ── Walk-in guest / drop-in attendee ─────────────────────────────────────
+  function openWalkinGuest() {
+    if (!_event) return;
+    document.getElementById('fd-wi-name').value       = '';
+    document.getElementById('fd-wi-member-key').value = '';
+    document.getElementById('fd-wi-amount').value     = parseFloat(_event.GuestFee) || 0;
+    document.getElementById('fd-wi-notes').value      = '';
+    document.querySelectorAll('.wi-pay-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === 'Cash');
+    });
+    document.getElementById('fd-wi-mode').value = 'Cash';
+    Utils.showModal('fd-walkin-modal');
+    document.getElementById('fd-wi-name')?.focus();
+  }
+
+  function selectWiMode(mode) {
+    document.getElementById('fd-wi-mode').value = mode;
+    document.querySelectorAll('.wi-pay-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+  }
+
+  async function submitWalkinGuest() {
+    const btn    = document.getElementById('fd-wi-submit');
+    const name   = document.getElementById('fd-wi-name')?.value.trim();
+    if (!name) { Utils.toast('Enter a name for the walk-in guest.', 'error'); return; }
+    btn.disabled = true;
+    try {
+      const memberKey = document.getElementById('fd-wi-member-key')?.value.trim() || '';
+      const amount    = parseFloat(document.getElementById('fd-wi-amount')?.value) || 0;
+      const mode      = document.getElementById('fd-wi-mode')?.value || 'Cash';
+      const notes     = document.getElementById('fd-wi-notes')?.value.trim() || '';
+      const txnId     = await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN');
+      const now       = new Date();
+      await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+        TransactionID: txnId,
+        Timestamp:     now.toISOString(),
+        MemberKey:     memberKey,
+        MemberName:    name,
+        EventID:       _event.EventID,
+        EventName:     _event.Title,
+        AmountPaid:    amount,
+        PaymentMode:   mode,
+        Category:      'Walk-in Guest',
+        Year:          now.getFullYear(),
+        Month:         now.getMonth() + 1,
+        HeadCount:     1,
+        Notes:         notes || 'Door walk-in',
+        RecordedBy:    Auth.getUserEmail(),
+      });
+      _txns.push({ TransactionID: txnId, MemberKey: memberKey, MemberName: name,
+        EventID: _event.EventID, AmountPaid: amount, PaymentMode: mode,
+        Category: 'Walk-in Guest', HeadCount: 1 });
+      Utils.hideModal('fd-walkin-modal');
+      _updateLiveStats();
+      _renderCheckedIn();
+      Utils.toast(`✅ ${name} logged${amount > 0 ? ' · ' + Utils.formatPHP(amount) : ''}`);
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -786,8 +893,9 @@ const FrontDesk = (() => {
 
   return {
     render, init, selectEvent, changeEvent,
-    checkinSlot, openRegPayment,
+    checkinSlot, undoSlot, openRegPayment,
     openCheckin, quickCheckin, submitCheckin, undoCheckin, stepCount, selectPayMode, toggleNotes,
     openFamilyCheckin, toggleFamilyMember, stepFamGuests, selectFamMode, submitFamilyCheckin,
+    openWalkinGuest, selectWiMode, submitWalkinGuest,
   };
 })();

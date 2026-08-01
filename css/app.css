@@ -820,6 +820,20 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .fd-walkin-card { border: 1.5px dashed var(--border); }
 .fd-ci-reg { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
+/* Slot undo + walk-in guest button ── */
+.fd-slot-in-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.fd-slot-undo-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 11px; font-weight: 600;
+  cursor: pointer; padding: 3px 9px; border-radius: 20px;
+  transition: background .1s, color .1s, border-color .1s;
+  white-space: nowrap;
+}
+.fd-slot-undo-btn:hover { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.fd-search-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+.fd-search-bar .fd-search-input { flex: 1; margin-bottom: 0; }
+.fd-walkin-guest-btn { white-space: nowrap; flex-shrink: 0; }
+
 .fd-checkedin-list h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
 .fd-checkedin-item {
   display: flex;

@@ -1293,6 +1293,69 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
+     WALK-IN GUEST MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="fd-walkin-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div>
+        <h2>Walk-in Guest</h2>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:2px;">
+          Log anyone arriving at the door — member or not.
+        </p>
+      </div>
+      <button class="modal-close" onclick="Utils.hideModal('fd-walkin-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="field-label" for="fd-wi-name">Full Name <span style="color:var(--red)">*</span></label>
+        <input type="text" id="fd-wi-name" class="form-control" placeholder="e.g. Maria Santos"
+               autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="fd-wi-member-key">Member Key <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+        <input type="text" id="fd-wi-member-key" class="form-control" placeholder="e.g. SCH-2024-042"
+               autocomplete="off">
+        <p class="field-hint">If they are a member, enter their key so this logs to their history.</p>
+      </div>
+
+      <div class="checkin-field-row">
+        <label>Amount Paid</label>
+        <div class="checkin-amount-wrap">
+          <input type="number" id="fd-wi-amount" class="form-control checkin-amount-input"
+                 min="0" step="50" value="0">
+        </div>
+      </div>
+
+      <div class="checkin-field-row" style="border-bottom:none;">
+        <label>Payment Mode</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button type="button" class="pay-pill wi-pay-pill active" data-mode="Cash"          onclick="FrontDesk.selectWiMode('Cash')">Cash</button>
+          <button type="button" class="pay-pill wi-pay-pill"        data-mode="GCash"         onclick="FrontDesk.selectWiMode('GCash')">GCash</button>
+          <button type="button" class="pay-pill wi-pay-pill"        data-mode="Bank Transfer" onclick="FrontDesk.selectWiMode('Bank Transfer')">Bank</button>
+          <button type="button" class="pay-pill wi-pay-pill"        data-mode="Other"         onclick="FrontDesk.selectWiMode('Other')">Other</button>
+          <input type="hidden" id="fd-wi-mode" value="Cash">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label class="field-label" for="fd-wi-notes">Notes <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+        <input type="text" id="fd-wi-notes" class="form-control" placeholder="e.g. Guest of Florian Theuer">
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('fd-walkin-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fd-wi-submit" onclick="FrontDesk.submitWalkinGuest()">
+        ✅ Log Walk-in
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      EMAIL PREVIEW MODAL
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="email-preview-modal">

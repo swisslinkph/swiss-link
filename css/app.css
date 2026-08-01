@@ -303,6 +303,8 @@ body {
 }
 .btn-icon:hover { background: var(--bg); }
 .btn-icon.btn-danger:hover { background: #fef2f2; }
+.btn-icon.btn-history { color: #1d4ed8; }
+.btn-icon.btn-history:hover { background: #eff6ff; }
 
 /* ── KPI Cards (Dashboard) ───────────────────────────────────────────────── */
 .kpi-grid {

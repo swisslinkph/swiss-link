@@ -252,9 +252,10 @@ const FrontDesk = (() => {
       <div class="fd-reg-footer">
         <button class="btn btn-outline btn-sm"
           onclick="FrontDesk.openAddSlot('${safeId}')">+ Add Person</button>
-        ${status !== 'Confirmed' ? `
-          <button class="btn btn-primary btn-sm"
-            onclick="FrontDesk.openRegPayment('${safeId}')">Collect Payment</button>` : ''}
+        <button class="btn ${status !== 'Confirmed' ? 'btn-primary' : 'btn-outline'} btn-sm"
+          onclick="FrontDesk.openRegPayment('${safeId}')">
+          ${status !== 'Confirmed' ? 'Collect Payment' : 'Edit Payment'}
+        </button>
       </div>
     </div>`;
   }
@@ -391,14 +392,18 @@ const FrontDesk = (() => {
     document.getElementById('checkin-avatar').textContent        = Utils.initials(name);
     document.getElementById('checkin-event-name').textContent    = _event.Title;
     document.getElementById('checkin-default-fee').textContent   = `Total Due: ${Utils.formatPHP(reg.TotalDue)}`;
+    const isEdit = reg.PaymentStatus === 'Confirmed';
     document.getElementById('checkin-member-key').value          = reg.MemberKey || '';
-    document.getElementById('checkin-amount').value              = parseFloat(reg.TotalDue) || 0;
+    document.getElementById('checkin-amount').value              = isEdit
+      ? (parseFloat(reg.AmountPaid) || 0)
+      : (parseFloat(reg.TotalDue)   || 0);
     document.getElementById('checkin-guests').value              = 0;
     document.getElementById('checkin-kids').value                = 0;
     document.getElementById('checkin-guest-fee').textContent     = `${Utils.formatPHP(_event.GuestFee)} each`;
     document.getElementById('checkin-kids-fee').textContent      = `${Utils.formatPHP(_event.KidsFee || 0)} each`;
-    document.getElementById('checkin-mode').value                = 'Cash';
-    document.getElementById('checkin-notes').value               = '';
+    const existingMode = isEdit ? (reg.PaymentMode || 'Cash') : 'Cash';
+    document.getElementById('checkin-mode').value                = existingMode;
+    document.getElementById('checkin-notes').value               = isEdit ? (reg.AdminNotes || '') : '';
     document.getElementById('checkin-notes').style.display       = 'none';
     document.getElementById('checkin-exempt-note').style.display = 'none';
 
@@ -409,7 +414,7 @@ const FrontDesk = (() => {
     if (kidsRow) kidsRow.style.display = _event.KidsFee ? 'flex' : 'none';
 
     document.querySelectorAll('.pay-pill').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mode === 'Cash');
+      btn.classList.toggle('active', btn.dataset.mode === existingMode);
     });
     const notesToggle = document.querySelector('.notes-toggle');
     if (notesToggle) notesToggle.textContent = '+ Add note';

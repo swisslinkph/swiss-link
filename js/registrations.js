@@ -354,112 +354,11 @@ const Registrations = (() => {
     document.getElementById('reg-confirm-amount').value = r[C.TOTAL] || (calcTotal || '');
     document.getElementById('reg-confirm-notes').value  = r[C.NOTES] || '';
 
-    // Member assignment slots (shown when MemberQty > 1)
-    const qty = parseInt(r[C.MEM_QTY], 10) || 1;
+    // Slot assignment is handled in Process/Edit — hide this section
     const section = document.getElementById('reg-confirm-members-section');
-    if (qty > 1) {
-      const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
-      _renderConfirmSlots(qty, r[C.MKEY], savedSlots);
-      section.style.display = 'block';
-    } else {
-      section.style.display = 'none';
-    }
+    if (section) section.style.display = 'none';
 
     Utils.showModal('reg-confirm-modal');
-  }
-
-  function _renderConfirmSlots(qty, primaryKey, savedSlots = []) {
-    if (!_members.length) Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(m => { _members = m; });
-    const pm    = _members.find(m => m['Member Key'] === primaryKey);
-    const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : primaryKey;
-
-    const container = document.getElementById('reg-confirm-members');
-    container.innerHTML = `
-      <div class="confirm-slot">
-        <span class="slot-num">1</span>
-        <div class="slot-assigned">
-          <span class="slot-name">${Utils.escape(pName)}</span>
-          <span class="slot-key">${Utils.escape(primaryKey)}</span>
-        </div>
-        <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
-      </div>
-      ${Array.from({ length: qty - 1 }, (_, i) => {
-        const slotIdx = i + 1;
-        const saved   = savedSlots[i];
-        if (saved) {
-          const sm    = _members.find(m => m['Member Key'] === saved);
-          const sName = sm ? `${sm['First Name']} ${sm['Last Name']}`.trim() : saved;
-          return `
-          <div class="confirm-slot" id="confirm-slot-${slotIdx}">
-            <span class="slot-num">${slotIdx + 1}</span>
-            <div class="slot-search-wrap">
-              <div class="slot-assigned">
-                <span class="slot-name">${Utils.escape(sName)}</span>
-                <span class="slot-key">${Utils.escape(saved)}</span>
-                <button type="button" class="slot-clear" onclick="Registrations.clearConfirmSlot(${slotIdx})">✕</button>
-              </div>
-            </div>
-            <input type="hidden" class="slot-key-input" value="${Utils.escape(saved)}">
-          </div>`;
-        }
-        return `
-        <div class="confirm-slot" id="confirm-slot-${slotIdx}">
-          <span class="slot-num">${slotIdx + 1}</span>
-          <div class="slot-search-wrap">
-            <input type="text" class="form-control slot-search-input"
-              placeholder="Search member…" autocomplete="off"
-              oninput="Registrations.searchConfirmSlot(${slotIdx}, this.value)">
-            <div class="slot-suggestions" id="confirm-slot-sugg-${slotIdx}"></div>
-          </div>
-          <input type="hidden" class="slot-key-input" value="">
-        </div>`;
-      }).join('')}`;
-  }
-
-  function searchConfirmSlot(slotIdx, query) {
-    const suggBox = document.getElementById(`confirm-slot-sugg-${slotIdx}`);
-    if (!suggBox) return;
-    const q = query.trim();
-    if (!q) { suggBox.innerHTML = ''; return; }
-
-    const found = Utils.filterRows(_members, q, ['First Name','Last Name','Member Key']).slice(0, 5);
-    const memberItems = found.map(m => {
-      const key  = m['Member Key'];
-      const name = `${m['First Name']} ${m['Last Name']}`.trim();
-      return `<div class="slot-sugg-item" onclick="Registrations.selectConfirmSlot(${slotIdx},'${Utils.escape(key)}','${Utils.escape(name)}')">
-        <strong>${Utils.escape(name)}</strong> <span>${Utils.escape(key)}</span>
-      </div>`;
-    });
-    const addNew = `<div class="slot-sugg-item slot-add-new-opt"
-        onclick="Registrations.openAddFromSlot(${slotIdx},'confirm','${Utils.escape(q)}')">
-      + Add "<strong>${Utils.escape(q)}</strong>" as new member
-    </div>`;
-    suggBox.innerHTML = memberItems.join('') + addNew;
-  }
-
-  function selectConfirmSlot(slotIdx, key, name) {
-    const slot = document.getElementById(`confirm-slot-${slotIdx}`);
-    if (!slot) return;
-    slot.querySelector('.slot-key-input').value = key;
-    const wrap = slot.querySelector('.slot-search-wrap');
-    wrap.innerHTML = `
-      <div class="slot-assigned">
-        <span class="slot-name">${Utils.escape(name)}</span>
-        <span class="slot-key">${Utils.escape(key)}</span>
-        <button type="button" class="slot-clear" onclick="Registrations.clearConfirmSlot(${slotIdx})">✕</button>
-      </div>`;
-    slot.querySelector('.slot-key-input').value = key;
-  }
-
-  function clearConfirmSlot(slotIdx) {
-    const slot = document.getElementById(`confirm-slot-${slotIdx}`);
-    if (!slot) return;
-    slot.querySelector('.slot-key-input').value = '';
-    slot.querySelector('.slot-search-wrap').innerHTML = `
-      <input type="text" class="form-control slot-search-input"
-        placeholder="Search member…" autocomplete="off"
-        oninput="Registrations.searchConfirmSlot(${slotIdx}, this.value)">
-      <div class="slot-suggestions" id="confirm-slot-sugg-${slotIdx}"></div>`;
   }
 
   // ── Edit-modal slot helpers ────────────────────────────────────────────────
@@ -555,7 +454,7 @@ const Registrations = (() => {
       </div>`;
     });
     const addNew = `<div class="slot-sugg-item slot-add-new-opt"
-        onclick="Registrations.openAddFromSlot(${slotIdx},'edit','${Utils.escape(q)}')">
+        onclick="Registrations.openAddFromSlot(${slotIdx},'${Utils.escape(q)}')">
       + Add "<strong>${Utils.escape(q)}</strong>" as new member
     </div>`;
     suggBox.innerHTML = memberItems.join('') + addNew;
@@ -584,7 +483,7 @@ const Registrations = (() => {
       <div class="slot-suggestions" id="edit-slot-sugg-${slotIdx}"></div>`;
   }
 
-  async function openAddFromSlot(slotIdx, context, query) {
+  async function openAddFromSlot(slotIdx, query) {
     if (!_members.length) {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
@@ -603,13 +502,8 @@ const Registrations = (() => {
     const suggestedKey = `MBR-${String(nextNum).padStart(4, '0')}`;
 
     // Identify primary member for the family toggle label
-    _slotAddContext = { type: context, slotIdx };
-    if (context === 'confirm') {
-      _slotAddPrimaryKey = document.querySelector('#reg-confirm-members .slot-key-input')?.value?.trim() || null;
-    } else {
-      // In edit mode, primary is slot 0 of the edit slots section
-      _slotAddPrimaryKey = document.querySelector('#edit-slot-0 .slot-key-input')?.value?.trim() || null;
-    }
+    _slotAddContext    = { slotIdx };
+    _slotAddPrimaryKey = document.querySelector('#edit-slot-0 .slot-key-input')?.value?.trim() || null;
 
     let primaryName = '';
     if (_slotAddPrimaryKey) {
@@ -672,12 +566,8 @@ const Registrations = (() => {
       _members = []; // invalidate cache
       const name = [first, last].filter(Boolean).join(' ');
       Utils.hideModal('reg-slot-add-modal');
-      const { type, slotIdx } = _slotAddContext || {};
-      if (type === 'edit') {
-        selectEditSlot(slotIdx, key, name);
-      } else {
-        selectConfirmSlot(slotIdx, key, name);
-      }
+      const { slotIdx } = _slotAddContext || {};
+      selectEditSlot(slotIdx, key, name);
       Utils.toast(`${name} added as ${key}${linkFamily ? ' · linked to family.' : '.'}`);
     } catch (e) {
       Utils.toast(e.message, 'error');
@@ -706,13 +596,6 @@ const Registrations = (() => {
       const member    = payeeKey ? _members.find(m => m['Member Key'] === payeeKey) : null;
       const payeeName = member ? `${member['First Name']} ${member['Last Name']}`.trim() : regName;
 
-      const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
-      const paxNote  = [
-        parseInt(r[C.MEM_QTY])   > 0 ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
-        parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
-        parseInt(r[C.KIDS_QTY])  > 0 ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
-      ].filter(Boolean).join(' · ');
-
       const now = new Date();
       await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
         TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
@@ -726,8 +609,8 @@ const Registrations = (() => {
         Category:      'Event',
         Year:          now.getFullYear(),
         Month:         now.getMonth() + 1,
-        HeadCount:     totalPax,
-        Notes:         [paxNote, notes].filter(Boolean).join(' — '),
+        HeadCount:     _totalPax(r),
+        Notes:         [_paxNote(r), notes].filter(Boolean).join(' — '),
         RecordedBy:    Auth.getUserEmail(),
       });
 
@@ -740,9 +623,7 @@ const Registrations = (() => {
       });
 
       Utils.hideModal('reg-confirm-modal');
-      Utils.toast(slots.length > 1
-        ? `Payment confirmed · ${slots.length} member records created.`
-        : 'Payment confirmed.');
+      Utils.toast('Payment confirmed.');
       await render();
     } catch (e) {
       Utils.toast(e.message, 'error');
@@ -751,76 +632,17 @@ const Registrations = (() => {
     }
   }
 
-  // ── Sync missing transactions for a confirmed registration ───────────────
-  async function syncTransactions(regId) {
-    const r = _all.find(x => x[C.ID] === regId);
-    if (!r) return;
-    if (r[C.STATUS] !== 'Confirmed') {
-      Utils.toast('Only confirmed registrations can be synced.', 'error'); return;
-    }
+  // ── Shared pax helpers ───────────────────────────────────────────────────
+  function _totalPax(r) {
+    return (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
+  }
 
-    // One transaction under the payee (primary member key or registrant name)
-    const payeeKey  = r[C.MKEY] || '';
-    const regName   = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(' ');
-
-    // Check if a transaction already exists for this registration
-    const existingTxns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []);
-    const alreadyHave  = existingTxns.some(
-      t => t.EventID === r[C.EVID] && (payeeKey ? t.MemberKey === payeeKey : t.MemberName === regName)
-    );
-
-    if (alreadyHave) {
-      Utils.toast('Transaction already exists for this registration.');
-      return;
-    }
-
-    if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
-    const member   = payeeKey ? _members.find(m => m['Member Key'] === payeeKey) : null;
-    const payeeName = member
-      ? `${member['First Name']} ${member['Last Name']}`.trim()
-      : regName;
-
-    const totalPax = (parseInt(r[C.MEM_QTY]) || 1) + (parseInt(r[C.GUEST_QTY]) || 0) + (parseInt(r[C.KIDS_QTY]) || 0);
-    const paxNote  = [
+  function _paxNote(r) {
+    return [
       parseInt(r[C.MEM_QTY])   > 0 ? `${r[C.MEM_QTY]} Member${r[C.MEM_QTY] > 1 ? 's' : ''}` : null,
       parseInt(r[C.GUEST_QTY]) > 0 ? `${r[C.GUEST_QTY]} Guest${r[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
       parseInt(r[C.KIDS_QTY])  > 0 ? `${r[C.KIDS_QTY]} Kid${r[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
     ].filter(Boolean).join(' · ');
-
-    const amount = parseFloat(r[C.AMOUNT]) || 0;
-    const mode   = r[C.PAY_MODE] || '';
-    const notes  = r[C.NOTES]    || '';
-
-    const ok = await Utils.confirm(
-      `Write 1 transaction for ${payeeName}${payeeKey ? ` (${payeeKey})` : ''}?\n\n` +
-      `${paxNote} · ₱${amount.toLocaleString()} via ${mode || '—'}\n\n` +
-      `This records the full payment under the payee's member history.`
-    );
-    if (!ok) return;
-
-    try {
-      const now = new Date();
-      await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
-        TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
-        Timestamp:     r[C.TS] || now.toISOString(),
-        MemberKey:     payeeKey,
-        MemberName:    payeeName,
-        EventID:       r[C.EVID],
-        EventName:     r[C.EVNAME] || _event?.Title || '',
-        AmountPaid:    amount,
-        PaymentMode:   mode,
-        Category:      'Event',
-        Year:          new Date(r[C.TS] || now).getFullYear(),
-        Month:         new Date(r[C.TS] || now).getMonth() + 1,
-        HeadCount:     totalPax,
-        Notes:         [paxNote, `Reg: ${regId}`, notes].filter(Boolean).join(' — '),
-        RecordedBy:    Auth.getUserEmail(),
-      });
-      Utils.toast(`✅ Transaction written for ${payeeName}.`);
-      _members = [];
-    } catch (e) {
-      Utils.toast(e.message, 'error');
-    }
   }
 
   // ── Cancel registration ───────────────────────────────────────────────────
@@ -1184,16 +1006,6 @@ const Registrations = (() => {
       _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
     }
 
-    // Background email sync: if member has no email but registration does, copy it now
-    if (r[C.MKEY] && r[C.EMAIL]) {
-      const pm = _members.find(m => m['Member Key'] === r[C.MKEY]);
-      if (pm && !pm['Email']) {
-        Sheets.update(CONFIG.SHEETS.MEMBERS, pm._rowIndex, { ...pm, Email: r[C.EMAIL] })
-          .then(() => { _members = []; })
-          .catch(() => {});
-      }
-    }
-
     const qty        = Math.max(1, parseInt(r[C.MEM_QTY], 10) || 1);
     const savedSlots = (r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean);
     _renderEditSlots(qty, r[C.MKEY], savedSlots);
@@ -1266,25 +1078,60 @@ const Registrations = (() => {
       const nextNum = maxNum.length ? Math.max(...maxNum) + 1 : 1;
       const regId   = 'REG-' + String(nextNum).padStart(4, '0');
 
+      const wiStatus = amount ? 'Confirmed' : 'Pending';
+      const wiMode   = get('reg-wi-mode');
+      const wiNotes  = get('reg-wi-notes');
+      const wiMkey   = get('reg-wi-member-key') || '';
+      const wiTs     = new Date().toISOString();
+
       await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
         [C.ID]:        regId,
-        [C.TS]:        new Date().toISOString(),
+        [C.TS]:        wiTs,
         [C.SOURCE]:    'Walk-in',
         [C.EVID]:      _eventId,
         [C.EVNAME]:    _event?.Title || '',
         [C.LAST]:      last,
         [C.FIRST]:     get('reg-wi-first'),
         [C.EMAIL]:     get('reg-wi-email'),
-        [C.MEM_QTY]:  mQty,
+        [C.MKEY]:      wiMkey,
+        [C.MEM_QTY]:   mQty,
         [C.GUEST_QTY]: gQty,
         [C.KIDS_QTY]:  kQty,
         [C.WALKIN]:    'Yes',
         [C.TOTAL]:     total,
-        [C.STATUS]:    amount ? 'Confirmed' : 'Pending',
-        [C.PAY_MODE]:  get('reg-wi-mode'),
+        [C.STATUS]:    wiStatus,
+        [C.PAY_MODE]:  wiMode,
         [C.AMOUNT]:    amount,
-        [C.NOTES]:     get('reg-wi-notes'),
+        [C.NOTES]:     wiNotes,
       });
+
+      // Write transaction immediately if confirmed with a payment
+      if (wiStatus === 'Confirmed' && amount) {
+        const regName   = [last, get('reg-wi-first')].filter(Boolean).join(' ');
+        if (!_members.length) _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+        const payeeMember = wiMkey ? _members.find(m => m['Member Key'] === wiMkey) : null;
+        const payeeName   = payeeMember
+          ? `${payeeMember['First Name']} ${payeeMember['Last Name']}`.trim()
+          : regName;
+        const wiReg = { [C.MEM_QTY]: mQty, [C.GUEST_QTY]: gQty, [C.KIDS_QTY]: kQty };
+        const now   = new Date();
+        await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
+          TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
+          Timestamp:     wiTs,
+          MemberKey:     wiMkey,
+          MemberName:    payeeName,
+          EventID:       _eventId,
+          EventName:     _event?.Title || '',
+          AmountPaid:    parseFloat(amount) || 0,
+          PaymentMode:   wiMode,
+          Category:      'Event',
+          Year:          now.getFullYear(),
+          Month:         now.getMonth() + 1,
+          HeadCount:     _totalPax(wiReg),
+          Notes:         [_paxNote(wiReg), `Reg: ${regId}`, wiNotes].filter(Boolean).join(' — '),
+          RecordedBy:    Auth.getUserEmail(),
+        });
+      }
 
       Utils.hideModal('reg-walkin-modal');
       Utils.toast('Walk-in added.');
@@ -1496,12 +1343,8 @@ const Registrations = (() => {
           if (!hasTxn) {
             const member    = payeeKey ? _members.find(m => m['Member Key'] === payeeKey) : null;
             const payeeName = member ? `${member['First Name']} ${member['Last Name']}`.trim() : regName;
-            const totalPax  = (parseInt(saved[C.MEM_QTY]) || 1) + (parseInt(saved[C.GUEST_QTY]) || 0) + (parseInt(saved[C.KIDS_QTY]) || 0);
-            const paxNote   = [
-              parseInt(saved[C.MEM_QTY])   > 0 ? `${saved[C.MEM_QTY]} Member${saved[C.MEM_QTY] > 1 ? 's' : ''}` : null,
-              parseInt(saved[C.GUEST_QTY]) > 0 ? `${saved[C.GUEST_QTY]} Guest${saved[C.GUEST_QTY] > 1 ? 's' : ''}` : null,
-              parseInt(saved[C.KIDS_QTY])  > 0 ? `${saved[C.KIDS_QTY]} Kid${saved[C.KIDS_QTY] > 1 ? 's' : ''}` : null,
-            ].filter(Boolean).join(' · ');
+            const totalPax  = _totalPax(saved);
+            const paxNote   = _paxNote(saved);
             const now = new Date();
             await Sheets.append(CONFIG.SHEETS.TRANSACTIONS, {
               TransactionID: await Sheets.nextId(CONFIG.SHEETS.TRANSACTIONS, 'TXN'),
@@ -1579,8 +1422,7 @@ const Registrations = (() => {
   return {
     render, init,
     applyFilter,
-    openConfirmPayment, saveConfirmPayment, syncTransactions, printRoster,
-    searchConfirmSlot, selectConfirmSlot, clearConfirmSlot,
+    openConfirmPayment, saveConfirmPayment, printRoster,
     searchEditSlot, selectEditSlot, clearEditSlot,
     openAddFromSlot, saveAddFromSlot,
     cancelRegistration,

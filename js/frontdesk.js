@@ -17,8 +17,6 @@ const FrontDesk = (() => {
   let _assignRegId   = null;
   let _assignSlotIdx = null;
 
-  const PAYMENT_MODES = ['Cash','GCash','BDO','PayPal','Bank Transfer','Other'];
-
   // ── Render / init ─────────────────────────────────────────────────────────
   async function render() {
     Utils.setLoading(true, 'Loading front desk…');
@@ -366,7 +364,7 @@ const FrontDesk = (() => {
     document.getElementById('checkin-avatar').textContent        = Utils.initials(name);
     document.getElementById('checkin-event-name').textContent    = _event.Title;
     document.getElementById('checkin-default-fee').textContent   = `Total Due: ${Utils.formatPHP(reg.TotalDue)}`;
-    document.getElementById('checkin-member-key').value          = reg.MemberKey || regId;
+    document.getElementById('checkin-member-key').value          = reg.MemberKey || '';
     document.getElementById('checkin-amount').value              = parseFloat(reg.TotalDue) || 0;
     document.getElementById('checkin-guests').value              = 0;
     document.getElementById('checkin-kids').value                = 0;
@@ -514,12 +512,13 @@ const FrontDesk = (() => {
     btn.disabled = true;
     try {
       const memberKeyEl = document.getElementById('checkin-member-key');
-      const memberKey   = memberKeyEl?.value;
+      const memberKey   = memberKeyEl?.value || '';
       const regId       = memberKeyEl?.dataset.regId || '';
-      const member      = _members.find(m => m['Member Key'] === memberKey);
+      const member      = memberKey ? _members.find(m => m['Member Key'] === memberKey) : null;
+      const reg0        = regId ? _registrations.find(r => r.RegistrationID === regId) : null;
       const name        = member
         ? `${member['First Name']} ${member['Last Name']}`.trim()
-        : memberKey;
+        : (reg0 ? [reg0.LastName, reg0.FirstName].filter(Boolean).join(', ') : memberKey);
       const amount      = Utils.parsePHP(document.getElementById('checkin-amount')?.value || 0);
       const guests      = parseInt(document.getElementById('checkin-guests')?.value || 0, 10);
       const kids        = parseInt(document.getElementById('checkin-kids')?.value || 0, 10);
@@ -558,10 +557,11 @@ const FrontDesk = (() => {
         if (reg) {
           const slots = (reg.CheckedIn || '').split(',').filter(Boolean);
           if (!slots.includes('m0')) slots.push('m0');
-          reg.CheckedIn = slots.join(',');
-          await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, {
-            ...reg, PaymentStatus: 'Confirmed', PaymentMode: mode, AmountPaid: total,
-          });
+          reg.CheckedIn      = slots.join(',');
+          reg.PaymentStatus  = 'Confirmed';
+          reg.PaymentMode    = mode;
+          reg.AmountPaid     = total;
+          await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, reg._rowIndex, { ...reg });
         }
       }
 
@@ -672,8 +672,7 @@ const FrontDesk = (() => {
     const ok = await Utils.confirm('Remove this check-in? The transaction record will be deleted.');
     if (!ok) return;
     try {
-      const allTxns = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS);
-      const txn = allTxns.find(t => t.TransactionID === txnId);
+      const txn = _txns.find(t => t.TransactionID === txnId);
       if (!txn) { Utils.toast('Transaction not found.', 'error'); return; }
       await Sheets.deleteRow(CONFIG.SHEETS.TRANSACTIONS, txn._rowIndex);
       _txns = _txns.filter(t => t.TransactionID !== txnId);

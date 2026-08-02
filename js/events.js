@@ -42,7 +42,7 @@ const Events = (() => {
       const rsvpCount     = _txns.filter(t => t.EventID === e.EventID && t.Category === 'RSVP').length;
       const eventRegs     = _regs.filter(r => r.EventID === e.EventID);
       const hasRegs       = eventRegs.length > 0;
-      const isPast        = new Date(e.Date) < new Date() && e.Status !== 'Upcoming';
+      const isPast        = new Date(e.Date) < new Date();
       const statusClass   = isPast ? 'event-card-past' : 'event-card-upcoming';
 
       let statsHTML;

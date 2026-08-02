@@ -588,6 +588,26 @@
 <!-- ═══════════════════════════════════════════════════════════════
      EVENT MODAL — Add / Edit
 ═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════
+     EVENT STATS MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="event-stats-modal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div>
+        <h2 id="event-stats-title">Event Stats</h2>
+        <div id="event-stats-subtitle" class="modal-subtitle"></div>
+      </div>
+      <button class="modal-close" onclick="Utils.hideModal('event-stats-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="event-stats-body">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('event-stats-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="event-modal">
   <div class="modal">
     <div class="modal-header">

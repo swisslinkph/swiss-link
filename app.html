@@ -265,6 +265,13 @@
           <option value="Form">Form</option>
           <option value="Walk-in">Walk-in</option>
         </select>
+        <select id="reg-filter-checkin" class="form-control" style="width:160px;"
+                onchange="Registrations.applyFilter()">
+          <option value="">All check-ins</option>
+          <option value="none">Not checked in</option>
+          <option value="partial">Partial</option>
+          <option value="full">Fully checked in</option>
+        </select>
       </div>
       <div class="table-wrapper">
         <table class="data-table" id="reg-table">
@@ -275,12 +282,13 @@
               <th>Tickets</th>
               <th>Total Due</th>
               <th>Status</th>
+              <th>Check-in</th>
               <th>Notes</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="reg-tbody">
-            <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+            <tr><td colspan="8" class="empty-state">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -588,6 +596,28 @@
 <!-- ═══════════════════════════════════════════════════════════════
      EVENT MODAL — Add / Edit
 ═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════
+     EDIT CHECK-IN MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="reg-checkin-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <div>
+        <h2 id="reg-checkin-title">Edit Check-in</h2>
+        <div id="reg-checkin-subtitle" class="modal-subtitle"></div>
+      </div>
+      <button class="modal-close" onclick="Utils.hideModal('reg-checkin-modal')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="reg-checkin-slots"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Utils.hideModal('reg-checkin-modal')">Cancel</button>
+      <button class="btn btn-primary" id="reg-checkin-save-btn" onclick="Registrations.saveCheckin()">Save Check-in</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════
      EVENT STATS MODAL
 ═══════════════════════════════════════════════════════════════ -->

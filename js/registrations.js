@@ -215,6 +215,24 @@ const Registrations = (() => {
       <div class="reg-stat"><span class="reg-stat-num">${Utils.formatPHP(revenue)}</span><span class="reg-stat-label">Collected</span></div>`;
   }
 
+  function _checkinStatus(r) {
+    const total = (parseInt(r[C.MEM_QTY], 10) || 0)
+                + (parseInt(r[C.GUEST_QTY], 10) || 0)
+                + (parseInt(r[C.KIDS_QTY],  10) || 0);
+    const checked = (r.CheckedIn || '').split(',').map(s => s.trim()).filter(Boolean).length;
+    if (total === 0) return { checked: 0, total: 0, state: 'none' };
+    if (checked === 0) return { checked, total, state: 'none' };
+    if (checked >= total) return { checked, total, state: 'full' };
+    return { checked, total, state: 'partial' };
+  }
+
+  function _checkinBadge(r) {
+    const { checked, total, state } = _checkinStatus(r);
+    if (state === 'none')    return `<span class="badge ci-badge ci-none">✕ Not checked in</span>`;
+    if (state === 'full')    return `<span class="badge ci-badge ci-full">✓ ${checked}/${total}</span>`;
+    return `<span class="badge ci-badge ci-partial">⚑ ${checked}/${total}</span>`;
+  }
+
   function _renderTable() {
     const tbody = document.getElementById('reg-tbody');
     if (!tbody) return;
@@ -246,13 +264,18 @@ const Registrations = (() => {
         <td style="white-space:nowrap;">${pax}</td>
         <td class="amount">${Utils.formatPHP(r[C.TOTAL])}</td>
         <td><span class="badge badge-reg-${status.toLowerCase()}">${status}</span></td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        <td>${_checkinBadge(r)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
             title="${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '')}">
           ${Utils.escape(r[C.PAY_NOTE] || r[C.NOTES] || '—')}
         </td>
         <td style="white-space:nowrap;text-align:right;">
           <button class="btn btn-sm btn-outline" onclick="Registrations.openEditRegistration('${safeId}')">
-            Process
+            Edit
+          </button>
+          <button class="btn btn-sm btn-outline" style="margin-left:4px;"
+                  onclick="Registrations.openEditCheckin('${safeId}')">
+            Check-in
           </button>
           ${status !== 'Confirmed' ? `
             <button class="btn btn-sm btn-primary" style="margin-left:4px;"
@@ -297,13 +320,18 @@ const Registrations = (() => {
   }
 
   function _applyFilter() {
-    const q      = (document.getElementById('reg-search')?.value || '').toLowerCase();
-    const status = document.getElementById('reg-filter-status')?.value || '';
-    const source = document.getElementById('reg-filter-source')?.value || '';
+    const q       = (document.getElementById('reg-search')?.value || '').toLowerCase();
+    const status  = document.getElementById('reg-filter-status')?.value  || '';
+    const source  = document.getElementById('reg-filter-source')?.value  || '';
+    const checkin = document.getElementById('reg-filter-checkin')?.value || '';
 
     _filtered = _all.filter(r => {
       if (status && r[C.STATUS] !== status) return false;
       if (source && r[C.SOURCE] !== source) return false;
+      if (checkin) {
+        const ci = _checkinStatus(r);
+        if (checkin !== ci.state) return false;
+      }
       if (q) {
         const hay = [r[C.LAST], r[C.FIRST], r[C.EMAIL], r[C.MKEY], r[C.PAY_NOTE], r[C.NOTES]]
           .join(' ').toLowerCase();
@@ -675,6 +703,82 @@ const Registrations = (() => {
       await render();
     } catch (e) {
       Utils.toast(e.message, 'error');
+    }
+  }
+
+  // ── Edit Check-in ─────────────────────────────────────────────────────────
+  let _checkinRegId = null;
+
+  function openEditCheckin(regId) {
+    const r = _all.find(x => x[C.ID] === regId);
+    if (!r) return;
+    _checkinRegId = regId;
+
+    const name = [r[C.LAST], r[C.FIRST]].filter(Boolean).join(', ') || regId;
+    document.getElementById('reg-checkin-title').textContent = name;
+    document.getElementById('reg-checkin-subtitle').textContent =
+      `${r[C.ID]}  ·  ${_paxSummary(r)}`;
+
+    const checkedIn = new Set(
+      (r.CheckedIn || '').split(',').map(s => s.trim()).filter(Boolean)
+    );
+
+    const mQty = parseInt(r[C.MEM_QTY],   10) || 0;
+    const gQty = parseInt(r[C.GUEST_QTY], 10) || 0;
+    const kQty = parseInt(r[C.KIDS_QTY],  10) || 0;
+
+    const memberKeys = [r[C.MKEY], ...(r[C.SLOTS] || '').split(',').map(s => s.trim()).filter(Boolean)];
+    const guestNames = (r.GuestNames || '').split(',').map(s => s.trim());
+
+    const slots = [];
+    for (let i = 0; i < mQty; i++) {
+      const slotId = `m${i}`;
+      const key  = memberKeys[i] || '';
+      const m    = key ? _members.find(x => x['Member Key'] === key) : null;
+      const label = m ? `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim()
+                      : (key || `Member ${i + 1}`);
+      slots.push({ slotId, label, type: 'member', key });
+    }
+    for (let i = 1; i <= gQty; i++) {
+      const slotId = `g${i}`;
+      const label = guestNames[i - 1] || `Guest ${i}`;
+      slots.push({ slotId, label, type: 'guest' });
+    }
+    for (let i = 1; i <= kQty; i++) {
+      const slotId = `k${i}`;
+      slots.push({ slotId, label: `Child ${i}`, type: 'kids' });
+    }
+
+    document.getElementById('reg-checkin-slots').innerHTML = slots.map(s => `
+      <label class="ci-slot-row">
+        <input type="checkbox" class="ci-slot-check" value="${Utils.escape(s.slotId)}"
+          ${checkedIn.has(s.slotId) ? 'checked' : ''}>
+        <span class="ci-slot-icon ci-icon-${s.type}"></span>
+        <span class="ci-slot-label">${Utils.escape(s.label)}</span>
+        ${s.key ? `<span class="ci-slot-key">${Utils.escape(s.key)}</span>` : ''}
+      </label>`).join('');
+
+    Utils.showModal('reg-checkin-modal');
+  }
+
+  async function saveCheckin() {
+    const r = _all.find(x => x[C.ID] === _checkinRegId);
+    if (!r) return;
+    const btn = document.getElementById('reg-checkin-save-btn');
+    btn.disabled = true;
+    try {
+      const checked = [...document.querySelectorAll('.ci-slot-check:checked')]
+        .map(el => el.value);
+      await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, r._rowIndex, {
+        ...r, CheckedIn: checked.join(','),
+      });
+      Utils.toast('Check-in saved.');
+      Utils.hideModal('reg-checkin-modal');
+      await render();
+    } catch (e) {
+      Utils.toast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -1493,6 +1597,7 @@ const Registrations = (() => {
     searchEditSlot, selectEditSlot, clearEditSlot,
     openAddFromSlot, saveAddFromSlot,
     cancelRegistration,
+    openEditCheckin, saveCheckin,
     openAddRegistration, onAddSourceChange, onAddWalkInChange, onMemberQtyChange, onGuestQtyChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,

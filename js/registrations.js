@@ -406,14 +406,13 @@ const Registrations = (() => {
   }
 
   function _renderEditSlots(qty, primaryKey, savedSlots) {
-    // Slot 0 — link-to-record field for Member 1 (registrant)
+    // Slot 0 — registrant's member record link
     const slot0Wrap = document.getElementById('reg-edit-slot0-wrap');
     if (slot0Wrap) {
-      const registrantLabel = `<div class="slot-registrant-label">Member 1 — Registrant</div>`;
       if (primaryKey) {
         const pm    = _members.find(m => m['Member Key'] === primaryKey);
         const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : primaryKey;
-        slot0Wrap.innerHTML = `${registrantLabel}
+        slot0Wrap.innerHTML = `
           <div id="edit-slot-0">
             <div class="slot-search-wrap">
               <div class="slot-assigned">
@@ -426,7 +425,7 @@ const Registrations = (() => {
             <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
           </div>`;
       } else {
-        slot0Wrap.innerHTML = `${registrantLabel}
+        slot0Wrap.innerHTML = `
           <div id="edit-slot-0">
             <div class="slot-search-wrap">
               <input type="text" class="form-control slot-search-input"
@@ -437,7 +436,6 @@ const Registrations = (() => {
             <input type="hidden" class="slot-key-input" value="">
           </div>`;
       }
-      slot0Wrap.style.display = 'block';
     }
 
     // Slots 1..N-1 — Additional Members
@@ -1386,12 +1384,14 @@ const Registrations = (() => {
     const lastEl  = document.getElementById('reg-add-last');
     const firstEl = document.getElementById('reg-add-first');
     const emailEl = document.getElementById('reg-add-email');
-    const keyEl   = document.getElementById('reg-add-member-key');
 
     if (lastEl)  lastEl.value  = m['Last Name']  || '';
     if (firstEl) firstEl.value = m['First Name'] || '';
     if (emailEl && !emailEl.value.trim()) emailEl.value = m['Email'] || '';
-    if (keyEl)   keyEl.value   = key;
+
+    // Link slot-0 to this member record
+    const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
+    selectEditSlot(0, key, name);
 
     clearMemberSuggestions();
   }
@@ -1426,16 +1426,13 @@ const Registrations = (() => {
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
-    // Show member key field (hidden by default; only used in Add mode)
-    const mkeyGroup = document.getElementById('reg-add-mkey-group');
-    if (mkeyGroup) mkeyGroup.style.display = '';
-    // Hide Edit-mode structural elements
+    // Hide Edit-mode-only structural elements
     const m1Head = document.getElementById('reg-edit-member1-head');
     if (m1Head) m1Head.style.display = 'none';
-    const slot0Wrap = document.getElementById('reg-edit-slot0-wrap');
-    if (slot0Wrap) slot0Wrap.style.display = 'none';
     const editSlotsEl = document.getElementById('reg-edit-slots-section');
     if (editSlotsEl) editSlotsEl.style.display = 'none';
+    // Render empty slot-0 search (same member-link UI as edit mode)
+    _renderEditSlots(1, '', []);
     _renderEditGuestNames(0, '');
     _renderEditKidsNames(0, '');
 
@@ -1459,7 +1456,6 @@ const Registrations = (() => {
 
   function onMemberQtyChange() {
     recalcAddTotal();
-    if (!_editingRegId) return;
     const qty        = Math.max(1, parseInt(document.getElementById('reg-add-member-qty')?.value, 10) || 1);
     const primaryKey = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value?.trim() || '';
     const currentSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
@@ -1555,21 +1551,16 @@ const Registrations = (() => {
       const amount   = status === 'Confirmed' ? (get('reg-add-amount') || total) : '';
 
       // Collect member assignments from slot UI (Edit mode) or Member Key field (Add mode)
-      let memberKey, memberSlots, guestNames, kidsNames;
-      if (_editingRegId) {
-        memberKey   = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value.trim() || '';
-        memberSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
-          .map(el => el.value.trim()).filter(Boolean).join(',');
-        guestNames  = [...document.querySelectorAll('#reg-edit-guest-names-section .edit-guest-name-input')]
-          .map(el => el.value.trim()).join(',');
-        kidsNames   = [...document.querySelectorAll('#reg-edit-kids-names-section .edit-kids-name-input')]
-          .map(el => el.value.trim()).join(',');
-      } else {
-        memberKey   = get('reg-add-member-key');
-        memberSlots = '';
-        guestNames  = '';
-        kidsNames   = '';
-      }
+      // Slot-0 is now used in both add and edit mode for the registrant's member link
+      const memberKey   = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value.trim() || '';
+      const memberSlots = _editingRegId
+        ? [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
+            .map(el => el.value.trim()).filter(Boolean).join(',')
+        : '';
+      const guestNames  = [...document.querySelectorAll('#reg-edit-guest-names-section .edit-guest-name-input')]
+        .map(el => el.value.trim()).join(',');
+      const kidsNames   = [...document.querySelectorAll('#reg-edit-kids-names-section .edit-kids-name-input')]
+        .map(el => el.value.trim()).join(',');
 
       const obj = {
         [C.SOURCE]:    source,

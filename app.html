@@ -1133,9 +1133,6 @@
           <input type="email" id="reg-add-email" class="form-control">
         </div>
 
-        <!-- Edit mode: slot 0 — link to member record -->
-        <div id="reg-edit-slot0-wrap" style="display:none;grid-column:1/-1;"></div>
-
         <!-- Add mode: member key input -->
         <div class="form-group" id="reg-add-mkey-group" style="grid-column:1/-1;display:none;">
           <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
@@ -1143,27 +1140,30 @@
         </div>
         <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;grid-column:1/-1;"></div>
 
-        <!-- Member count row + additional member slots -->
+        <!-- Member count row + member 1 link + additional member slots -->
         <div class="reg-attendee-type-row" style="grid-column:1/-1;">
-          <span class="reg-attendee-type-label">Members</span>
           <input type="number" id="reg-add-member-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.onMemberQtyChange()">
+          <span class="reg-attendee-type-label">Members</span>
         </div>
+        <!-- Edit mode: slot 0 — link to member record, shown inside Members group -->
+        <div id="reg-edit-slot0-wrap" style="display:none;grid-column:1/-1;"></div>
         <div id="reg-edit-slots-section" style="display:none;grid-column:1/-1;">
           <div id="reg-edit-slots-container"></div>
         </div>
 
         <!-- Guest count row + name inputs -->
         <div class="reg-attendee-type-row" style="grid-column:1/-1;">
-          <span class="reg-attendee-type-label">Guests</span>
           <input type="number" id="reg-add-guest-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.onGuestQtyChange()">
+          <span class="reg-attendee-type-label">Guests</span>
         </div>
-        <div id="reg-edit-guest-names-section" style="display:none;grid-column:1/-1;padding-left:2px;"></div>
+        <div id="reg-edit-guest-names-section" style="display:none;grid-column:1/-1;"></div>
 
         <!-- Kids count row (shown only when event has kids fee) -->
         <div class="reg-attendee-type-row" id="reg-add-kids-row" style="grid-column:1/-1;display:none;">
+          <input type="number" id="reg-add-kids-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.onKidsQtyChange()">
           <span class="reg-attendee-type-label">Kids</span>
-          <input type="number" id="reg-add-kids-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.recalcAddTotal()">
         </div>
+        <div id="reg-edit-kids-names-section" style="display:none;grid-column:1/-1;"></div>
 
         <!-- ── BOOKING ────────────────────────────────────────── -->
         <div style="grid-column:1/-1;border-top:1px solid var(--border);margin:10px 0 4px;"></div>
@@ -1186,7 +1186,7 @@
         </div>
         <div class="form-group" id="reg-add-total-row">
           <label for="reg-add-total">Total Due (₱)</label>
-          <input type="number" id="reg-add-total" class="form-control" min="0" step="0.01" placeholder="Auto-calculated">
+          <input type="number" id="reg-add-total" class="form-control reg-total-readonly" readonly tabindex="-1" placeholder="Auto-calculated">
         </div>
         <div></div>
 

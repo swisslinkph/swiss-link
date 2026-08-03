@@ -406,13 +406,14 @@ const Registrations = (() => {
   }
 
   function _renderEditSlots(qty, primaryKey, savedSlots) {
-    // Slot 0 — link-to-record field for Member 1
+    // Slot 0 — link-to-record field for Member 1 (registrant)
     const slot0Wrap = document.getElementById('reg-edit-slot0-wrap');
     if (slot0Wrap) {
+      const registrantLabel = `<div class="slot-registrant-label">Member 1 — Registrant</div>`;
       if (primaryKey) {
         const pm    = _members.find(m => m['Member Key'] === primaryKey);
         const pName = pm ? `${pm['First Name']} ${pm['Last Name']}`.trim() : primaryKey;
-        slot0Wrap.innerHTML = `
+        slot0Wrap.innerHTML = `${registrantLabel}
           <div id="edit-slot-0">
             <div class="slot-search-wrap">
               <div class="slot-assigned">
@@ -425,7 +426,7 @@ const Registrations = (() => {
             <input type="hidden" class="slot-key-input" value="${Utils.escape(primaryKey)}">
           </div>`;
       } else {
-        slot0Wrap.innerHTML = `
+        slot0Wrap.innerHTML = `${registrantLabel}
           <div id="edit-slot-0">
             <div class="slot-search-wrap">
               <input type="text" class="form-control slot-search-input"
@@ -1136,6 +1137,9 @@ const Registrations = (() => {
     const gQty = parseInt(r[C.GUEST_QTY], 10) || 0;
     _renderEditGuestNames(gQty, r['GuestNames'] || '');
 
+    const kQty = parseInt(r[C.KIDS_QTY], 10) || 0;
+    _renderEditKidsNames(kQty, r['KidsNames'] || '');
+
     Utils.showModal('reg-add-modal');
   }
 
@@ -1366,6 +1370,7 @@ const Registrations = (() => {
     const editSlotsEl = document.getElementById('reg-edit-slots-section');
     if (editSlotsEl) editSlotsEl.style.display = 'none';
     _renderEditGuestNames(0, '');
+    _renderEditKidsNames(0, '');
 
     if (!_members.length) {
       Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
@@ -1404,6 +1409,15 @@ const Registrations = (() => {
     _renderEditGuestNames(qty, currentNames.join(','));
   }
 
+  function onKidsQtyChange() {
+    recalcAddTotal();
+    if (!_editingRegId) return;
+    const qty = parseInt(document.getElementById('reg-add-kids-qty')?.value, 10) || 0;
+    const currentNames = [...document.querySelectorAll('#reg-edit-kids-names-section .edit-kids-name-input')]
+      .map(el => el.value.trim());
+    _renderEditKidsNames(qty, currentNames.join(','));
+  }
+
   function _renderEditGuestNames(qty, guestNamesStr) {
     const section = document.getElementById('reg-edit-guest-names-section');
     if (!section) return;
@@ -1414,6 +1428,20 @@ const Registrations = (() => {
       <div class="form-group">
         <label>Guest ${i + 1} name</label>
         <input type="text" class="form-control edit-guest-name-input"
+          placeholder="Optional name" value="${Utils.escape(names[i] || '')}">
+      </div>`).join('');
+  }
+
+  function _renderEditKidsNames(qty, kidsNamesStr) {
+    const section = document.getElementById('reg-edit-kids-names-section');
+    if (!section) return;
+    if (!qty) { section.style.display = 'none'; section.innerHTML = ''; return; }
+    const names = (kidsNamesStr || '').split(',').map(s => s.trim());
+    section.style.display = '';
+    section.innerHTML = Array.from({ length: qty }, (_, i) => `
+      <div class="form-group">
+        <label>Kid ${i + 1} name</label>
+        <input type="text" class="form-control edit-kids-name-input"
           placeholder="Optional name" value="${Utils.escape(names[i] || '')}">
       </div>`).join('');
   }
@@ -1462,17 +1490,20 @@ const Registrations = (() => {
       const amount   = status === 'Confirmed' ? (get('reg-add-amount') || total) : '';
 
       // Collect member assignments from slot UI (Edit mode) or Member Key field (Add mode)
-      let memberKey, memberSlots, guestNames;
+      let memberKey, memberSlots, guestNames, kidsNames;
       if (_editingRegId) {
         memberKey   = document.querySelector('#reg-edit-slot0-wrap .slot-key-input')?.value.trim() || '';
         memberSlots = [...document.querySelectorAll('#reg-edit-slots-container .slot-key-input')]
           .map(el => el.value.trim()).filter(Boolean).join(',');
         guestNames  = [...document.querySelectorAll('#reg-edit-guest-names-section .edit-guest-name-input')]
           .map(el => el.value.trim()).join(',');
+        kidsNames   = [...document.querySelectorAll('#reg-edit-kids-names-section .edit-kids-name-input')]
+          .map(el => el.value.trim()).join(',');
       } else {
         memberKey   = get('reg-add-member-key');
         memberSlots = '';
         guestNames  = '';
+        kidsNames   = '';
       }
 
       const obj = {
@@ -1488,6 +1519,7 @@ const Registrations = (() => {
         [C.GUEST_QTY]: gQty,
         GuestNames:    guestNames,
         [C.KIDS_QTY]:  kQty,
+        KidsNames:     kidsNames,
         [C.WALKIN]:    isWalkIn ? 'Yes' : 'No',
         [C.TOTAL]:     total,
         [C.PAY_NOTE]:  get('reg-add-pay-note'),
@@ -1612,7 +1644,7 @@ const Registrations = (() => {
     openAddFromSlot, saveAddFromSlot,
     cancelRegistration,
     openEditCheckin, saveCheckin,
-    openAddRegistration, onAddSourceChange, onAddWalkInChange, onMemberQtyChange, onGuestQtyChange,
+    openAddRegistration, onAddSourceChange, onAddWalkInChange, onMemberQtyChange, onGuestQtyChange, onKidsQtyChange,
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,

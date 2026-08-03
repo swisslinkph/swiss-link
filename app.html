@@ -1104,15 +1104,19 @@
      ADD REGISTRATION MODAL — Manual entry
 ═══════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="reg-add-modal">
-  <div class="modal" style="max-width:500px;">
+  <div class="modal" style="max-width:540px;">
     <div class="modal-header">
       <h2>Add Registration</h2>
       <button class="modal-close" onclick="Utils.hideModal('reg-add-modal')" aria-label="Close">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <!-- Edit mode: "Member 1 — Registrant" header, hidden in Add mode -->
-        <div id="reg-edit-member1-head" class="edit-member-section-header" style="display:none;grid-column:1/-1;">Member 1 — Registrant</div>
+
+        <!-- ── ATTENDEES ─────────────────────────────────────── -->
+        <div class="edit-member-section-header" style="grid-column:1/-1;margin-bottom:4px;">Attendees</div>
+
+        <!-- Edit mode: "Member 1 — Registrant" sub-label -->
+        <div id="reg-edit-member1-head" class="edit-member-label" style="display:none;grid-column:1/-1;">Member 1 — Registrant</div>
 
         <div class="form-group">
           <label for="reg-add-last">Last Name <span style="color:var(--red)">*</span></label>
@@ -1129,20 +1133,41 @@
           <input type="email" id="reg-add-email" class="form-control">
         </div>
 
-        <!-- Edit mode: slot 0 — link to member record (hidden in Add mode) -->
+        <!-- Edit mode: slot 0 — link to member record -->
         <div id="reg-edit-slot0-wrap" style="display:none;grid-column:1/-1;"></div>
 
+        <!-- Add mode: member key input -->
         <div class="form-group" id="reg-add-mkey-group" style="grid-column:1/-1;display:none;">
           <label for="reg-add-member-key">Member Key <span class="text-muted" style="font-weight:400;">(optional — links to member record)</span></label>
           <input type="text" id="reg-add-member-key" class="form-control" placeholder="e.g. DELA-JUAN">
         </div>
         <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;grid-column:1/-1;"></div>
 
-        <!-- Edit mode: Additional Members (slots 2..N) -->
+        <!-- Member count row + additional member slots -->
+        <div class="reg-attendee-type-row" style="grid-column:1/-1;">
+          <span class="reg-attendee-type-label">Members</span>
+          <input type="number" id="reg-add-member-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.onMemberQtyChange()">
+        </div>
         <div id="reg-edit-slots-section" style="display:none;grid-column:1/-1;">
-          <div class="edit-member-section-header" style="margin-top:8px;margin-bottom:2px;">Additional Members</div>
           <div id="reg-edit-slots-container"></div>
         </div>
+
+        <!-- Guest count row + name inputs -->
+        <div class="reg-attendee-type-row" style="grid-column:1/-1;">
+          <span class="reg-attendee-type-label">Guests</span>
+          <input type="number" id="reg-add-guest-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.onGuestQtyChange()">
+        </div>
+        <div id="reg-edit-guest-names-section" style="display:none;grid-column:1/-1;padding-left:2px;"></div>
+
+        <!-- Kids count row (shown only when event has kids fee) -->
+        <div class="reg-attendee-type-row" id="reg-add-kids-row" style="grid-column:1/-1;display:none;">
+          <span class="reg-attendee-type-label">Kids</span>
+          <input type="number" id="reg-add-kids-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.recalcAddTotal()">
+        </div>
+
+        <!-- ── BOOKING ────────────────────────────────────────── -->
+        <div style="grid-column:1/-1;border-top:1px solid var(--border);margin:10px 0 4px;"></div>
+        <div class="edit-member-section-header" style="grid-column:1/-1;margin-bottom:4px;">Booking</div>
 
         <div class="form-group">
           <label for="reg-add-source">Source</label>
@@ -1159,28 +1184,13 @@
             Walk-in rates apply
           </label>
         </div>
-
-        <div style="grid-column:1/-1;border-top:1px solid var(--border);margin:4px 0;"></div>
-
-        <div class="form-group">
-          <label for="reg-add-member-qty">Member tickets</label>
-          <input type="number" id="reg-add-member-qty" class="form-control" value="0" min="0" oninput="Registrations.onMemberQtyChange()">
-        </div>
-        <div class="form-group">
-          <label for="reg-add-guest-qty">Guest tickets</label>
-          <input type="number" id="reg-add-guest-qty" class="form-control" value="0" min="0" oninput="Registrations.onGuestQtyChange()">
-        </div>
-        <div id="reg-edit-guest-names-section" style="display:none;grid-column:1/-1;"></div>
-        <div class="form-group" id="reg-add-kids-row">
-          <label for="reg-add-kids-qty">Kids tickets</label>
-          <input type="number" id="reg-add-kids-qty" class="form-control" value="0" min="0" oninput="Registrations.recalcAddTotal()">
-        </div>
         <div class="form-group" id="reg-add-total-row">
           <label for="reg-add-total">Total Due (₱)</label>
           <input type="number" id="reg-add-total" class="form-control" min="0" step="0.01" placeholder="Auto-calculated">
         </div>
+        <div></div>
 
-        <!-- ── Payment section ─────────────────────────────────── -->
+        <!-- ── PAYMENT ─────────────────────────────────────────── -->
         <div class="reg-payment-card" style="grid-column:1/-1;">
           <div class="reg-payment-card-header">💳 Payment</div>
           <div class="reg-payment-card-body"><div class="form-grid" style="gap:12px;">
@@ -1217,6 +1227,7 @@
           <label for="reg-add-notes">Admin Notes</label>
           <input type="text" id="reg-add-notes" class="form-control" placeholder="Optional">
         </div>
+
       </div>
     </div>
     <div class="modal-footer">

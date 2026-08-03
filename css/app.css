@@ -615,10 +615,73 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 18px 20px 12px;
+  padding: 18px 20px 14px;
+  gap: 12px;
 }
-.event-card-title { font-size: 16px; font-weight: 700; color: var(--navy); }
-.event-card-meta  { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.ec-title-block  { flex: 1; min-width: 0; }
+.event-card-title { font-size: 17px; font-weight: 700; color: var(--navy); }
+.event-card-meta  { font-size: 12px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.ec-days-chip {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 2px;
+}
+
+/* Stats row */
+.ec-stats {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding: 0 20px;
+}
+.ec-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 16px 12px 0;
+  margin-right: 16px;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+.ec-stat:last-child  { border-right: none; margin-right: 0; }
+.ec-stat-divider     { width: 1px; background: var(--border); margin: 8px 16px 8px 0; align-self: stretch; }
+.ec-stat-num   { font-size: 20px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ec-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
+.ec-stat-green .ec-stat-num { color: #16a34a; }
+.ec-stat-amber .ec-stat-num { color: #d97706; }
+
+/* Progress bars */
+.ec-bars {
+  padding: 10px 20px 14px;
+  border-top: 1px solid var(--border);
+}
+.ec-bar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.ec-bar-val  { font-weight: 600; color: var(--text); }
+.ec-bar-pct  { font-weight: 400; color: var(--text-muted); margin-left: 4px; }
+.ec-bar-track {
+  height: 6px;
+  background: var(--bg-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ec-bar-fill  { height: 100%; border-radius: 3px; transition: width .4s; }
+.ec-fill-blue  { background: #2563eb; }
+.ec-fill-green { background: #16a34a; }
+
+/* Keep old stat-box for member detail etc. */
 .event-card-stats {
   display: flex;
   gap: 0;
@@ -635,7 +698,12 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stat-num   { display: block; font-size: 18px; font-weight: 800; color: var(--text); }
 .stat-label { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .event-card-desc    { padding: 12px 20px; font-size: 13px; color: var(--text-muted); }
-.event-card-actions { padding: 12px 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+.event-card-actions { padding: 12px 20px; display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border); }
+
+@media (prefers-color-scheme: dark) {
+  .ec-days-chip { background: #1e3a5f; color: #93c5fd; }
+}
+:root[data-theme="dark"] .ec-days-chip { background: #1e3a5f; color: #93c5fd; }
 
 /* ── Upcoming events (Dashboard) ─────────────────────────────────────────── */
 .event-item {

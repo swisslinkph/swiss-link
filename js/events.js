@@ -38,104 +38,120 @@ const Events = (() => {
     }
 
     container.innerHTML = sorted.map(e => {
-      const attendeeTxns  = _txns.filter(t => t.EventID === e.EventID && t.Category === 'Event');
-      const rsvpCount     = _txns.filter(t => t.EventID === e.EventID && t.Category === 'RSVP').length;
-      const eventRegs     = _regs.filter(r => r.EventID === e.EventID);
-      const hasRegs       = eventRegs.length > 0;
-      const isPast        = new Date(e.Date) < new Date();
-      const statusClass   = isPast ? 'event-card-past' : 'event-card-upcoming';
+      const eventRegs  = _regs.filter(r => r.EventID === e.EventID);
+      const hasRegs    = eventRegs.length > 0;
+      const isPast     = new Date(e.Date) < new Date();
+      const safeId     = Utils.escape(e.EventID);
 
-      let statsHTML;
-      if (hasRegs) {
-        const confirmed  = eventRegs.filter(r => r.PaymentStatus === 'Confirmed').length;
-        const pending    = eventRegs.filter(r => r.PaymentStatus === 'Pending').length;
-        const totalPax   = eventRegs.reduce((s, r) =>
-          s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
-        const collected  = eventRegs
-          .filter(r => r.PaymentStatus === 'Confirmed')
-          .reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
-        statsHTML = `
-          <div class="stat-box">
-            <span class="stat-num">${eventRegs.length}</span>
-            <span class="stat-label">Registrations</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-num">${totalPax}</span>
-            <span class="stat-label">Total Pax</span>
-          </div>
-          <div class="stat-box" style="color:#166534">
-            <span class="stat-num">${confirmed}</span>
-            <span class="stat-label">Confirmed</span>
-          </div>
-          <div class="stat-box" style="color:#92400e">
-            <span class="stat-num">${pending}</span>
-            <span class="stat-label">Pending</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-num">${Utils.formatPHP(collected)}</span>
-            <span class="stat-label">Collected</span>
-          </div>`;
-      } else {
-        const attendeeCount = attendeeTxns.length;
-        const revenue       = attendeeTxns.reduce((s, t) => s + Utils.parsePHP(t.AmountPaid), 0);
-        statsHTML = `
-          <div class="stat-box">
-            <span class="stat-num">${attendeeCount}</span>
-            <span class="stat-label">Attendees</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-num">${rsvpCount}</span>
-            <span class="stat-label">RSVPs</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-num">${Utils.formatPHP(revenue)}</span>
-            <span class="stat-label">Revenue</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-num">${Utils.formatPHP(e.MemberFee)}</span>
-            <span class="stat-label">Member Fee</span>
-          </div>`;
-      }
+      // ── Core metrics ───────────────────────────────────────────────
+      const confirmed   = eventRegs.filter(r => r.PaymentStatus === 'Confirmed').length;
+      const pending     = eventRegs.filter(r => r.PaymentStatus === 'Pending').length;
+      const totalPax    = eventRegs.reduce((s, r) =>
+        s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
+      const collected   = eventRegs
+        .filter(r => r.PaymentStatus === 'Confirmed')
+        .reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+      const totalDue    = eventRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
+      const outstanding = eventRegs
+        .filter(r => r.PaymentStatus !== 'Confirmed')
+        .reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
+      const walkIns     = eventRegs.filter(r => r.WalkIn === 'Yes').length;
 
-      return `<div class="event-card ${statusClass}">
+      // ── Check-in progress ──────────────────────────────────────────
+      const checkedInPax = eventRegs.reduce((s, r) => {
+        return s + (r.CheckedIn || '').split(',').map(x => x.trim()).filter(Boolean).length;
+      }, 0);
+      const checkInPct  = totalPax > 0 ? Math.round(checkedInPax / totalPax * 100) : 0;
+      const collectPct  = totalDue  > 0 ? Math.round(collected    / totalDue  * 100) : 0;
+
+      // ── Days label ─────────────────────────────────────────────────
+      const diffDays  = Math.round((new Date(e.Date) - new Date()) / 86400000);
+      const daysLabel = isPast
+        ? (Math.abs(diffDays) === 1 ? 'Yesterday' : `${Math.abs(diffDays)} days ago`)
+        : (diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`);
+
+      // ── Stat boxes ─────────────────────────────────────────────────
+      const statsHTML = hasRegs ? `
+        <div class="ec-stats">
+          <div class="ec-stat">
+            <span class="ec-stat-num">${eventRegs.length}</span>
+            <span class="ec-stat-label">Registrations</span>
+          </div>
+          <div class="ec-stat">
+            <span class="ec-stat-num">${totalPax}</span>
+            <span class="ec-stat-label">Total Pax</span>
+          </div>
+          <div class="ec-stat ec-stat-green">
+            <span class="ec-stat-num">${confirmed}</span>
+            <span class="ec-stat-label">Confirmed</span>
+          </div>
+          ${pending ? `<div class="ec-stat ec-stat-amber">
+            <span class="ec-stat-num">${pending}</span>
+            <span class="ec-stat-label">Pending</span>
+          </div>` : ''}
+          ${walkIns ? `<div class="ec-stat">
+            <span class="ec-stat-num">${walkIns}</span>
+            <span class="ec-stat-label">Walk-ins</span>
+          </div>` : ''}
+          <div class="ec-stat-divider"></div>
+          <div class="ec-stat ec-stat-green">
+            <span class="ec-stat-num">${Utils.formatPHP(collected)}</span>
+            <span class="ec-stat-label">Collected</span>
+          </div>
+          ${outstanding > 0 ? `<div class="ec-stat ec-stat-amber">
+            <span class="ec-stat-num">${Utils.formatPHP(outstanding)}</span>
+            <span class="ec-stat-label">Outstanding</span>
+          </div>` : ''}
+        </div>
+        <div class="ec-bars">
+          <div class="ec-bar-row">
+            <span class="ec-bar-label">${isPast ? 'Checked in' : 'Check-in progress'}</span>
+            <span class="ec-bar-val">${checkedInPax}/${totalPax} <span class="ec-bar-pct">${checkInPct}%</span></span>
+          </div>
+          <div class="ec-bar-track"><div class="ec-bar-fill ec-fill-blue" style="width:${checkInPct}%"></div></div>
+          <div class="ec-bar-row" style="margin-top:6px;">
+            <span class="ec-bar-label">Collection</span>
+            <span class="ec-bar-val">${Utils.formatPHP(collected)} <span class="ec-bar-pct">${collectPct}%</span></span>
+          </div>
+          <div class="ec-bar-track"><div class="ec-bar-fill ec-fill-green" style="width:${collectPct}%"></div></div>
+        </div>` : `
+        <div class="ec-stats">
+          <div class="ec-stat">
+            <span class="ec-stat-num">${Utils.formatPHP(e.MemberFee || 0)}</span>
+            <span class="ec-stat-label">Member Fee</span>
+          </div>
+          <div class="ec-stat">
+            <span class="ec-stat-num">${Utils.formatPHP(e.GuestFee || 0)}</span>
+            <span class="ec-stat-label">Guest Fee</span>
+          </div>
+          <div class="ec-stat">
+            <span class="ec-stat-num">${daysLabel}</span>
+            <span class="ec-stat-label">${isPast ? 'Date' : 'Coming up'}</span>
+          </div>
+        </div>`;
+
+      return `<div class="event-card ${isPast ? 'event-card-past' : 'event-card-upcoming'}">
         <div class="event-card-header">
-          <div>
+          <div class="ec-title-block">
             <h3 class="event-card-title">${Utils.escape(e.Title)}</h3>
             <div class="event-card-meta">
-              📅 ${Utils.formatDate(e.Date)} &nbsp;|&nbsp; 📍 ${Utils.escape(e.Location)}
+              📅 ${Utils.formatDate(e.Date)}
+              ${!isPast ? `<span class="ec-days-chip">${daysLabel}</span>` : ''}
+              &nbsp;·&nbsp; 📍 ${Utils.escape(e.Location)}
             </div>
           </div>
-          <div class="event-card-status">
-            <span class="badge badge-${isPast ? 'past' : 'upcoming'}">${isPast ? 'Past' : 'Upcoming'}</span>
-          </div>
+          <span class="badge badge-${isPast ? 'past' : 'upcoming'}">${isPast ? 'Past' : 'Upcoming'}</span>
         </div>
 
-        <div class="event-card-stats">${statsHTML}</div>
-
-        ${e.Description ? `<p class="event-card-desc">${Utils.escape(e.Description)}</p>` : ''}
+        ${statsHTML}
 
         <div class="event-card-actions">
-          <button class="btn btn-sm btn-primary" onclick="Events.openRegistrations('${Utils.escape(e.EventID)}')">
-            📋 Registrations
-          </button>
-          <button class="btn btn-sm" onclick="Events.openFrontDesk('${Utils.escape(e.EventID)}')">
-            🎫 Front Desk
-          </button>
-          <button class="btn btn-sm btn-outline" onclick="Events.openStats('${Utils.escape(e.EventID)}')">
-            📊 Stats
-          </button>
-          <button class="btn btn-sm btn-outline" onclick="Events.openEdit('${Utils.escape(e.EventID)}')">
-            ✏️ Edit
-          </button>
-          <button class="btn btn-sm btn-outline" onclick="Email.openForEvent('${Utils.escape(e.EventID)}')">
-            📧 Send Invites
-          </button>
-          <button class="btn btn-sm btn-outline" onclick="Events.viewAttendees('${Utils.escape(e.EventID)}')">
-            👥 Attendees
-          </button>
-          <button class="btn btn-sm btn-danger-outline" onclick="Events.confirmDelete('${Utils.escape(e.EventID)}')">
-            🗑️ Delete
-          </button>
+          <button class="btn btn-sm btn-primary" onclick="Events.openRegistrations('${safeId}')">📋 Registrations</button>
+          <button class="btn btn-sm btn-secondary" onclick="Events.openFrontDesk('${safeId}')">🎫 Front Desk</button>
+          <button class="btn btn-sm btn-outline" onclick="Events.openStats('${safeId}')">📊 Stats</button>
+          <button class="btn btn-sm btn-outline" onclick="Events.openEdit('${safeId}')">✏️ Edit</button>
+          <button class="btn btn-sm btn-outline" onclick="Email.openForEvent('${safeId}')">📧 Send Invites</button>
+          <button class="btn btn-sm btn-danger-outline" onclick="Events.confirmDelete('${safeId}')">🗑️ Delete</button>
         </div>
       </div>`;
     }).join('');

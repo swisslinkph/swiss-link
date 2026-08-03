@@ -16,6 +16,7 @@ const Members = (() => {
   let _detailKey  = null;
   let _afterSaveCallback = null; // optional cross-module callback set by openAdd(prefill, cb)
   let _rates      = {}; // loaded from Rates sheet, falls back to MEMBERSHIP_RATES
+  let _regs       = []; // lazy-loaded when member detail is opened
 
   // Merge state
   let _mergeCanonicalKey = null;
@@ -493,13 +494,17 @@ const Members = (() => {
 
   // ── Datalist helper ───────────────────────────────────────────────────────
   // ── Member Detail view ────────────────────────────────────────────────────
-  function openDetail(key) {
+  async function openDetail(key) {
     _detailKey = key;
     document.getElementById('members-page-header').style.display = 'none';
     document.getElementById('members-list-view').style.display   = 'none';
     document.getElementById('members-family-view').style.display = 'none';
     document.getElementById('member-detail-view').style.display  = '';
     _renderDetail(key);
+    if (!_regs.length) {
+      _regs = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+      if (_detailKey === key) _renderDetail(key);
+    }
   }
 
   function closeDetail() {
@@ -573,6 +578,7 @@ const Members = (() => {
         <div class="stat-box"><span class="stat-num">${Utils.formatPHP(totalPaid)}</span><span class="stat-label">Total Paid (All Time)</span></div>
         <div class="stat-box"><span class="stat-num">${Utils.formatPHP(yearPaid)}</span><span class="stat-label">${year} Paid</span></div>
         <div class="stat-box"><span class="stat-num">${memberTxns.length}</span><span class="stat-label">Transactions</span></div>
+        <div class="stat-box"><span class="stat-num">${_regs.length ? _eventsAttended(key).length : '…'}</span><span class="stat-label">Events Attended</span></div>
       </div>
 
       <div class="member-detail-transactions">
@@ -585,12 +591,76 @@ const Members = (() => {
           </thead>
           <tbody>${txnRows}</tbody>
         </table>
+      </div>
+
+      <div class="member-detail-events">
+        <h3 class="section-title">Events Attended</h3>
+        ${_regs.length ? _renderEventsAttended(key) : '<p class="empty-state" style="font-size:13px;padding:12px 0;">Loading…</p>'}
       </div>`;
   }
 
   function _categoryBadge(cat) {
     const map = { Membership: 'badge-dues', Event: 'badge-event', RSVP: 'badge-upcoming' };
     return cat ? `<span class="badge ${map[cat] || 'badge-tbc'}">${Utils.escape(cat)}</span>` : '';
+  }
+
+  function _renderEventsAttended(key) {
+    const attended = _eventsAttended(key);
+    if (!attended.length) return '<p class="empty-state" style="font-size:13px;padding:12px 0;">No events attended yet.</p>';
+
+    return `<div class="events-attended-list">${attended.map(({ r, event, isPrimary, primaryName }) => {
+      const eventName = event?.Title || r.EventName || r.EventID || '—';
+      const date      = event?.Date  ? Utils.formatDate(event.Date) : '—';
+      const location  = event?.Location || '';
+      const regId     = r.RegistrationID || '';
+      const mQty      = parseInt(r.MemberQty,  10) || 0;
+      const gQty      = parseInt(r.GuestQty,   10) || 0;
+      const kQty      = parseInt(r.KidsQty,    10) || 0;
+      const paxParts  = [
+        mQty ? `${mQty}M` : '', gQty ? `${gQty}G` : '', kQty ? `${kQty}K` : '',
+      ].filter(Boolean).join('+');
+      const roleTag   = isPrimary
+        ? `<span class="ea-role ea-role-primary">Primary registrant</span>`
+        : `<span class="ea-role ea-role-guest">On ${Utils.escape(primaryName)}'s registration</span>`;
+
+      return `<div class="ea-row">
+        <div class="ea-date">${Utils.escape(date)}</div>
+        <div class="ea-info">
+          <div class="ea-name">${Utils.escape(eventName)}</div>
+          <div class="ea-meta">
+            ${location ? `<span>${Utils.escape(location)}</span><span class="meta-sep">·</span>` : ''}
+            ${paxParts ? `<span>${paxParts}</span><span class="meta-sep">·</span>` : ''}
+            ${regId ? `<span class="ea-regid">${Utils.escape(regId)}</span>` : ''}
+          </div>
+        </div>
+        <div class="ea-tags">${roleTag}</div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  function _eventsAttended(key) {
+    // Returns registrations where this member was checked in (as primary or slot)
+    return _regs
+      .filter(r => {
+        const checked = new Set((r.CheckedIn || '').split(',').map(s => s.trim()).filter(Boolean));
+        if (!checked.size) return false;
+        // Primary slot
+        if (r.MemberKey === key && checked.has('m0')) return true;
+        // Additional member slots
+        const slots = (r.MemberSlots || '').split(',').map(s => s.trim()).filter(Boolean);
+        const slotIdx = slots.indexOf(key);
+        if (slotIdx !== -1 && checked.has(`m${slotIdx + 1}`)) return true;
+        return false;
+      })
+      .map(r => {
+        const event   = _events.find(e => e.EventID === r.EventID);
+        const date    = event?.Date || r.EventID || '';
+        const isPrimary = r.MemberKey === key;
+        const primaryName = isPrimary ? null
+          : [r.LastName, r.FirstName].filter(Boolean).join(', ') || r.MemberKey;
+        return { r, event, date, isPrimary, primaryName };
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 
   // ── Edit / Delete transaction ─────────────────────────────────────────────

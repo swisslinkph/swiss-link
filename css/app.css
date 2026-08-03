@@ -1797,12 +1797,24 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .merge-summary-warn  { color: #854d0e; }
 
 @media (prefers-color-scheme: dark) {
-  .merge-card-keep { border-color: #166534; background: #052e16; }
-  .merge-card-dup  { border-color: #991b1b; background: #2d0e0e; }
+  .merge-card-keep { border-color: #4ade80; background: #14532d; color: #dcfce7; }
+  .merge-card-dup  { border-color: #f87171; background: #7f1d1d; color: #fee2e2; }
+  .merge-card-keep .merge-card-label,
+  .merge-card-keep .merge-card-key,
+  .merge-card-keep .merge-card-detail { color: #86efac; }
+  .merge-card-dup  .merge-card-label,
+  .merge-card-dup  .merge-card-key,
+  .merge-card-dup  .merge-card-detail { color: #fca5a5; }
   .merge-summary-warn { color: #fde68a; }
 }
-:root[data-theme="dark"] .merge-card-keep { border-color: #166534; background: #052e16; }
-:root[data-theme="dark"] .merge-card-dup  { border-color: #991b1b; background: #2d0e0e; }
+:root[data-theme="dark"] .merge-card-keep { border-color: #4ade80; background: #14532d; color: #dcfce7; }
+:root[data-theme="dark"] .merge-card-dup  { border-color: #f87171; background: #7f1d1d; color: #fee2e2; }
+:root[data-theme="dark"] .merge-card-keep .merge-card-label,
+:root[data-theme="dark"] .merge-card-keep .merge-card-key,
+:root[data-theme="dark"] .merge-card-keep .merge-card-detail { color: #86efac; }
+:root[data-theme="dark"] .merge-card-dup  .merge-card-label,
+:root[data-theme="dark"] .merge-card-dup  .merge-card-key,
+:root[data-theme="dark"] .merge-card-dup  .merge-card-detail { color: #fca5a5; }
 :root[data-theme="dark"] .merge-summary-warn { color: #fde68a; }
 
 /* ── Event Stats Modal ─────────────────────────────────────────────────── */

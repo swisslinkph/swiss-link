@@ -1469,7 +1469,6 @@ const Registrations = (() => {
 
   function onGuestQtyChange() {
     recalcAddTotal();
-    if (!_editingRegId) return;
     const qty = parseInt(document.getElementById('reg-add-guest-qty')?.value, 10) || 0;
     const currentNames = [...document.querySelectorAll('#reg-edit-guest-names-section .edit-guest-name-input')]
       .map(el => el.value.trim());
@@ -1478,7 +1477,6 @@ const Registrations = (() => {
 
   function onKidsQtyChange() {
     recalcAddTotal();
-    if (!_editingRegId) return;
     const qty = parseInt(document.getElementById('reg-add-kids-qty')?.value, 10) || 0;
     const currentNames = [...document.querySelectorAll('#reg-edit-kids-names-section .edit-kids-name-input')]
       .map(el => el.value.trim());

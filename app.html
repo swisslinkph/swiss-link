@@ -1632,10 +1632,12 @@
         <p class="merge-hint">This record is the <strong>canonical</strong> (kept) record. Search for the <strong>duplicate</strong> to merge into it.</p>
         <div class="form-group">
           <label>Search for duplicate</label>
-          <input type="text" id="merge-search-input" class="form-control"
-            placeholder="Name, member key, or email…" autocomplete="off"
-            oninput="Members.onMergeSearch(this.value)">
-          <div id="merge-search-sugg" class="slot-suggestions"></div>
+          <div style="position:relative;">
+            <input type="text" id="merge-search-input" class="form-control"
+              placeholder="Name, member key, or email…" autocomplete="off"
+              oninput="Members.onMergeSearch(this.value)">
+            <div id="merge-search-sugg" class="slot-suggestions"></div>
+          </div>
         </div>
         <div id="merge-selected-preview" style="display:none;">
           <div class="merge-pair-cards">

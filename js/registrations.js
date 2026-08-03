@@ -200,9 +200,10 @@ const Registrations = (() => {
       .filter(r => r[C.STATUS] === 'Confirmed')
       .reduce((s, r) => s + Utils.parsePHP(r[C.AMOUNT] || r[C.TOTAL]), 0);
 
-    const memberPax  = _all.reduce((s, r) => s + (parseInt(r[C.MEM_QTY], 10) || 0), 0);
-    const guestPax   = _all.reduce((s, r) => s + (parseInt(r[C.GUEST_QTY], 10) || 0), 0);
-    const kidsPax    = _all.reduce((s, r) => s + (parseInt(r[C.KIDS_QTY], 10) || 0), 0);
+    const activePax  = _all.filter(r => r[C.STATUS] !== 'Cancelled');
+    const memberPax  = activePax.reduce((s, r) => s + (parseInt(r[C.MEM_QTY], 10) || 0), 0);
+    const guestPax   = activePax.reduce((s, r) => s + (parseInt(r[C.GUEST_QTY], 10) || 0), 0);
+    const kidsPax    = activePax.reduce((s, r) => s + (parseInt(r[C.KIDS_QTY], 10) || 0), 0);
     const totalPax   = memberPax + guestPax + kidsPax;
 
     el.innerHTML = `

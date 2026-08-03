@@ -46,13 +46,14 @@ const Events = (() => {
       // ── Core metrics ───────────────────────────────────────────────
       const confirmed   = eventRegs.filter(r => r.PaymentStatus === 'Confirmed').length;
       const pending     = eventRegs.filter(r => r.PaymentStatus === 'Pending').length;
-      const totalPax    = eventRegs.reduce((s, r) =>
+      const activeRegs  = eventRegs.filter(r => r.PaymentStatus !== 'Cancelled');
+      const totalPax    = activeRegs.reduce((s, r) =>
         s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
       const collected   = eventRegs
         .filter(r => r.PaymentStatus === 'Confirmed')
         .reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
-      const totalDue    = eventRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
-      const outstanding = eventRegs
+      const totalDue    = activeRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
+      const outstanding = activeRegs
         .filter(r => r.PaymentStatus !== 'Confirmed')
         .reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
       const walkIns     = eventRegs.filter(r => r.WalkIn === 'Yes').length;
@@ -305,18 +306,19 @@ const Events = (() => {
   function _buildStatsHtml(event, regs) {
     if (!regs.length) return '<p class="empty-state">No registrations yet.</p>';
 
-    // ── Ticket counts ─────────────────────────────────────────────────
-    const memberPax = regs.reduce((s, r) => s + (parseInt(r.MemberQty,  10) || 0), 0);
-    const guestPax  = regs.reduce((s, r) => s + (parseInt(r.GuestQty,   10) || 0), 0);
-    const kidsPax   = regs.reduce((s, r) => s + (parseInt(r.KidsQty,    10) || 0), 0);
+    // ── Ticket counts (exclude cancelled) ────────────────────────────
+    const activeRegs = regs.filter(r => r.PaymentStatus !== 'Cancelled');
+    const memberPax = activeRegs.reduce((s, r) => s + (parseInt(r.MemberQty,  10) || 0), 0);
+    const guestPax  = activeRegs.reduce((s, r) => s + (parseInt(r.GuestQty,   10) || 0), 0);
+    const kidsPax   = activeRegs.reduce((s, r) => s + (parseInt(r.KidsQty,    10) || 0), 0);
     const totalPax  = memberPax + guestPax + kidsPax;
 
     // ── Payment status ────────────────────────────────────────────────
     const confirmed  = regs.filter(r => r.PaymentStatus === 'Confirmed');
-    const pending    = regs.filter(r => r.PaymentStatus !== 'Confirmed');
+    const pending    = regs.filter(r => r.PaymentStatus === 'Pending');
     const collected  = confirmed.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
     const outstanding = pending.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
-    const totalDue   = regs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
+    const totalDue   = activeRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
     const collectionRate = totalDue > 0 ? Math.round(collected / totalDue * 100) : 0;
 
     // ── Payment modes ─────────────────────────────────────────────────

@@ -1303,6 +1303,20 @@
     <div class="modal-body">
       <p id="reg-walkin-rates" class="settings-hint" style="margin-bottom:12px;"></p>
       <div class="form-grid">
+
+        <!-- Member link (optional) -->
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Link to member record <span class="text-muted" style="font-weight:400;">(optional)</span></label>
+          <div style="position:relative;">
+            <div id="reg-wi-member-assigned" style="display:none;"></div>
+            <input type="text" id="reg-wi-member-search" class="form-control"
+              placeholder="Search member to link…" autocomplete="off"
+              oninput="Registrations.searchWalkInMember(this.value)">
+            <div id="reg-wi-member-sugg" class="slot-suggestions"></div>
+          </div>
+          <input type="hidden" id="reg-wi-member-key">
+        </div>
+
         <div class="form-group">
           <label for="reg-wi-last">Last Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="reg-wi-last" class="form-control">

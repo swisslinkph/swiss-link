@@ -1174,7 +1174,74 @@ const Registrations = (() => {
     document.getElementById('reg-walkin-modal')
       ?.querySelectorAll('input')
       .forEach(el => { el.value = el.type === 'number' ? '0' : ''; });
+    // Reset member link
+    const assigned = document.getElementById('reg-wi-member-assigned');
+    const search   = document.getElementById('reg-wi-member-search');
+    if (assigned) { assigned.style.display = 'none'; assigned.innerHTML = ''; }
+    if (search)   search.style.display = '';
+    const sugg = document.getElementById('reg-wi-member-sugg');
+    if (sugg) sugg.innerHTML = '';
+    if (!_members.length) {
+      Sheets.getAll(CONFIG.SHEETS.MEMBERS).then(rows => { _members = rows; }).catch(() => {});
+    }
     Utils.showModal('reg-walkin-modal');
+  }
+
+  function searchWalkInMember(q) {
+    const sugg = document.getElementById('reg-wi-member-sugg');
+    if (!sugg) return;
+    if (!q || q.length < 2) { sugg.innerHTML = ''; return; }
+    const results = Utils.filterRows(_members, q, ['First Name', 'Last Name', 'Alternative Name', 'Member Key', 'Email'])
+      .slice(0, 6);
+    if (!results.length) { sugg.innerHTML = '<div class="slot-sugg-item">No matches</div>'; return; }
+    sugg.innerHTML = results.map(m => {
+      const key  = m['Member Key'];
+      const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
+      return `<div class="slot-sugg-item" onclick="Registrations.selectWalkInMember('${Utils.escape(key)}')">
+        <strong>${Utils.escape(name)}</strong> <span>${Utils.escape(key)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function selectWalkInMember(key) {
+    const m = _members.find(x => x['Member Key'] === key);
+    if (!m) return;
+    const name = `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
+    // Fill name/email fields
+    const lastEl  = document.getElementById('reg-wi-last');
+    const firstEl = document.getElementById('reg-wi-first');
+    const emailEl = document.getElementById('reg-wi-email');
+    if (lastEl  && !lastEl.value)  lastEl.value  = m['Last Name']  || '';
+    if (firstEl && !firstEl.value) firstEl.value = m['First Name'] || '';
+    if (emailEl && !emailEl.value) emailEl.value = m['Email']      || '';
+    // Store key
+    const keyInput = document.getElementById('reg-wi-member-key');
+    if (keyInput) keyInput.value = key;
+    // Swap search → assigned chip
+    const search   = document.getElementById('reg-wi-member-search');
+    const sugg     = document.getElementById('reg-wi-member-sugg');
+    const assigned = document.getElementById('reg-wi-member-assigned');
+    if (search)   search.style.display = 'none';
+    if (sugg)     sugg.innerHTML = '';
+    if (assigned) {
+      assigned.style.display = '';
+      assigned.innerHTML = `
+        <div class="slot-assigned" style="margin-bottom:6px;">
+          <span class="slot-name">${Utils.escape(name)}</span>
+          <span class="slot-key">${Utils.escape(key)}</span>
+          <button type="button" class="slot-clear" onclick="Registrations.clearWalkInMember()">✕</button>
+        </div>
+        ${_memberInfoChips(key)}`;
+    }
+  }
+
+  function clearWalkInMember() {
+    const keyInput = document.getElementById('reg-wi-member-key');
+    const search   = document.getElementById('reg-wi-member-search');
+    const assigned = document.getElementById('reg-wi-member-assigned');
+    if (keyInput) keyInput.value = '';
+    if (search)   { search.style.display = ''; search.value = ''; }
+    if (assigned) { assigned.style.display = 'none'; assigned.innerHTML = ''; }
   }
 
   async function saveWalkIn() {
@@ -1648,7 +1715,7 @@ const Registrations = (() => {
     recalcAddTotal, onAddStatusChange, saveAddRegistration,
     openEditRegistration,
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
-    openAddWalkIn, saveWalkIn,
+    openAddWalkIn, saveWalkIn, searchWalkInMember, selectWalkInMember, clearWalkInMember,
     backToEvents,
   };
 })();

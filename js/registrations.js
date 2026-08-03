@@ -589,11 +589,12 @@ const Registrations = (() => {
       const famHead = linkFamily && _slotAddPrimaryKey ? _slotAddPrimaryKey : '';
 
       await Sheets.append(CONFIG.SHEETS.MEMBERS, {
-        'Member Key':  key,
-        'First Name':  first,
-        'Last Name':   last,
-        'Family Head': famHead,
-        Status:        'Member',
+        'Member Key':        key,
+        'First Name':        first,
+        'Last Name':         last,
+        'Family Head':       famHead,
+        'Membership Status': 'Member',
+        'Membership Type':   linkFamily ? 'Family' : '',
       });
 
       // Make the primary member a self-referential head if not already set

@@ -94,6 +94,11 @@ const Events = (() => {
             <span class="ec-stat-label">Walk-ins</span>
           </div>` : ''}
           <div class="ec-stat-divider"></div>
+          <div class="ec-stat">
+            <span class="ec-stat-num">${checkedInPax}/${totalPax}</span>
+            <span class="ec-stat-label">Checked In</span>
+          </div>
+          <div class="ec-stat-divider"></div>
           <div class="ec-stat ec-stat-green">
             <span class="ec-stat-num">${Utils.formatPHP(collected)}</span>
             <span class="ec-stat-label">Collected</span>
@@ -102,18 +107,6 @@ const Events = (() => {
             <span class="ec-stat-num">${Utils.formatPHP(outstanding)}</span>
             <span class="ec-stat-label">Outstanding</span>
           </div>` : ''}
-        </div>
-        <div class="ec-bars">
-          <div class="ec-bar-row">
-            <span class="ec-bar-label">${isPast ? 'Checked in' : 'Check-in progress'}</span>
-            <span class="ec-bar-val">${checkedInPax}/${totalPax} <span class="ec-bar-pct">${checkInPct}%</span></span>
-          </div>
-          <div class="ec-bar-track"><div class="ec-bar-fill ec-fill-blue" style="width:${checkInPct}%"></div></div>
-          <div class="ec-bar-row" style="margin-top:6px;">
-            <span class="ec-bar-label">Collection</span>
-            <span class="ec-bar-val">${Utils.formatPHP(collected)} <span class="ec-bar-pct">${collectPct}%</span></span>
-          </div>
-          <div class="ec-bar-track"><div class="ec-bar-fill ec-fill-green" style="width:${collectPct}%"></div></div>
         </div>` : `
         <div class="ec-stats">
           <div class="ec-stat">

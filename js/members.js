@@ -644,8 +644,9 @@ const Members = (() => {
       .filter(r => {
         const checked = new Set((r.CheckedIn || '').split(',').map(s => s.trim()).filter(Boolean));
         if (!checked.size) return false;
-        // Primary slot
-        if (r.MemberKey === key && checked.has('m0')) return true;
+        // Primary registrant — any slot checked in counts (they may have registered
+        // with guest tickets only, so m0 may not exist)
+        if (r.MemberKey === key) return true;
         // Additional member slots
         const slots = (r.MemberSlots || '').split(',').map(s => s.trim()).filter(Boolean);
         const slotIdx = slots.indexOf(key);

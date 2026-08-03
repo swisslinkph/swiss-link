@@ -1536,6 +1536,18 @@ const Registrations = (() => {
           }
         }
 
+        // Re-link orphaned transactions: if a member key was just added and existing
+        // transactions for this reg have no MemberKey, stamp them now
+        if (memberKey && existing[C.MKEY] !== memberKey) {
+          const allTxns2 = await Sheets.getAll(CONFIG.SHEETS.TRANSACTIONS).catch(() => []);
+          const orphaned = allTxns2.filter(t =>
+            (t.Notes || '').includes(`Reg: ${_editingRegId}`) && !t.MemberKey
+          );
+          for (const t of orphaned) {
+            await Sheets.update(CONFIG.SHEETS.TRANSACTIONS, t._rowIndex, { ...t, MemberKey: memberKey });
+          }
+        }
+
         // Sync registration email to member record if the member has none
         const regEmail = obj[C.EMAIL];
         if (memberKey && regEmail) {

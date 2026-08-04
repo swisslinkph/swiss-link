@@ -1133,20 +1133,19 @@
           <input type="email" id="reg-add-email" class="form-control">
         </div>
 
-        <!-- Registrant member record link — always shown, same in add and edit -->
-        <div class="form-group" style="grid-column:1/-1;">
-          <label>Member record <span class="text-muted" style="font-weight:400;">(optional)</span></label>
-          <div id="reg-edit-slot0-wrap"></div>
-        </div>
         <!-- Name-based member auto-suggest (appears while typing Last/First name) -->
         <div id="reg-add-suggestions" class="member-key-suggestions" style="display:none;grid-column:1/-1;"></div>
         <!-- Hidden: keeps backward-compat for any code still reading this field -->
         <input type="hidden" id="reg-add-member-key">
 
-        <!-- Member count row + additional member slots -->
+        <!-- Member count row + registrant's member record + additional member slots -->
         <div class="reg-attendee-type-row" style="grid-column:1/-1;">
           <input type="number" id="reg-add-member-qty" class="reg-qty-input" value="0" min="0" oninput="Registrations.onMemberQtyChange()">
           <span class="reg-attendee-type-label">Members</span>
+        </div>
+        <div class="edit-member-group" style="grid-column:1/-1;">
+          <div class="edit-member-label">Member 1 — Registrant</div>
+          <div id="reg-edit-slot0-wrap"></div>
         </div>
         <div id="reg-edit-slots-section" style="display:none;grid-column:1/-1;">
           <div id="reg-edit-slots-container"></div>

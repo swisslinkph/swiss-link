@@ -57,7 +57,7 @@ const Events = (() => {
       const outstanding = activeRegs
         .filter(r => r.PaymentStatus !== 'Confirmed')
         .reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
-      const walkIns     = eventRegs.filter(r => r.WalkIn === 'Yes').length;
+      const walkIns     = eventRegs.filter(r => r.WalkIn === 'Yes' || r.IsWalkIn === 'Yes').length;
 
       // ── Check-in progress ──────────────────────────────────────────
       const checkedInPax = eventRegs.reduce((s, r) => {
@@ -294,16 +294,20 @@ const Events = (() => {
   async function openStats(eventId) {
     const event = _all.find(e => e.EventID === eventId);
     if (!event) return;
-    const regs = _regs.filter(r => r.EventID === eventId);
 
     document.getElementById('event-stats-title').textContent = event.Title;
     document.getElementById('event-stats-subtitle').textContent =
       `${Utils.formatDate(event.Date)}  ·  ${event.Location}`;
+    document.getElementById('event-stats-body').innerHTML = '<p class="empty-state">Loading…</p>';
+    Utils.showModal('event-stats-modal');
 
-    const members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    const [allRegs, members] = await Promise.all([
+      Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []),
+      Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []),
+    ]);
+    const regs = allRegs.filter(r => r.EventID === eventId);
     _printData = { event, regs, members };
     document.getElementById('event-stats-body').innerHTML = _buildStatsHtml(event, regs, members);
-    Utils.showModal('event-stats-modal');
   }
 
   function _buildStatsHtml(event, regs, members) {
@@ -324,14 +328,17 @@ const Events = (() => {
     const totalDue    = activeRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
     const collectionRate = totalDue > 0 ? Math.round(collected / totalDue * 100) : 0;
 
+    // handles both old IsWalkIn column and current WalkIn column
+    const isWI = r => r.WalkIn === 'Yes' || r.IsWalkIn === 'Yes';
+
     // ── Pre-paid vs front desk ────────────────────────────────────────
-    const prePaidRegs    = confirmed.filter(r => r.WalkIn !== 'Yes');
-    const frontDeskRegs  = confirmed.filter(r => r.WalkIn === 'Yes');
+    const prePaidRegs    = confirmed.filter(r => !isWI(r));
+    const frontDeskRegs  = confirmed.filter(r => isWI(r));
     const prePaidTotal   = prePaidRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
     const frontDeskTotal = frontDeskRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
 
     // ── Walk-in pax ───────────────────────────────────────────────────
-    const walkInRegs = activeRegs.filter(r => r.WalkIn === 'Yes');
+    const walkInRegs = activeRegs.filter(r => isWI(r));
     const walkInPax  = walkInRegs.reduce((s, r) =>
       s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
     const preRegPax  = totalPax - walkInPax;
@@ -343,15 +350,15 @@ const Events = (() => {
       if (!modeCounts[mode]) modeCounts[mode] = { count: 0, amount: 0, walkInCount: 0 };
       modeCounts[mode].count++;
       modeCounts[mode].amount += Utils.parsePHP(r.AmountPaid || r.TotalDue);
-      if (r.WalkIn === 'Yes') modeCounts[mode].walkInCount++;
+      if (isWI(r)) modeCounts[mode].walkInCount++;
     });
     const modeEntries = Object.entries(modeCounts).sort((a, b) => b[1].amount - a[1].amount);
 
     // ── Cash reconciliation ───────────────────────────────────────────
     const cashRegs    = confirmed.filter(r => (r.PaymentMode || '').toLowerCase() === 'cash');
     const cashTotal   = cashRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
-    const cashWalkIn  = cashRegs.filter(r => r.WalkIn === 'Yes');
-    const cashPreReg  = cashRegs.filter(r => r.WalkIn !== 'Yes');
+    const cashWalkIn  = cashRegs.filter(r => isWI(r));
+    const cashPreReg  = cashRegs.filter(r => !isWI(r));
     const cashWITotal = cashWalkIn.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
     const cashPRTotal = cashPreReg.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
 

@@ -1897,7 +1897,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   height: 10px;
   border-radius: 5px;
   overflow: hidden;
-  background: var(--bg-2);
+  background: var(--border);
   margin-bottom: 6px;
 }
 .stats-bar-seg { height: 100%; transition: width .3s; }
@@ -1906,7 +1906,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stats-bar-track {
   height: 8px;
   border-radius: 4px;
-  background: var(--bg-2);
+  background: var(--border);
   overflow: hidden;
   margin-bottom: 6px;
 }
@@ -1923,7 +1923,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 /* Segment / dot colors */
 .stats-dot-member, .stats-bar-seg.stats-dot-member { background: #2563eb; }
 .stats-dot-guest,  .stats-bar-seg.stats-dot-guest  { background: #7c3aed; }
-.stats-dot-kids,   .stats-bar-seg.stats-dot-kids   { background: #0891b2; }
+.stats-dot-kids,   .stats-bar-seg.stats-dot-kids   { background: #f59e0b; }
 
 /* Fill colors */
 .stats-fill-green { background: #16a34a; }

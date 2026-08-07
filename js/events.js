@@ -4,10 +4,11 @@
  */
 
 const Events = (() => {
-  let _all      = [];
-  let _txns     = [];
-  let _regs     = [];
+  let _all        = [];
+  let _txns       = [];
+  let _regs       = [];
   let _editingRow = null;
+  let _printData  = null;
 
   // ── Render ────────────────────────────────────────────────────────────────
   async function render() {
@@ -300,6 +301,7 @@ const Events = (() => {
       `${Utils.formatDate(event.Date)}  ·  ${event.Location}`;
 
     const members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    _printData = { event, regs, members };
     document.getElementById('event-stats-body').innerHTML = _buildStatsHtml(event, regs, members);
     Utils.showModal('event-stats-modal');
   }
@@ -307,76 +309,129 @@ const Events = (() => {
   function _buildStatsHtml(event, regs, members) {
     if (!regs.length) return '<p class="empty-state">No registrations yet.</p>';
 
-    // ── Ticket counts (exclude cancelled) ────────────────────────────
+    // ── Pax (exclude cancelled) ───────────────────────────────────────
     const activeRegs = regs.filter(r => r.PaymentStatus !== 'Cancelled');
-    const memberPax = activeRegs.reduce((s, r) => s + (parseInt(r.MemberQty,  10) || 0), 0);
-    const guestPax  = activeRegs.reduce((s, r) => s + (parseInt(r.GuestQty,   10) || 0), 0);
-    const kidsPax   = activeRegs.reduce((s, r) => s + (parseInt(r.KidsQty,    10) || 0), 0);
-    const totalPax  = memberPax + guestPax + kidsPax;
+    const memberPax  = activeRegs.reduce((s, r) => s + (parseInt(r.MemberQty, 10) || 0), 0);
+    const guestPax   = activeRegs.reduce((s, r) => s + (parseInt(r.GuestQty,  10) || 0), 0);
+    const kidsPax    = activeRegs.reduce((s, r) => s + (parseInt(r.KidsQty,   10) || 0), 0);
+    const totalPax   = memberPax + guestPax + kidsPax;
 
     // ── Payment status ────────────────────────────────────────────────
-    const confirmed  = regs.filter(r => r.PaymentStatus === 'Confirmed');
-    const pending    = regs.filter(r => r.PaymentStatus === 'Pending');
-    const collected  = confirmed.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+    const confirmed   = regs.filter(r => r.PaymentStatus === 'Confirmed');
+    const pending     = regs.filter(r => r.PaymentStatus === 'Pending');
+    const collected   = confirmed.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
     const outstanding = pending.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
-    const totalDue   = activeRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
+    const totalDue    = activeRegs.reduce((s, r) => s + Utils.parsePHP(r.TotalDue), 0);
     const collectionRate = totalDue > 0 ? Math.round(collected / totalDue * 100) : 0;
+
+    // ── Pre-paid vs front desk ────────────────────────────────────────
+    const prePaidRegs    = confirmed.filter(r => r.IsWalkIn !== 'Yes');
+    const frontDeskRegs  = confirmed.filter(r => r.IsWalkIn === 'Yes');
+    const prePaidTotal   = prePaidRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+    const frontDeskTotal = frontDeskRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+
+    // ── Walk-in pax ───────────────────────────────────────────────────
+    const walkInRegs = activeRegs.filter(r => r.IsWalkIn === 'Yes');
+    const walkInPax  = walkInRegs.reduce((s, r) =>
+      s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
+    const preRegPax  = totalPax - walkInPax;
 
     // ── Payment modes ─────────────────────────────────────────────────
     const modeCounts = {};
     confirmed.forEach(r => {
       const mode = r.PaymentMode || 'Unknown';
-      if (!modeCounts[mode]) modeCounts[mode] = { count: 0, amount: 0 };
+      if (!modeCounts[mode]) modeCounts[mode] = { count: 0, amount: 0, walkInCount: 0 };
       modeCounts[mode].count++;
       modeCounts[mode].amount += Utils.parsePHP(r.AmountPaid || r.TotalDue);
+      if (r.IsWalkIn === 'Yes') modeCounts[mode].walkInCount++;
     });
     const modeEntries = Object.entries(modeCounts).sort((a, b) => b[1].amount - a[1].amount);
 
-    // ── Check-in progress ─────────────────────────────────────────────
+    // ── Cash reconciliation ───────────────────────────────────────────
+    const cashRegs    = confirmed.filter(r => (r.PaymentMode || '').toLowerCase() === 'cash');
+    const cashTotal   = cashRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+    const cashWalkIn  = cashRegs.filter(r => r.IsWalkIn === 'Yes');
+    const cashPreReg  = cashRegs.filter(r => r.IsWalkIn !== 'Yes');
+    const cashWITotal = cashWalkIn.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+    const cashPRTotal = cashPreReg.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
+
+    // ── Check-in ──────────────────────────────────────────────────────
     const checkedInSlots = new Set();
     regs.forEach(r => {
-      if (r.CheckedIn) r.CheckedIn.split(',').map(s => s.trim()).filter(Boolean).forEach(s => checkedInSlots.add(r.RegistrationID + ':' + s));
+      if (r.CheckedIn) r.CheckedIn.split(',').map(s => s.trim()).filter(Boolean)
+        .forEach(s => checkedInSlots.add(r.RegistrationID + ':' + s));
     });
     const checkedInPax = checkedInSlots.size;
     const checkInRate  = totalPax > 0 ? Math.round(checkedInPax / totalPax * 100) : 0;
 
-    // Walk-in registrations
-    const walkInRegs   = regs.filter(r => r.WalkIn === 'Yes' || (r.Category || '').toLowerCase().includes('walk'));
-    const walkInPax    = walkInRegs.reduce((s, r) =>
+    // ── No-shows (only meaningful once check-in has been used) ────────
+    const noShows   = checkedInPax > 0
+      ? confirmed.filter(r => !r.CheckedIn || !r.CheckedIn.trim())
+      : [];
+    const noShowPax = noShows.reduce((s, r) =>
       s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
-    const preRegPax    = totalPax - walkInPax;
+
+    // ── New members ───────────────────────────────────────────────────
+    const eventDate  = (event.Date || '').slice(0, 10);
+    const newMembers = (members || []).filter(m => (m['Date Added'] || '').slice(0, 10) === eventDate);
 
     // ── Helpers ───────────────────────────────────────────────────────
     function bar(value, max, colorClass) {
-      const pct = max > 0 ? Math.min(100, Math.round(value / max * 100)) : 0;
-      return `<div class="stats-bar-track"><div class="stats-bar-fill ${colorClass}" style="width:${pct}%"></div></div>`;
+      const p = max > 0 ? Math.min(100, Math.round(value / max * 100)) : 0;
+      return `<div class="stats-bar-track"><div class="stats-bar-fill ${colorClass}" style="width:${p}%"></div></div>`;
     }
     function pct(n, d) { return d > 0 ? Math.round(n / d * 100) : 0; }
 
     return `
     <div class="stats-grid">
 
-      <!-- Pax Breakdown -->
+      <!-- 1. Attendance -->
+      <div class="stats-card stats-card-wide">
+        <div class="stats-card-title">Attendance</div>
+        <div class="stats-kpi-row">
+          <div class="stats-kpi">
+            <span class="stats-kpi-num">${totalPax}</span>
+            <span class="stats-kpi-label">Expected Pax</span>
+          </div>
+          <div class="stats-kpi">
+            <span class="stats-kpi-num stats-color-green">${checkedInPax}</span>
+            <span class="stats-kpi-label">Checked In</span>
+          </div>
+          ${noShows.length ? `
+          <div class="stats-kpi">
+            <span class="stats-kpi-num stats-color-amber">${noShowPax}</span>
+            <span class="stats-kpi-label">Paid, No-show</span>
+          </div>` : ''}
+          <div class="stats-kpi">
+            <span class="stats-kpi-num">${preRegPax}</span>
+            <span class="stats-kpi-label">Pre-registered</span>
+          </div>
+          <div class="stats-kpi">
+            <span class="stats-kpi-num">${walkInPax}</span>
+            <span class="stats-kpi-label">Walk-ins</span>
+          </div>
+          <div class="stats-kpi">
+            <span class="stats-kpi-num stats-color-muted">${regs.length}</span>
+            <span class="stats-kpi-label">Registrations</span>
+          </div>
+        </div>
+        ${bar(checkedInPax, totalPax, 'stats-fill-green')}
+        <div class="stats-bar-note">${checkInRate}% check-in rate</div>
+      </div>
+
+      <!-- 2. Ticket Breakdown -->
       <div class="stats-card stats-card-wide">
         <div class="stats-card-title">Ticket Breakdown</div>
         <div class="stats-kpi-row">
           <div class="stats-kpi">
-            <span class="stats-kpi-num">${totalPax}</span>
-            <span class="stats-kpi-label">Total Pax</span>
-          </div>
-          <div class="stats-kpi">
-            <span class="stats-kpi-num">${regs.length}</span>
-            <span class="stats-kpi-label">Registrations</span>
-          </div>
-          <div class="stats-kpi">
             <span class="stats-kpi-num">${memberPax}</span>
-            <span class="stats-kpi-label">Member Tickets</span>
+            <span class="stats-kpi-label">Members</span>
           </div>
           <div class="stats-kpi">
             <span class="stats-kpi-num">${guestPax}</span>
-            <span class="stats-kpi-label">Guest Tickets</span>
+            <span class="stats-kpi-label">Guests</span>
           </div>
-          ${kidsPax > 0 ? `<div class="stats-kpi"><span class="stats-kpi-num">${kidsPax}</span><span class="stats-kpi-label">Kids Tickets</span></div>` : ''}
+          ${kidsPax > 0 ? `<div class="stats-kpi"><span class="stats-kpi-num">${kidsPax}</span><span class="stats-kpi-label">Kids</span></div>` : ''}
         </div>
         <div class="stats-bar-legend">
           <span class="stats-bar-dot stats-dot-member"></span>Members ${pct(memberPax, totalPax)}%
@@ -390,67 +445,21 @@ const Events = (() => {
         </div>
       </div>
 
-      <!-- Walk-in vs Pre-registered -->
-      <div class="stats-card">
-        <div class="stats-card-title">Registration Type</div>
-        <div class="stats-split-row">
-          <div class="stats-split-item">
-            <span class="stats-split-num">${preRegPax}</span>
-            <span class="stats-split-label">Pre-registered</span>
-          </div>
-          <div class="stats-split-div"></div>
-          <div class="stats-split-item">
-            <span class="stats-split-num">${walkInPax}</span>
-            <span class="stats-split-label">Walk-ins</span>
-          </div>
-        </div>
-        ${bar(preRegPax, totalPax, 'stats-fill-blue')}
-        <div class="stats-bar-note">${pct(preRegPax, totalPax)}% pre-registered</div>
-      </div>
-
-      <!-- Check-in Progress -->
-      <div class="stats-card">
-        <div class="stats-card-title">Check-in Progress</div>
-        <div class="stats-split-row">
-          <div class="stats-split-item">
-            <span class="stats-split-num stats-color-green">${checkedInPax}</span>
-            <span class="stats-split-label">Checked In</span>
-          </div>
-          <div class="stats-split-div"></div>
-          <div class="stats-split-item">
-            <span class="stats-split-num stats-color-muted">${totalPax - checkedInPax}</span>
-            <span class="stats-split-label">Not Yet Arrived</span>
-          </div>
-        </div>
-        ${bar(checkedInPax, totalPax, 'stats-fill-green')}
-        <div class="stats-bar-note">${checkInRate}% checked in</div>
-      </div>
-
-      <!-- Payment Status -->
-      <div class="stats-card">
-        <div class="stats-card-title">Payment Status</div>
-        <div class="stats-split-row">
-          <div class="stats-split-item">
-            <span class="stats-split-num stats-color-green">${confirmed.length}</span>
-            <span class="stats-split-label">Confirmed</span>
-          </div>
-          <div class="stats-split-div"></div>
-          <div class="stats-split-item">
-            <span class="stats-split-num stats-color-amber">${pending.length}</span>
-            <span class="stats-split-label">Pending</span>
-          </div>
-        </div>
-        ${bar(confirmed.length, regs.length, 'stats-fill-green')}
-        <div class="stats-bar-note">${pct(confirmed.length, regs.length)}% of registrations confirmed</div>
-      </div>
-
-      <!-- Collection -->
-      <div class="stats-card">
-        <div class="stats-card-title">Collection</div>
-        <div class="stats-kpi-row" style="gap:16px;">
+      <!-- 3. Revenue -->
+      <div class="stats-card stats-card-wide">
+        <div class="stats-card-title">Revenue</div>
+        <div class="stats-kpi-row">
           <div class="stats-kpi">
             <span class="stats-kpi-num stats-color-green">${Utils.formatPHP(collected)}</span>
-            <span class="stats-kpi-label">Collected</span>
+            <span class="stats-kpi-label">Total Collected</span>
+          </div>
+          <div class="stats-kpi">
+            <span class="stats-kpi-num">${Utils.formatPHP(prePaidTotal)}</span>
+            <span class="stats-kpi-label">Pre-paid</span>
+          </div>
+          <div class="stats-kpi">
+            <span class="stats-kpi-num">${Utils.formatPHP(frontDeskTotal)}</span>
+            <span class="stats-kpi-label">Front Desk</span>
           </div>
           <div class="stats-kpi">
             <span class="stats-kpi-num stats-color-amber">${Utils.formatPHP(outstanding)}</span>
@@ -462,17 +471,17 @@ const Events = (() => {
           </div>
         </div>
         ${bar(collected, totalDue, 'stats-fill-green')}
-        <div class="stats-bar-note">${collectionRate}% collected</div>
+        <div class="stats-bar-note">${collectionRate}% collected · ${confirmed.length} confirmed, ${pending.length} pending</div>
       </div>
 
-      <!-- Payment Modes -->
+      <!-- 4. Payment Modes -->
       <div class="stats-card">
         <div class="stats-card-title">Payment Modes</div>
         ${modeEntries.length ? `<div class="stats-mode-list">
           ${modeEntries.map(([mode, d]) => `
             <div class="stats-mode-row">
               <span class="stats-mode-name">${Utils.escape(mode)}</span>
-              <span class="stats-mode-count">${d.count} reg${d.count !== 1 ? 's' : ''}</span>
+              <span class="stats-mode-count">${d.count} reg${d.count !== 1 ? 's' : ''}${d.walkInCount ? ` · ${d.walkInCount} walk-in` : ''}</span>
               <span class="stats-mode-amt">${Utils.formatPHP(d.amount)}</span>
             </div>
             ${bar(d.amount, collected, 'stats-fill-blue')}
@@ -480,11 +489,53 @@ const Events = (() => {
         </div>` : '<p class="stats-empty">No confirmed payments yet.</p>'}
       </div>
 
-      ${(() => {
-        const eventDate = (event.Date || '').slice(0, 10);
-        const newMembers = (members || []).filter(m => (m['Date Added'] || '').slice(0, 10) === eventDate);
-        if (!newMembers.length) return '';
-        return `
+      <!-- 5. Cash Reconciliation -->
+      <div class="stats-card">
+        <div class="stats-card-title">Cash Reconciliation</div>
+        ${cashRegs.length ? `
+        <div class="stats-kpi-row" style="gap:20px;margin-bottom:14px;">
+          <div class="stats-kpi">
+            <span class="stats-kpi-num stats-color-green">${Utils.formatPHP(cashTotal)}</span>
+            <span class="stats-kpi-label">Total Cash</span>
+          </div>
+          <div class="stats-kpi">
+            <span class="stats-kpi-num">${cashRegs.length}</span>
+            <span class="stats-kpi-label">Payers</span>
+          </div>
+        </div>
+        <div class="stats-mode-list">
+          ${cashWalkIn.length ? `
+          <div class="stats-mode-row">
+            <span class="stats-mode-name">Front desk</span>
+            <span class="stats-mode-count">${cashWalkIn.length} payer${cashWalkIn.length !== 1 ? 's' : ''}</span>
+            <span class="stats-mode-amt">${Utils.formatPHP(cashWITotal)}</span>
+          </div>` : ''}
+          ${cashPreReg.length ? `
+          <div class="stats-mode-row">
+            <span class="stats-mode-name">Pre-registered</span>
+            <span class="stats-mode-count">${cashPreReg.length} payer${cashPreReg.length !== 1 ? 's' : ''}</span>
+            <span class="stats-mode-amt">${Utils.formatPHP(cashPRTotal)}</span>
+          </div>` : ''}
+        </div>` : '<p class="stats-empty">No cash payments recorded.</p>'}
+      </div>
+
+      <!-- 6. Paid no-shows -->
+      ${noShows.length ? `
+      <div class="stats-card stats-card-wide">
+        <div class="stats-card-title">Paid · Did Not Show Up (${noShows.length} reg${noShows.length !== 1 ? 's' : ''}, ${noShowPax} pax)</div>
+        <div class="stats-mode-list">
+          ${noShows.map(r => `
+            <div class="stats-mode-row">
+              <span class="stats-mode-name">${Utils.escape(r.LastName || '')}${r.FirstName ? ', ' + Utils.escape(r.FirstName) : ''}</span>
+              <span class="stats-mode-count">${Utils.escape(r.PaymentMode || '')} · ${(parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0)} pax</span>
+              <span class="stats-mode-amt">${Utils.formatPHP(r.AmountPaid || r.TotalDue)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- 7. New members -->
+      ${newMembers.length ? `
       <div class="stats-card stats-card-wide">
         <div class="stats-card-title">New Members Added (${newMembers.length})</div>
         <div class="stats-mode-list">
@@ -496,10 +547,78 @@ const Events = (() => {
             </div>
           `).join('')}
         </div>
-      </div>`;
-      })()}
+      </div>` : ''}
 
     </div>`;
+  }
+
+  function printStats() {
+    if (!_printData) return;
+    const { event, regs, members } = _printData;
+    const title    = document.getElementById('event-stats-title').textContent;
+    const subtitle = document.getElementById('event-stats-subtitle').textContent;
+    const body     = _buildStatsHtml(event, regs, members);
+    const generated = new Date().toLocaleDateString('en-PH', { dateStyle: 'long' });
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${Utils.escape(title)} — Event Report</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#111;background:#fff;padding:32px}
+h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.subtitle{font-size:14px;color:#555;margin-bottom:4px}
+.generated{font-size:11px;color:#999;margin-bottom:24px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.stats-card{border:1px solid #e5e7eb;border-radius:8px;padding:16px}
+.stats-card-wide{grid-column:1/-1}
+.stats-card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:12px}
+.stats-kpi-row{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
+.stats-kpi{display:flex;flex-direction:column;gap:2px}
+.stats-kpi-num{font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.stats-kpi-label{font-size:11px;color:#6b7280}
+.stats-split-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.stats-split-item{display:flex;flex-direction:column;gap:2px;flex:1}
+.stats-split-num{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.stats-split-label{font-size:11px;color:#6b7280}
+.stats-split-div{width:1px;height:36px;background:#e5e7eb;flex-shrink:0}
+.stats-bar-stacked{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#f3f4f6;margin-bottom:6px}
+.stats-bar-seg{height:100%}
+.stats-bar-track{height:8px;border-radius:4px;background:#f3f4f6;overflow:hidden;margin-bottom:6px}
+.stats-bar-fill{height:100%;border-radius:4px}
+.stats-bar-note{font-size:11px;color:#6b7280}
+.stats-bar-legend{font-size:11px;color:#6b7280;display:flex;align-items:center;margin-bottom:6px}
+.stats-bar-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.stats-dot-member,.stats-bar-seg.stats-dot-member{background:#2563eb}
+.stats-dot-guest,.stats-bar-seg.stats-dot-guest{background:#7c3aed}
+.stats-dot-kids,.stats-bar-seg.stats-dot-kids{background:#0891b2}
+.stats-fill-green{background:#16a34a}
+.stats-fill-blue{background:#2563eb}
+.stats-fill-amber{background:#d97706}
+.stats-color-green{color:#16a34a}
+.stats-color-amber{color:#d97706}
+.stats-color-muted{color:#6b7280}
+.stats-mode-list{display:flex;flex-direction:column;gap:8px}
+.stats-mode-row{display:flex;align-items:center;gap:6px;font-size:13px}
+.stats-mode-name{flex:1;font-weight:500}
+.stats-mode-count{font-size:11px;color:#6b7280;white-space:nowrap}
+.stats-mode-amt{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;min-width:80px;text-align:right}
+.stats-empty{font-size:13px;color:#6b7280;margin:0}
+@media print{body{padding:16px}@page{margin:16mm}}
+</style>
+</head>
+<body>
+<h1>${Utils.escape(title)}</h1>
+<div class="subtitle">${Utils.escape(subtitle)}</div>
+<div class="generated">Report generated ${Utils.escape(generated)}</div>
+${body}
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`);
+    win.document.close();
   }
 
   // ── Get all events (for Email picker) ────────────────────────────────────
@@ -517,5 +636,5 @@ const Events = (() => {
       ?.addEventListener('click', () => Utils.hideModal('attendee-modal'));
   }
 
-  return { render, init, openAdd, openEdit, save, confirmDelete, viewAttendees, openFrontDesk, openRegistrations, openStats, getAll };
+  return { render, init, openAdd, openEdit, save, confirmDelete, viewAttendees, openFrontDesk, openRegistrations, openStats, printStats, getAll };
 })();

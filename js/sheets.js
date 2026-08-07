@@ -172,7 +172,8 @@ const Sheets = (() => {
 
     // Migrate existing Members sheet — add any missing columns
     if (existing.includes(CONFIG.SHEETS.MEMBERS)) {
-      await ensureColumn(CONFIG.SHEETS.MEMBERS, 'Date Added');
+      await renameColumn(CONFIG.SHEETS.MEMBERS, 'Date Added', 'Timestamp');
+      await ensureColumn(CONFIG.SHEETS.MEMBERS, 'Timestamp');
     }
 
     // Migrate existing Events sheet — add any missing columns
@@ -271,6 +272,21 @@ const Sheets = (() => {
     return { headers, rows: data.values || [] };
   }
 
+  // ── RENAME a column header in-place ──────────────────────────────────────
+  async function renameColumn(sheetName, oldName, newName) {
+    clearHeaderCache(sheetName);
+    const headers = await getHeaders(sheetName);
+    const idx = headers.indexOf(oldName);
+    if (idx === -1) return;
+    const col   = colLetter(idx + 1);
+    const range = encodeURIComponent(`${sheetName}!${col}1`);
+    await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      body: JSON.stringify({ values: [[newName]] }),
+    });
+    clearHeaderCache(sheetName);
+  }
+
   // ── ADD a column header to a sheet if it doesn't already exist ───────────
   async function ensureColumn(sheetName, columnName) {
     clearHeaderCache(sheetName); // always fetch fresh so stale cache never hides a missing column
@@ -311,7 +327,7 @@ const Sheets = (() => {
 
   return {
     getAll, append, update, deleteRow, batchUpdate,
-    getHeaders, clearHeaderCache, ensureSheets, nextId,
+    getHeaders, clearHeaderCache, renameColumn, ensureSheets, nextId,
     getFromSheet, ensureColumn,
   };
 })();

@@ -380,7 +380,7 @@ const Events = (() => {
 
     // ── New members ───────────────────────────────────────────────────
     const eventDate  = (event.Date || '').slice(0, 10);
-    const newMembers = (members || []).filter(m => (m['Date Added'] || '').slice(0, 10) === eventDate);
+    const newMembers = (members || []).filter(m => (m['Timestamp'] || '').slice(0, 10) === eventDate);
 
     // ── Helpers ───────────────────────────────────────────────────────
     function bar(value, max, colorClass) {

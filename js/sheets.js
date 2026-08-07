@@ -170,6 +170,11 @@ const Sheets = (() => {
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'KidsNames');
     }
 
+    // Migrate existing Members sheet — add any missing columns
+    if (existing.includes(CONFIG.SHEETS.MEMBERS)) {
+      await ensureColumn(CONFIG.SHEETS.MEMBERS, 'Date Added');
+    }
+
     // Migrate existing Events sheet — add any missing columns
     if (existing.includes(CONFIG.SHEETS.EVENTS)) {
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'KidsFee');

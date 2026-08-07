@@ -325,13 +325,13 @@ const Events = (() => {
     const collectionRate = totalDue > 0 ? Math.round(collected / totalDue * 100) : 0;
 
     // ── Pre-paid vs front desk ────────────────────────────────────────
-    const prePaidRegs    = confirmed.filter(r => r.IsWalkIn !== 'Yes');
-    const frontDeskRegs  = confirmed.filter(r => r.IsWalkIn === 'Yes');
+    const prePaidRegs    = confirmed.filter(r => r.WalkIn !== 'Yes');
+    const frontDeskRegs  = confirmed.filter(r => r.WalkIn === 'Yes');
     const prePaidTotal   = prePaidRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
     const frontDeskTotal = frontDeskRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
 
     // ── Walk-in pax ───────────────────────────────────────────────────
-    const walkInRegs = activeRegs.filter(r => r.IsWalkIn === 'Yes');
+    const walkInRegs = activeRegs.filter(r => r.WalkIn === 'Yes');
     const walkInPax  = walkInRegs.reduce((s, r) =>
       s + (parseInt(r.MemberQty, 10) || 0) + (parseInt(r.GuestQty, 10) || 0) + (parseInt(r.KidsQty, 10) || 0), 0);
     const preRegPax  = totalPax - walkInPax;
@@ -343,15 +343,15 @@ const Events = (() => {
       if (!modeCounts[mode]) modeCounts[mode] = { count: 0, amount: 0, walkInCount: 0 };
       modeCounts[mode].count++;
       modeCounts[mode].amount += Utils.parsePHP(r.AmountPaid || r.TotalDue);
-      if (r.IsWalkIn === 'Yes') modeCounts[mode].walkInCount++;
+      if (r.WalkIn === 'Yes') modeCounts[mode].walkInCount++;
     });
     const modeEntries = Object.entries(modeCounts).sort((a, b) => b[1].amount - a[1].amount);
 
     // ── Cash reconciliation ───────────────────────────────────────────
     const cashRegs    = confirmed.filter(r => (r.PaymentMode || '').toLowerCase() === 'cash');
     const cashTotal   = cashRegs.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
-    const cashWalkIn  = cashRegs.filter(r => r.IsWalkIn === 'Yes');
-    const cashPreReg  = cashRegs.filter(r => r.IsWalkIn !== 'Yes');
+    const cashWalkIn  = cashRegs.filter(r => r.WalkIn === 'Yes');
+    const cashPreReg  = cashRegs.filter(r => r.WalkIn !== 'Yes');
     const cashWITotal = cashWalkIn.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
     const cashPRTotal = cashPreReg.reduce((s, r) => s + Utils.parsePHP(r.AmountPaid || r.TotalDue), 0);
 

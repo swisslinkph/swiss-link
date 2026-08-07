@@ -166,6 +166,8 @@ const Sheets = (() => {
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'CheckedIn');
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'GuestNames');
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'SlotPayments');
+      await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'WalkIn');
+      await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'KidsNames');
     }
 
     // Migrate existing Events sheet — add any missing columns
@@ -203,7 +205,7 @@ const Sheets = (() => {
     const headers = [
       'RegistrationID','Timestamp','Source','EventID','EventName',
       'LastName','FirstName','Email','MemberKey','MemberSlots',
-      'MemberQty','GuestQty','KidsQty','IsWalkIn',
+      'MemberQty','GuestQty','KidsQty','WalkIn',
       'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes','CheckedIn','GuestNames','SlotPayments',
     ];
     const range = encodeURIComponent(`${CONFIG.SHEETS.REGISTRATIONS}!A1`);

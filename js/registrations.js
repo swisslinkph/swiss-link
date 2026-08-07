@@ -29,7 +29,7 @@ const Registrations = (() => {
     MEM_QTY:   'MemberQty',
     GUEST_QTY: 'GuestQty',
     KIDS_QTY:  'KidsQty',
-    WALKIN:    'IsWalkIn',
+    WALKIN:    'WalkIn',
     TOTAL:     'TotalDue',
     PAY_NOTE:  'PaymentNote',
     STATUS:    'PaymentStatus',

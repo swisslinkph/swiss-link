@@ -38,6 +38,7 @@ const Members = (() => {
     TYPE:     'Membership Type',
     FAM:      'Family Group',   // legacy column kept for search
     FAM_HEAD: 'Family Head',    // member key of the family head
+    DATE_ADDED: 'Date Added',
   };
 
   // Annual membership rates — keyed by tier id
@@ -1016,6 +1017,7 @@ const Members = (() => {
           btn.disabled = false;
           return;
         }
+        obj[C.DATE_ADDED] = new Date().toISOString().slice(0, 10);
         await Sheets.append(CONFIG.SHEETS.MEMBERS, obj);
         Utils.toast('Member added.');
       }

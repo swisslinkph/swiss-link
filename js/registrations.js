@@ -588,6 +588,7 @@ const Registrations = (() => {
 
       const famHead = linkFamily && _slotAddPrimaryKey ? _slotAddPrimaryKey : '';
 
+      Sheets.clearHeaderCache(CONFIG.SHEETS.MEMBERS);
       await Sheets.append(CONFIG.SHEETS.MEMBERS, {
         'Member Key':        key,
         'First Name':        first,

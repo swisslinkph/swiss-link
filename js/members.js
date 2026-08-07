@@ -1018,6 +1018,7 @@ const Members = (() => {
           return;
         }
         obj[C.DATE_ADDED] = new Date().toISOString().slice(0, 10);
+        Sheets.clearHeaderCache(CONFIG.SHEETS.MEMBERS);
         await Sheets.append(CONFIG.SHEETS.MEMBERS, obj);
         Utils.toast('Member added.');
       }

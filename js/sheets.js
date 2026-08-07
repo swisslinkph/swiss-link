@@ -273,6 +273,7 @@ const Sheets = (() => {
 
   // ── ADD a column header to a sheet if it doesn't already exist ───────────
   async function ensureColumn(sheetName, columnName) {
+    clearHeaderCache(sheetName); // always fetch fresh so stale cache never hides a missing column
     const headers = await getHeaders(sheetName);
     if (headers.includes(columnName)) return;
     const nextCol = colLetter(headers.length + 1);

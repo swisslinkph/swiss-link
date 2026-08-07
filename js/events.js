@@ -290,7 +290,7 @@ const Events = (() => {
   }
 
   // ── Event Stats modal ─────────────────────────────────────────────────────
-  function openStats(eventId) {
+  async function openStats(eventId) {
     const event = _all.find(e => e.EventID === eventId);
     if (!event) return;
     const regs = _regs.filter(r => r.EventID === eventId);
@@ -299,11 +299,12 @@ const Events = (() => {
     document.getElementById('event-stats-subtitle').textContent =
       `${Utils.formatDate(event.Date)}  ·  ${event.Location}`;
 
-    document.getElementById('event-stats-body').innerHTML = _buildStatsHtml(event, regs);
+    const members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+    document.getElementById('event-stats-body').innerHTML = _buildStatsHtml(event, regs, members);
     Utils.showModal('event-stats-modal');
   }
 
-  function _buildStatsHtml(event, regs) {
+  function _buildStatsHtml(event, regs, members) {
     if (!regs.length) return '<p class="empty-state">No registrations yet.</p>';
 
     // ── Ticket counts (exclude cancelled) ────────────────────────────
@@ -478,6 +479,25 @@ const Events = (() => {
           `).join('')}
         </div>` : '<p class="stats-empty">No confirmed payments yet.</p>'}
       </div>
+
+      ${(() => {
+        const eventDate = (event.Date || '').slice(0, 10);
+        const newMembers = (members || []).filter(m => (m['Date Added'] || '').slice(0, 10) === eventDate);
+        if (!newMembers.length) return '';
+        return `
+      <div class="stats-card stats-card-wide">
+        <div class="stats-card-title">New Members Added (${newMembers.length})</div>
+        <div class="stats-mode-list">
+          ${newMembers.map(m => `
+            <div class="stats-mode-row">
+              <span class="stats-mode-name">${Utils.escape(m['First Name'] || '')} ${Utils.escape(m['Last Name'] || '')}</span>
+              <span class="stats-mode-count">${Utils.escape(m['Member Key'] || '')}</span>
+              <span class="stats-mode-amt">${Utils.escape(m['Membership Type'] || '')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+      })()}
 
     </div>`;
   }

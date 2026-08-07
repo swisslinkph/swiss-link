@@ -595,6 +595,7 @@ const Registrations = (() => {
         'Family Head':       famHead,
         'Membership Status': 'Member',
         'Membership Type':   linkFamily ? 'Family' : '',
+        'Date Added':        new Date().toISOString().slice(0, 10),
       });
 
       // Make the primary member a self-referential head if not already set

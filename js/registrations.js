@@ -80,19 +80,19 @@ const Registrations = (() => {
 
   // ── Google Form sync helpers ───────────────────────────────────────────────
   function _detectFormCols(headers) {
-    const h = headers.map(s => s.toLowerCase());
+    const h = headers.map(s => s.toLowerCase().trim());
     const idx = fn => h.findIndex(fn);
     return {
       ts:       idx(s => s.includes('timestamp')),
       email:    idx(s => s.includes('email') && !s.includes('payment')),
-      last:     idx(s => s.includes('family') || s.includes('last name') || s.includes('surname')),
-      first:    idx(s => s.includes('first name') || s.includes('given name')),
+      last:     idx(s => s === 'last name' || s === 'lastname' || s.includes('family') || s.includes('last name') || s.includes('surname')),
+      first:    idx(s => s === 'first name' || s === 'firstname' || s.includes('first name') || s.includes('given name')),
       status:   idx(s => s.includes('member status')),
-      memQty:   idx(s => s.includes('adult') && s.includes('member') && !s.includes('non') && !s.includes('guest')),
-      guestQty: idx(s => s.includes('adult') && (s.includes('non') || s.includes('guest'))),
-      kidsQty:  idx(s => s.includes('kid') || s.includes('child')),
-      comments: idx(s => s.includes('comment') || s.includes('question')),
-      payProof: idx(s => s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm')))),
+      memQty:   idx(s => s === 'member qty' || s === 'memberqty' || (s.includes('adult') && s.includes('member') && !s.includes('non') && !s.includes('guest'))),
+      guestQty: idx(s => s === 'guest qty' || s === 'guestqty' || (s.includes('adult') && (s.includes('non') || s.includes('guest')))),
+      kidsQty:  idx(s => s === 'kids qty' || s === 'kidsqty' || s.includes('kid') || s.includes('child')),
+      comments: idx(s => s === 'payment note' || s.includes('payment note') || s.includes('comment') || s.includes('question')),
+      payProof: idx(s => s === 'payment proof' || s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm')))),
     };
   }
 

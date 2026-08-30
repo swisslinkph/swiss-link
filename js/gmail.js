@@ -96,5 +96,79 @@ const Gmail = (() => {
 </body></html>`;
   }
 
-  return { send, buildInviteEmail };
+  /**
+   * Build a member record verification email.
+   * Shows the member their current record and Member Key, asks them to reply with corrections.
+   */
+  function buildVerificationEmail(member, allMembers) {
+    const firstName  = member['First Name'] || member['Last Name'] || 'Member';
+    const key        = member['Member Key'] || '—';
+    const last       = member['Last Name']  || '—';
+    const first      = member['First Name'] || '—';
+    const alt        = member['Alternative Name'] || '';
+    const type       = member['Membership Type']   || '—';
+    const status     = member['Membership Status'] || '—';
+    const loc        = member['Location (Metro Manila/Province)'] || '—';
+    const mobile     = member['Mobile'] || '—';
+    const email      = member['Email']  || '—';
+
+    // Resolve family head name if applicable
+    const famHeadKey  = member['Family Head'] || '';
+    const isFamHead   = famHeadKey === key;
+    const famHeadMem  = (!isFamHead && famHeadKey)
+      ? allMembers.find(m => m['Member Key'] === famHeadKey) : null;
+    const famHeadName = famHeadMem
+      ? `${famHeadMem['First Name']} ${famHeadMem['Last Name']}`.trim() : '';
+
+    const row = (label, value) =>
+      `<tr><td style="padding:6px 16px 6px 0;color:#666;white-space:nowrap;vertical-align:top;">${label}</td>` +
+      `<td style="padding:6px 0;font-weight:600;color:#1a1a1a;">${value}</td></tr>`;
+
+    const senderName = Auth.getUserName() || 'Swiss Club Admin';
+
+    return `<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;color:#2d2d2d;max-width:600px;margin:0 auto;padding:20px;background:#f4f4f4">
+  <div style="background:#CC0000;padding:24px 20px;border-radius:8px 8px 0 0;text-align:center">
+    <div style="font-size:36px;margin-bottom:8px">🇨🇭</div>
+    <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700;letter-spacing:0.3px">Swiss Club of the Philippines</h1>
+  </div>
+  <div style="background:#fff;border:1px solid #ddd;border-top:none;padding:32px;border-radius:0 0 8px 8px">
+
+    <p style="font-size:16px;margin:0 0 8px">Dear <strong>${Utils.escape(firstName)}</strong>,</p>
+    <p style="color:#555;margin:0 0 24px">We are updating our member records and would like to confirm that we have your details correct. Please review the information below and <strong>reply to this email</strong> if anything needs to be corrected.</p>
+
+    <div style="background:#f8f8f8;border-left:4px solid #CC0000;border-radius:0 6px 6px 0;padding:20px 24px;margin-bottom:24px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#CC0000;margin-bottom:12px">Your Member Record</div>
+      <table style="border-collapse:collapse;font-size:14px;width:100%">
+        ${row('Member Key', `<span style="font-family:monospace;background:#e8f4f8;padding:2px 8px;border-radius:4px;font-size:15px;">${Utils.escape(key)}</span>`)}
+        ${row('Last Name', Utils.escape(last))}
+        ${row('First Name', Utils.escape(first))}
+        ${alt ? row('Alternative Name', Utils.escape(alt)) : ''}
+        ${row('Membership Type', Utils.escape(type))}
+        ${row('Status', Utils.escape(status))}
+        ${row('Location', Utils.escape(loc))}
+        ${row('Mobile', Utils.escape(mobile))}
+        ${row('Email', Utils.escape(email))}
+        ${famHeadName ? row('Family Head', Utils.escape(famHeadName)) : ''}
+      </table>
+    </div>
+
+    <div style="background:#fef9c3;border:1px solid #fde047;border-radius:6px;padding:14px 18px;margin-bottom:24px">
+      <p style="margin:0;font-size:14px;color:#713f12;">
+        <strong>Your Member Key is ${Utils.escape(key)}.</strong> Please save this — you will need it when filling in our RSVP forms for upcoming events.
+      </p>
+    </div>
+
+    <p style="font-size:14px;color:#555;margin:0 0 6px">If any of the details above are incorrect or incomplete, simply <strong>reply to this email</strong> with the corrections. We will update your record promptly.</p>
+    <p style="font-size:14px;color:#555;margin:0 0 24px">If everything looks correct, no action is needed.</p>
+
+    <p style="font-size:12px;color:#aaa;text-align:center;margin:0">
+      Sent by ${Utils.escape(senderName)} via Swiss Link · Swiss Club of the Philippines<br>
+      <a href="mailto:info@swissclub-philippines.org" style="color:#CC0000;">info@swissclub-philippines.org</a>
+    </p>
+  </div>
+</body></html>`;
+  }
+
+  return { send, buildInviteEmail, buildVerificationEmail };
 })();

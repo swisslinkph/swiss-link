@@ -167,6 +167,7 @@
           </div>
         </div>
         <button class="btn btn-outline btn-sm" id="member-export-btn">⬇ Export CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="Members.bulkSendVerification()">✉ Send Verification</button>
         <button class="btn btn-primary btn-sm" id="add-member-btn">+ Add Member</button>
       </div>
       <div id="families-list-controls" style="display:none;align-items:center;gap:10px;">
@@ -554,6 +555,10 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Utils.hideModal('member-modal')">Cancel</button>
+      <button class="btn btn-outline" id="member-verify-btn" style="display:none;"
+              onclick="Members.sendVerification(document.getElementById('mf-key').value)">
+        ✉ Send Verification
+      </button>
       <button class="btn btn-primary" id="member-save-btn">Save Member</button>
     </div>
   </div>

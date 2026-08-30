@@ -930,6 +930,8 @@ const Members = (() => {
   }
 
   function openAdd(prefill, afterSaveCallback) {
+    const verifyBtn = document.getElementById('member-verify-btn');
+    if (verifyBtn) verifyBtn.style.display = 'none';
     _editingRow = null;
     _afterSaveCallback = afterSaveCallback || null;
     document.getElementById('member-modal-title').textContent = 'Add Member';
@@ -955,6 +957,8 @@ const Members = (() => {
     _editingRow = member._rowIndex;
     document.getElementById('member-modal-title').textContent = 'Edit Member';
     _populateForm(member);
+    const verifyBtn = document.getElementById('member-verify-btn');
+    if (verifyBtn) verifyBtn.style.display = member[C.EMAIL] ? '' : 'none';
     Utils.showModal('member-modal');
   }
 
@@ -1427,6 +1431,61 @@ const Members = (() => {
     _applyColVisibility();
   }
 
+  // ── Send member verification email ───────────────────────────────────────
+  async function sendVerification(key) {
+    const member = _all.find(m => m[C.KEY] === key);
+    if (!member) return;
+    const emailAddr = member[C.EMAIL];
+    if (!emailAddr) {
+      Utils.toast('No email address on this member record.', 'error');
+      return;
+    }
+    const btn = document.getElementById('member-verify-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      const html = Gmail.buildVerificationEmail(member, _all);
+      await Gmail.send({
+        to:       emailAddr,
+        subject:  `Swiss Club — Please confirm your member record (${member[C.KEY]})`,
+        htmlBody: html,
+      });
+      Utils.toast(`Verification email sent to ${emailAddr}.`);
+    } catch (e) {
+      Utils.toast(`Failed to send: ${e.message}`, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '✉ Send Verification'; }
+    }
+  }
+
+  async function bulkSendVerification() {
+    const withEmail = _all.filter(m => m[C.EMAIL] && m[C.EMAIL].includes('@'));
+    const noEmail   = _all.length - withEmail.length;
+
+    const msg = `Send verification emails to ${withEmail.length} members with email addresses on file?` +
+      (noEmail ? `\n\n${noEmail} member${noEmail !== 1 ? 's' : ''} have no email and will be skipped.` : '');
+    const ok = await Utils.confirm(msg);
+    if (!ok) return;
+
+    Utils.setLoading(true, `Sending 0 / ${withEmail.length}…`);
+    let sent = 0, failed = 0;
+    for (const member of withEmail) {
+      try {
+        const html = Gmail.buildVerificationEmail(member, _all);
+        await Gmail.send({
+          to:       member[C.EMAIL],
+          subject:  `Swiss Club — Please confirm your member record (${member[C.KEY]})`,
+          htmlBody: html,
+        });
+        sent++;
+      } catch {
+        failed++;
+      }
+      Utils.setLoading(true, `Sending ${sent + failed} / ${withEmail.length}…`);
+    }
+    Utils.setLoading(false);
+    Utils.toast(`Sent ${sent} verification email${sent !== 1 ? 's' : ''}${failed ? ` · ${failed} failed` : ''}.`);
+  }
+
   return {
     render, init, switchView,
     openDetail, closeDetail,
@@ -1436,5 +1495,6 @@ const Members = (() => {
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
     applyStatusFilter, toggleCol, toggleColPanel,
     openMerge, onMergeSearch, selectMergeDup, mergeNext, _mergePickChoice, executeMerge,
+    sendVerification, bulkSendVerification,
   };
 })();

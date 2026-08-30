@@ -36,6 +36,7 @@ const Registrations = (() => {
     PAY_MODE:  'PaymentMode',
     AMOUNT:    'AmountPaid',
     NOTES:     'AdminNotes',
+    PAY_PROOF: 'PayProofURL',
   };
 
   // ── Render (called by Router) ─────────────────────────────────────────────
@@ -91,6 +92,7 @@ const Registrations = (() => {
       guestQty: idx(s => s.includes('adult') && (s.includes('non') || s.includes('guest'))),
       kidsQty:  idx(s => s.includes('kid') || s.includes('child')),
       comments: idx(s => s.includes('comment') || s.includes('question')),
+      payProof: idx(s => s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm')))),
     };
   }
 
@@ -155,6 +157,7 @@ const Registrations = (() => {
         [C.PAY_MODE]:  '',
         [C.AMOUNT]:    '',
         [C.NOTES]:     get(row, cols.status) ? `Form status: ${get(row, cols.status)}` : '',
+        [C.PAY_PROOF]: get(row, cols.payProof),
       });
 
       seenTs.add(ts); // guard against duplicate timestamps within the same form sheet
@@ -379,6 +382,14 @@ const Registrations = (() => {
 
     document.getElementById('reg-confirm-amount').value = r[C.TOTAL] || (calcTotal || '');
     document.getElementById('reg-confirm-notes').value  = r[C.NOTES] || '';
+
+    const confirmProofRow  = document.getElementById('reg-confirm-proof-row');
+    const confirmProofLink = document.getElementById('reg-confirm-proof-link');
+    if (confirmProofRow && confirmProofLink) {
+      const pUrl = r[C.PAY_PROOF] || '';
+      confirmProofRow.style.display = pUrl ? '' : 'none';
+      if (pUrl) confirmProofLink.href = pUrl;
+    }
 
     // Slot assignment is handled in Process/Edit — hide this section
     const section = document.getElementById('reg-confirm-members-section');
@@ -1115,6 +1126,14 @@ const Registrations = (() => {
     const walkinEl = document.getElementById('reg-add-walkin');
     if (walkinEl) walkinEl.checked = r[C.WALKIN] === 'Yes';
 
+    const proofRow  = document.getElementById('reg-proof-row');
+    const proofLink = document.getElementById('reg-proof-link');
+    if (proofRow && proofLink) {
+      const url = r[C.PAY_PROOF] || '';
+      proofRow.style.display = url ? '' : 'none';
+      if (url) proofLink.href = url;
+    }
+
     _toggleAddPaymentFields(r[C.STATUS] === 'Confirmed');
 
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
@@ -1428,6 +1447,9 @@ const Registrations = (() => {
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     const kidsRow = document.getElementById('reg-add-kids-row');
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
+    const proofRowAdd = document.getElementById('reg-proof-row');
+    if (proofRowAdd) proofRowAdd.style.display = 'none';
+
     // Hide Edit-mode-only structural elements
     const m1Head = document.getElementById('reg-edit-member1-head');
     if (m1Head) m1Head.style.display = 'none';

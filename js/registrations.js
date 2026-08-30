@@ -112,12 +112,33 @@ const Registrations = (() => {
     const get  = (row, i) => i >= 0 ? (row[i] || '').toString().trim() : '';
 
     // Load ALL registrations for dedup (not just this event)
-    const allRegs = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []);
+    const [allRegs, allMembers] = await Promise.all([
+      Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).catch(() => []),
+      Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []),
+    ]);
     const seenTs  = new Set(allRegs.map(r => r[C.TS]));
     const maxNum  = allRegs.reduce((m, r) => {
       const n = parseInt((r[C.ID] || '').replace(/\D/g, ''), 10);
       return isNaN(n) ? m : Math.max(m, n);
     }, 0);
+
+    // Build lookup indexes for auto-matching to member records
+    const byEmail = new Map();
+    const byName  = new Map();
+    for (const m of allMembers) {
+      if (m['Email']) byEmail.set(m['Email'].toLowerCase().trim(), m['Member Key']);
+      const nameKey = `${(m['Last Name'] || '').toLowerCase().trim()}|${(m['First Name'] || '').toLowerCase().trim()}`;
+      if (!byName.has(nameKey)) byName.set(nameKey, m['Member Key']); // first match wins
+    }
+
+    function _matchMember(last, first, email) {
+      if (email) {
+        const hit = byEmail.get(email.toLowerCase().trim());
+        if (hit) return hit;
+      }
+      const nameKey = `${last.toLowerCase().trim()}|${first.toLowerCase().trim()}`;
+      return byName.get(nameKey) || '';
+    }
 
     // Fee per ticket type — event config takes priority, then fall back to column header price
     const mFee = parseFloat(_event.MemberFee) || _feeFromHeader(headers[cols.memQty]);
@@ -136,6 +157,11 @@ const Registrations = (() => {
       const kQty = parseInt(get(row, cols.kidsQty),  10) || 0;
       if (mQty + gQty + kQty === 0) continue;
 
+      const last  = get(row, cols.last);
+      const first = get(row, cols.first);
+      const email = get(row, cols.email);
+      const mkey  = _matchMember(last, first, email);
+
       nextNum++;
       await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
         [C.ID]:        'REG-' + String(nextNum).padStart(4, '0'),
@@ -143,10 +169,10 @@ const Registrations = (() => {
         [C.SOURCE]:    'Google Form',
         [C.EVID]:      _eventId,
         [C.EVNAME]:    _event.Title,
-        [C.LAST]:      get(row, cols.last),
-        [C.FIRST]:     get(row, cols.first),
-        [C.EMAIL]:     get(row, cols.email),
-        [C.MKEY]:      '',
+        [C.LAST]:      last,
+        [C.FIRST]:     first,
+        [C.EMAIL]:     email,
+        [C.MKEY]:      mkey,
         [C.MEM_QTY]:   mQty,
         [C.GUEST_QTY]: gQty,
         [C.KIDS_QTY]:  kQty,

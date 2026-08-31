@@ -608,8 +608,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   overflow: hidden;
   border-left: 5px solid var(--red);
 }
-.event-card-past { border-left-color: #9ca3af; }
-.event-card-upcoming { border-left-color: var(--red); }
+.event-card-past    { border-left-color: #9ca3af; }
+.event-card-upcoming { border-left-color: #2563eb; }
+.event-card-today   { border-left-color: #16a34a; border-left-width: 6px; }
 
 .event-card-header {
   display: flex;
@@ -621,16 +622,36 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .ec-title-block  { flex: 1; min-width: 0; }
 .event-card-title { font-size: 17px; font-weight: 700; color: var(--navy); }
 .event-card-meta  { font-size: 12px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+
+/* Days chip — color varies by status */
 .ec-days-chip {
   display: inline-block;
-  background: #dbeafe;
-  color: #1e40af;
   font-size: 11px;
   font-weight: 600;
   padding: 1px 7px;
   border-radius: 999px;
   margin-left: 2px;
 }
+.ec-days-upcoming { background: #dbeafe; color: #1e40af; }
+.ec-days-today    { background: #dcfce7; color: #15803d; }
+.ec-days-past     { background: #f3f4f6; color: #6b7280; }
+
+/* Form linked chip */
+.ec-form-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  margin-left: 4px;
+}
+
+/* Muted stat number (for zero-state) */
+.ec-stat-muted { color: var(--text-muted) !important; font-weight: 600 !important; }
 
 /* Stats row */
 .ec-stats {
@@ -698,12 +719,28 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stat-num   { display: block; font-size: 18px; font-weight: 800; color: var(--text); }
 .stat-label { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .event-card-desc    { padding: 12px 20px; font-size: 13px; color: var(--text-muted); }
-.event-card-actions { padding: 12px 20px; display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border); }
+.event-card-actions {
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+}
+.eca-primary  { display: flex; gap: 6px; }
+.eca-secondary { display: flex; gap: 6px; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--border); }
+.eca-danger   { display: flex; margin-left: auto; }
 
 @media (prefers-color-scheme: dark) {
-  .ec-days-chip { background: #1e3a5f; color: #93c5fd; }
+  :root:not([data-theme="light"]) .ec-days-upcoming { background: #1e3a5f; color: #93c5fd; }
+  :root:not([data-theme="light"]) .ec-days-today    { background: #14532d; color: #86efac; }
+  :root:not([data-theme="light"]) .ec-days-past     { background: #374151; color: #9ca3af; }
+  :root:not([data-theme="light"]) .ec-form-chip     { background: #451a03; color: #fcd34d; }
 }
-:root[data-theme="dark"] .ec-days-chip { background: #1e3a5f; color: #93c5fd; }
+:root[data-theme="dark"] .ec-days-upcoming { background: #1e3a5f; color: #93c5fd; }
+:root[data-theme="dark"] .ec-days-today    { background: #14532d; color: #86efac; }
+:root[data-theme="dark"] .ec-days-past     { background: #374151; color: #9ca3af; }
+:root[data-theme="dark"] .ec-form-chip     { background: #451a03; color: #fcd34d; }
 
 /* ── Upcoming events (Dashboard) ─────────────────────────────────────────── */
 .event-item {

@@ -68,85 +68,113 @@ const Events = (() => {
 
       // ── Days label ─────────────────────────────────────────────────
       const diffDays  = Math.round((new Date(e.Date) - new Date()) / 86400000);
+      const isToday   = diffDays === 0;
       const daysLabel = isPast
         ? (Math.abs(diffDays) === 1 ? 'Yesterday' : `${Math.abs(diffDays)} days ago`)
-        : (diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`);
+        : (isToday ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`);
+
+      const cardStatus = isToday ? 'today' : isPast ? 'past' : 'upcoming';
 
       // ── Stat boxes ─────────────────────────────────────────────────
-      const statsHTML = hasRegs ? `
-        <div class="ec-stats">
-          <div class="ec-stat">
-            <span class="ec-stat-num">${eventRegs.length}</span>
-            <span class="ec-stat-label">Registrations</span>
-          </div>
-          <div class="ec-stat">
-            <span class="ec-stat-num">${totalPax}</span>
-            <span class="ec-stat-label">Total Pax</span>
-          </div>
-          <div class="ec-stat ec-stat-green">
-            <span class="ec-stat-num">${confirmed}</span>
-            <span class="ec-stat-label">Confirmed</span>
-          </div>
-          ${pending ? `<div class="ec-stat ec-stat-amber">
-            <span class="ec-stat-num">${pending}</span>
-            <span class="ec-stat-label">Pending</span>
-          </div>` : ''}
-          ${walkIns ? `<div class="ec-stat">
-            <span class="ec-stat-num">${walkIns}</span>
-            <span class="ec-stat-label">Walk-ins</span>
-          </div>` : ''}
-          <div class="ec-stat-divider"></div>
-          <div class="ec-stat">
-            <span class="ec-stat-num">${checkedInPax}/${totalPax}</span>
-            <span class="ec-stat-label">Checked In</span>
-          </div>
-          <div class="ec-stat-divider"></div>
-          <div class="ec-stat ec-stat-green">
-            <span class="ec-stat-num">${Utils.formatPHP(collected)}</span>
-            <span class="ec-stat-label">Collected</span>
-          </div>
-          ${outstanding > 0 ? `<div class="ec-stat ec-stat-amber">
-            <span class="ec-stat-num">${Utils.formatPHP(outstanding)}</span>
-            <span class="ec-stat-label">Outstanding</span>
-          </div>` : ''}
-        </div>` : `
-        <div class="ec-stats">
-          <div class="ec-stat">
-            <span class="ec-stat-num">${Utils.formatPHP(e.MemberFee || 0)}</span>
-            <span class="ec-stat-label">Member Fee</span>
-          </div>
-          <div class="ec-stat">
-            <span class="ec-stat-num">${Utils.formatPHP(e.GuestFee || 0)}</span>
-            <span class="ec-stat-label">Guest Fee</span>
-          </div>
-          <div class="ec-stat">
-            <span class="ec-stat-num">${daysLabel}</span>
-            <span class="ec-stat-label">${isPast ? 'Date' : 'Coming up'}</span>
-          </div>
-        </div>`;
+      // People group — always shown
+      const peopleStats = `
+        <div class="ec-stat">
+          <span class="ec-stat-num">${eventRegs.length}</span>
+          <span class="ec-stat-label">Registrations</span>
+        </div>
+        <div class="ec-stat">
+          <span class="ec-stat-num">${totalPax}</span>
+          <span class="ec-stat-label">Total Pax</span>
+        </div>
+        <div class="ec-stat ec-stat-green">
+          <span class="ec-stat-num">${confirmed}</span>
+          <span class="ec-stat-label">Confirmed</span>
+        </div>
+        ${pending ? `<div class="ec-stat ec-stat-amber">
+          <span class="ec-stat-num">${pending}</span>
+          <span class="ec-stat-label">Pending</span>
+        </div>` : ''}
+        ${walkIns ? `<div class="ec-stat">
+          <span class="ec-stat-num">${walkIns}</span>
+          <span class="ec-stat-label">Walk-ins</span>
+        </div>` : ''}`;
 
-      return `<div class="event-card ${isPast ? 'event-card-past' : 'event-card-upcoming'}">
+      // Check-in group — only if any check-ins recorded
+      const checkinStats = checkedInPax > 0 ? `
+        <div class="ec-stat-divider"></div>
+        <div class="ec-stat">
+          <span class="ec-stat-num">${checkedInPax}/${totalPax}</span>
+          <span class="ec-stat-label">Checked In</span>
+        </div>` : '';
+
+      // Money group
+      const moneyStats = (collected > 0 || outstanding > 0) ? `
+        <div class="ec-stat-divider"></div>
+        <div class="ec-stat ec-stat-green">
+          <span class="ec-stat-num">${Utils.formatPHP(collected)}</span>
+          <span class="ec-stat-label">Collected</span>
+        </div>
+        ${outstanding > 0 ? `<div class="ec-stat ec-stat-amber">
+          <span class="ec-stat-num">${Utils.formatPHP(outstanding)}</span>
+          <span class="ec-stat-label">Outstanding</span>
+        </div>` : ''}` : '';
+
+      // Pricing row for events with no registrations yet
+      const pricingStats = !hasRegs ? `
+        <div class="ec-stat">
+          <span class="ec-stat-num">${Utils.formatPHP(e.MemberFee || 0)}</span>
+          <span class="ec-stat-label">Member Fee</span>
+        </div>
+        <div class="ec-stat">
+          <span class="ec-stat-num">${Utils.formatPHP(e.GuestFee || 0)}</span>
+          <span class="ec-stat-label">Guest Fee</span>
+        </div>
+        ${e.KidsFee ? `<div class="ec-stat">
+          <span class="ec-stat-num">${Utils.formatPHP(e.KidsFee)}</span>
+          <span class="ec-stat-label">Kids Fee</span>
+        </div>` : ''}
+        <div class="ec-stat-divider"></div>
+        <div class="ec-stat">
+          <span class="ec-stat-num ec-stat-muted">0</span>
+          <span class="ec-stat-label">Registrations</span>
+        </div>` : '';
+
+      const statsHTML = `<div class="ec-stats">
+        ${hasRegs ? peopleStats + checkinStats + moneyStats : pricingStats}
+      </div>`;
+
+      // ── Form linked chip ────────────────────────────────────────────
+      const formChip = e.FormSheetID
+        ? `<span class="ec-form-chip">📋 Form linked</span>` : '';
+
+      return `<div class="event-card event-card-${cardStatus}">
         <div class="event-card-header">
           <div class="ec-title-block">
             <h3 class="event-card-title">${Utils.escape(e.Title)}</h3>
             <div class="event-card-meta">
               📅 ${Utils.formatDate(e.Date)}
-              ${!isPast ? `<span class="ec-days-chip">${daysLabel}</span>` : ''}
+              <span class="ec-days-chip ec-days-${cardStatus}">${daysLabel}</span>
               &nbsp;·&nbsp; 📍 ${Utils.escape(e.Location)}
+              ${formChip}
             </div>
           </div>
-          <span class="badge badge-${isPast ? 'past' : 'upcoming'}">${isPast ? 'Past' : 'Upcoming'}</span>
         </div>
 
         ${statsHTML}
 
         <div class="event-card-actions">
-          <button class="btn btn-sm btn-primary" onclick="Events.openRegistrations('${safeId}')">📋 Registrations</button>
-          <button class="btn btn-sm btn-secondary" onclick="Events.openFrontDesk('${safeId}')">🎫 Front Desk</button>
-          <button class="btn btn-sm btn-outline" onclick="Events.openStats('${safeId}')">📊 Stats</button>
-          <button class="btn btn-sm btn-outline" onclick="Events.openEdit('${safeId}')">✏️ Edit</button>
-          <button class="btn btn-sm btn-outline" onclick="Email.openForEvent('${safeId}')">📧 Send Invites</button>
-          <button class="btn btn-sm btn-danger-outline" onclick="Events.confirmDelete('${safeId}')">🗑️ Delete</button>
+          <div class="eca-primary">
+            <button class="btn btn-sm btn-primary" onclick="Events.openRegistrations('${safeId}')">📋 Registrations</button>
+            <button class="btn btn-sm btn-secondary" onclick="Events.openFrontDesk('${safeId}')">🎫 Front Desk</button>
+          </div>
+          <div class="eca-secondary">
+            <button class="btn btn-sm btn-outline" onclick="Events.openStats('${safeId}')">📊 Stats</button>
+            <button class="btn btn-sm btn-outline" onclick="Events.openEdit('${safeId}')">✏️ Edit</button>
+            <button class="btn btn-sm btn-outline" onclick="Email.openForEvent('${safeId}')">📧 Send Invites</button>
+          </div>
+          <div class="eca-danger">
+            <button class="btn btn-sm btn-danger-outline" onclick="Events.confirmDelete('${safeId}')">🗑️ Delete</button>
+          </div>
         </div>
       </div>`;
     }).join('');

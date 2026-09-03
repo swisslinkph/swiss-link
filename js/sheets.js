@@ -185,6 +185,7 @@ const Sheets = (() => {
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'WalkInGuestFee');
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormSheetID');
       await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormSheetTab');
+      await ensureColumn(CONFIG.SHEETS.EVENTS, 'FormColMap');
     }
 
     // Write headers for any sheet that exists but is empty

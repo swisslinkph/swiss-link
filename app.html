@@ -718,6 +718,20 @@
                 <input type="text" id="ef-form-sheet-tab" class="form-control"
                        placeholder="Form Responses 1">
               </div>
+              <div class="form-group" style="display:flex;align-items:flex-end;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="Events.loadFormColumns()" id="ef-load-cols-btn">
+                  🔍 Load columns
+                </button>
+              </div>
+            </div>
+
+            <!-- Column mapping — shown after loading -->
+            <div id="ef-col-map-section" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+              <div style="padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">
+                Column Mapping
+                <span style="font-weight:400;text-transform:none;margin-left:6px;">Match your form columns to Swiss Link fields</span>
+              </div>
+              <div id="ef-col-map-rows" style="padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;"></div>
             </div>
           </div>
         </div>

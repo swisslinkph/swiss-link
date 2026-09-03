@@ -80,22 +80,41 @@ const Registrations = (() => {
   }
 
   // ── Google Form sync helpers ───────────────────────────────────────────────
-  function _detectFormCols(headers) {
-    const h = headers.map(s => s.toLowerCase().trim());
-    const idx = fn => h.findIndex(fn);
-    return {
-      ts:       idx(s => s.includes('timestamp')),
-      email:    idx(s => s.includes('email') && !s.includes('payment')),
-      last:     idx(s => s === 'last name' || s === 'lastname' || s.includes('family') || s.includes('last name') || s.includes('surname')),
-      first:    idx(s => s === 'first name' || s === 'firstname' || s.includes('first name') || s.includes('given name')),
-      status:   idx(s => s.includes('member status')),
-      memQty:   idx(s => s === 'member qty' || s === 'memberqty' || s.includes('member ticket') || (s.includes('adult') && s.includes('member') && !s.includes('non') && !s.includes('guest'))),
-      guestQty: idx(s => s === 'guest qty' || s === 'guestqty' || s.includes('guest ticket') || (s.includes('adult') && (s.includes('non') || s.includes('guest')))),
-      kidsQty:  idx(s => s === 'kids qty' || s === 'kidsqty' || s.includes('kid') || s.includes('child')),
-      comments: idx(s => s === 'payment note' || s.includes('payment note') || s.includes('comment') || s.includes('question')),
-      payProof:      idx(s => s === 'payment proof' || s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm')))),
-      attendeeNames: idx(s => s.includes('attendee') || s.includes('name of all') || s.includes('names of all')),
-    };
+  // Fuzzy detectors per field key — exposed so the mapping UI can auto-suggest
+  const _FUZZY = {
+    ts:           s => s.includes('timestamp'),
+    email:        s => s.includes('email') && !s.includes('payment'),
+    last:         s => s === 'last name' || s === 'lastname' || s.includes('family') || s.includes('last name') || s.includes('surname'),
+    first:        s => s === 'first name' || s === 'firstname' || s.includes('first name') || s.includes('given name'),
+    status:       s => s.includes('member status'),
+    memQty:       s => s === 'member qty' || s === 'memberqty' || s.includes('member ticket') || (s.includes('adult') && s.includes('member') && !s.includes('non') && !s.includes('guest')),
+    guestQty:     s => s === 'guest qty' || s === 'guestqty' || s.includes('guest ticket') || (s.includes('adult') && (s.includes('non') || s.includes('guest'))),
+    kidsQty:      s => s === 'kids qty' || s === 'kidsqty' || s.includes('kid') || s.includes('child'),
+    comments:     s => s === 'payment note' || s.includes('payment note') || s.includes('comment') || s.includes('question'),
+    payProof:     s => s === 'payment proof' || s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm'))),
+    attendeeNames:s => s.includes('attendee') || s.includes('name of all') || s.includes('names of all'),
+  };
+
+  // Returns the column index for a given field key using fuzzy matching
+  function detectColIndex(key, headers) {
+    const fn = _FUZZY[key];
+    if (!fn) return -1;
+    return headers.map(s => s.toLowerCase().trim()).findIndex(fn);
+  }
+
+  function _detectFormCols(headers, savedMap) {
+    const result = {};
+    for (const key of Object.keys(_FUZZY)) {
+      // Saved map takes priority; fall back to fuzzy
+      if (savedMap && savedMap[key]) {
+        result[key] = headers.indexOf(savedMap[key]);
+      } else {
+        result[key] = detectColIndex(key, headers);
+      }
+    }
+    // timestamp always fuzzy — not user-configurable
+    result.ts = headers.map(s => s.toLowerCase().trim()).findIndex(s => s.includes('timestamp'));
+    return result;
   }
 
   function _feeFromHeader(header) {
@@ -110,7 +129,8 @@ const Registrations = (() => {
     const { headers, rows } = await Sheets.getFromSheet(_event.FormSheetID, tabName, 1);
     if (!headers.length || !rows.length) return 0;
 
-    const cols = _detectFormCols(headers);
+    const savedMap = _event.FormColMap ? JSON.parse(_event.FormColMap) : null;
+    const cols = _detectFormCols(headers, savedMap);
     const get  = (row, i) => i >= 0 ? (row[i] || '').toString().trim() : '';
 
     // Load ALL registrations for dedup (not just this event)
@@ -1759,5 +1779,6 @@ const Registrations = (() => {
     searchMemberKey, selectMemberSuggestion, clearMemberSuggestions,
     openAddWalkIn, saveWalkIn, searchWalkInMember, selectWalkInMember, clearWalkInMember,
     backToEvents,
+    detectColIndex,
   };
 })();

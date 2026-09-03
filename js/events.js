@@ -182,18 +182,101 @@ const Events = (() => {
 
   // ── Open Add modal ────────────────────────────────────────────────────────
   function openAdd() {
-    _editingRow = null;
+    _editingRow    = null;
+    _editingColMap = null;
     document.getElementById('event-modal-title').textContent = 'New Event';
     document.getElementById('event-form').reset();
     document.getElementById('ef-date').value = Utils.today();
+    document.getElementById('ef-col-map-section').style.display = 'none';
+    document.getElementById('ef-load-cols-btn').textContent = '🔍 Load columns';
     Utils.showModal('event-modal');
   }
 
   // ── Open Edit modal ───────────────────────────────────────────────────────
+  // ── Column mapping fields ─────────────────────────────────────────────────
+  const _COL_MAP_FIELDS = [
+    { key: 'email',         label: 'Email' },
+    { key: 'last',          label: 'Last Name' },
+    { key: 'first',         label: 'First Name' },
+    { key: 'status',        label: 'Member Status' },
+    { key: 'memQty',        label: 'Member Ticket Qty' },
+    { key: 'guestQty',      label: 'Guest Ticket Qty' },
+    { key: 'kidsQty',       label: 'Kids Ticket Qty' },
+    { key: 'comments',      label: 'Payment Note' },
+    { key: 'payProof',      label: 'Proof of Payment' },
+    { key: 'attendeeNames', label: 'Attendee Names' },
+  ];
+
+  async function loadFormColumns() {
+    const sheetId = document.getElementById('ef-form-sheet-id')?.value?.trim();
+    const tab     = document.getElementById('ef-form-sheet-tab')?.value?.trim() || 'Form Responses 1';
+    if (!sheetId) { Utils.toast('Enter a Form Responses Sheet ID first.', 'error'); return; }
+
+    const btn = document.getElementById('ef-load-cols-btn');
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+
+    try {
+      const { headers } = await Sheets.getFromSheet(sheetId, tab, 1);
+      if (!headers.length) { Utils.toast('No columns found — check the Sheet ID and Tab name.', 'error'); return; }
+
+      // Read saved map if any
+      const savedMap = _editingColMap || {};
+
+      const section = document.getElementById('ef-col-map-section');
+      const rows    = document.getElementById('ef-col-map-rows');
+      rows.innerHTML = '';
+
+      const options = ['', ...headers].map((h, i) =>
+        `<option value="${i === 0 ? '' : h}">${i === 0 ? '— not mapped —' : h}</option>`
+      ).join('');
+
+      for (const f of _COL_MAP_FIELDS) {
+        const savedVal = savedMap[f.key] || '';
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex;flex-direction:column;gap:3px;padding:6px 0;border-bottom:1px solid var(--border);';
+        div.innerHTML = `
+          <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;">${f.label}</label>
+          <select id="ef-map-${f.key}" class="form-control" style="font-size:13px;">
+            ${options}
+          </select>`;
+        rows.appendChild(div);
+
+        const sel = div.querySelector('select');
+        // Use saved value, or auto-detect from fuzzy match
+        if (savedVal && headers.includes(savedVal)) {
+          sel.value = savedVal;
+        } else {
+          const autoIdx = Registrations.detectColIndex(f.key, headers);
+          if (autoIdx >= 0) sel.value = headers[autoIdx];
+        }
+      }
+
+      section.style.display = '';
+      btn.textContent = '🔄 Reload columns';
+    } catch(e) {
+      Utils.toast('Could not load columns: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function _readColMap() {
+    const map = {};
+    for (const f of _COL_MAP_FIELDS) {
+      const el = document.getElementById(`ef-map-${f.key}`);
+      if (el) map[f.key] = el.value;
+    }
+    return map;
+  }
+
+  let _editingColMap = null;
+
   function openEdit(eventId) {
     const event = _all.find(e => e.EventID === eventId);
     if (!event) return;
-    _editingRow = event._rowIndex;
+    _editingRow    = event._rowIndex;
+    _editingColMap = event.FormColMap ? JSON.parse(event.FormColMap) : null;
     document.getElementById('event-modal-title').textContent = 'Edit Event';
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
     set('ef-title',          event.Title);
@@ -203,10 +286,13 @@ const Events = (() => {
     set('ef-member-fee',     event.MemberFee);
     set('ef-guest-fee',      event.GuestFee);
     set('ef-kids-fee',       event.KidsFee);
-    set('ef-walkin-member',   event.WalkInMemberFee);
-    set('ef-walkin-guest',    event.WalkInGuestFee);
-    set('ef-form-sheet-id',   event.FormSheetID);
-    set('ef-form-sheet-tab',  event.FormSheetTab);
+    set('ef-walkin-member',  event.WalkInMemberFee);
+    set('ef-walkin-guest',   event.WalkInGuestFee);
+    set('ef-form-sheet-id',  event.FormSheetID);
+    set('ef-form-sheet-tab', event.FormSheetTab);
+    // Hide mapping section on open; it re-appears when user clicks Load
+    document.getElementById('ef-col-map-section').style.display = 'none';
+    document.getElementById('ef-load-cols-btn').textContent = '🔍 Load columns';
     Utils.showModal('event-modal');
   }
 
@@ -231,6 +317,8 @@ const Events = (() => {
         WalkInGuestFee:   get('ef-walkin-guest'),
         FormSheetID:      get('ef-form-sheet-id'),
         FormSheetTab:     get('ef-form-sheet-tab'),
+        FormColMap:       document.getElementById('ef-col-map-section')?.style.display !== 'none'
+                            ? JSON.stringify(_readColMap()) : (document.getElementById('ef-form-sheet-id')?.value?.trim() ? undefined : ''),
         Status:           new Date(get('ef-date')) >= new Date() ? 'Upcoming' : 'Completed',
       };
 
@@ -671,5 +759,5 @@ ${body}
       ?.addEventListener('click', () => Utils.hideModal('attendee-modal'));
   }
 
-  return { render, init, openAdd, openEdit, save, confirmDelete, viewAttendees, openFrontDesk, openRegistrations, openStats, printStats, getAll };
+  return { render, init, openAdd, openEdit, save, confirmDelete, viewAttendees, openFrontDesk, openRegistrations, openStats, printStats, getAll, loadFormColumns };
 })();

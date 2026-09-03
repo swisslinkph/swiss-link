@@ -38,6 +38,7 @@ const Registrations = (() => {
     NOTES:     'AdminNotes',
     PAY_PROOF:      'PayProofURL',
     ATTENDEE_NAMES: 'AttendeeNames',
+    FORM_DATA:      'FormData',
   };
 
   // ── Render (called by Router) ─────────────────────────────────────────────
@@ -184,6 +185,15 @@ const Registrations = (() => {
       const email = get(row, cols.email);
       const mkey  = _matchMember(last, first, email);
 
+      // Collect extra columns not mapped to any known field
+      const mappedIndices = new Set(Object.values(cols).filter(i => i >= 0));
+      const extraData = {};
+      headers.forEach((h, i) => {
+        if (!mappedIndices.has(i) && h && get(row, i)) {
+          extraData[h] = get(row, i);
+        }
+      });
+
       nextNum++;
       await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
         [C.ID]:        'REG-' + String(nextNum).padStart(4, '0'),
@@ -207,6 +217,7 @@ const Registrations = (() => {
         [C.NOTES]:     get(row, cols.status) ? `Form status: ${get(row, cols.status)}` : '',
         [C.PAY_PROOF]:      get(row, cols.payProof),
         [C.ATTENDEE_NAMES]: get(row, cols.attendeeNames),
+        [C.FORM_DATA]:      Object.keys(extraData).length ? JSON.stringify(extraData) : '',
       });
 
       seenTs.add(ts); // guard against duplicate timestamps within the same form sheet
@@ -1208,6 +1219,31 @@ const Registrations = (() => {
     const kQty = parseInt(r[C.KIDS_QTY], 10) || 0;
     _renderEditKidsNames(kQty, r['KidsNames'] || '');
 
+    // Form response extra fields
+    const formDataSection = document.getElementById('reg-form-data-section');
+    const formDataBody    = document.getElementById('reg-form-data-body');
+    if (formDataSection && formDataBody) {
+      const raw = r[C.FORM_DATA] || '';
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          const entries = Object.entries(data).filter(([, v]) => v);
+          if (entries.length) {
+            formDataBody.innerHTML = entries.map(([k, v]) => `
+              <div style="padding:4px 0;border-bottom:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px;">${Utils.escape(k)}</div>
+                <div style="font-size:13px;white-space:pre-wrap;">${Utils.escape(v)}</div>
+              </div>`).join('');
+            formDataSection.style.display = '';
+          } else {
+            formDataSection.style.display = 'none';
+          }
+        } catch { formDataSection.style.display = 'none'; }
+      } else {
+        formDataSection.style.display = 'none';
+      }
+    }
+
     Utils.showModal('reg-add-modal');
   }
 
@@ -1498,6 +1534,8 @@ const Registrations = (() => {
     if (kidsRow) kidsRow.style.display = hasKids ? '' : 'none';
     const proofRowAdd = document.getElementById('reg-proof-row');
     if (proofRowAdd) proofRowAdd.style.display = 'none';
+    const formDataSec = document.getElementById('reg-form-data-section');
+    if (formDataSec) formDataSec.style.display = 'none';
 
     // Hide Edit-mode-only structural elements
     const m1Head = document.getElementById('reg-edit-member1-head');

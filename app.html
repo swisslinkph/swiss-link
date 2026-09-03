@@ -1257,6 +1257,15 @@
         </div>
 
       </div>
+
+      <!-- Form Response data — shown only when FormData is present -->
+      <details id="reg-form-data-section" style="display:none;border-top:1px solid var(--border);margin-top:4px;">
+        <summary style="padding:10px 20px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">
+          <span>▶</span> Form Response Fields
+        </summary>
+        <div id="reg-form-data-body" style="padding:0 20px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;"></div>
+      </details>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Utils.hideModal('reg-add-modal')">Cancel</button>

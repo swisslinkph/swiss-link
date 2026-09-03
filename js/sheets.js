@@ -170,6 +170,7 @@ const Sheets = (() => {
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'KidsNames');
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'PayProofURL');
       await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'AttendeeNames');
+      await ensureColumn(CONFIG.SHEETS.REGISTRATIONS, 'FormData');
     }
 
     // Migrate existing Members sheet — add any missing columns
@@ -215,7 +216,7 @@ const Sheets = (() => {
       'RegistrationID','Timestamp','Source','EventID','EventName',
       'LastName','FirstName','Email','MemberKey','MemberSlots',
       'MemberQty','GuestQty','KidsQty','WalkIn',
-      'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes','CheckedIn','GuestNames','SlotPayments','PayProofURL','AttendeeNames',
+      'TotalDue','PaymentNote','PaymentStatus','PaymentMode','AmountPaid','AdminNotes','CheckedIn','GuestNames','SlotPayments','PayProofURL','AttendeeNames','FormData',
     ];
     const range = encodeURIComponent(`${CONFIG.SHEETS.REGISTRATIONS}!A1`);
     await request(`/values/${range}?valueInputOption=USER_ENTERED`, {

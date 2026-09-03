@@ -36,7 +36,8 @@ const Registrations = (() => {
     PAY_MODE:  'PaymentMode',
     AMOUNT:    'AmountPaid',
     NOTES:     'AdminNotes',
-    PAY_PROOF: 'PayProofURL',
+    PAY_PROOF:      'PayProofURL',
+    ATTENDEE_NAMES: 'AttendeeNames',
   };
 
   // ── Render (called by Router) ─────────────────────────────────────────────
@@ -92,7 +93,8 @@ const Registrations = (() => {
       guestQty: idx(s => s === 'guest qty' || s === 'guestqty' || s.includes('guest ticket') || (s.includes('adult') && (s.includes('non') || s.includes('guest')))),
       kidsQty:  idx(s => s === 'kids qty' || s === 'kidsqty' || s.includes('kid') || s.includes('child')),
       comments: idx(s => s === 'payment note' || s.includes('payment note') || s.includes('comment') || s.includes('question')),
-      payProof: idx(s => s === 'payment proof' || s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm')))),
+      payProof:      idx(s => s === 'payment proof' || s.includes('proof') || (s.includes('payment') && (s.includes('upload') || s.includes('screenshot') || s.includes('receipt') || s.includes('confirm')))),
+      attendeeNames: idx(s => s.includes('attendee') || s.includes('name of all') || s.includes('names of all')),
     };
   }
 
@@ -183,7 +185,8 @@ const Registrations = (() => {
         [C.PAY_MODE]:  '',
         [C.AMOUNT]:    '',
         [C.NOTES]:     get(row, cols.status) ? `Form status: ${get(row, cols.status)}` : '',
-        [C.PAY_PROOF]: get(row, cols.payProof),
+        [C.PAY_PROOF]:      get(row, cols.payProof),
+        [C.ATTENDEE_NAMES]: get(row, cols.attendeeNames),
       });
 
       seenTs.add(ts); // guard against duplicate timestamps within the same form sheet

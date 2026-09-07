@@ -167,8 +167,13 @@
             <label><input type="checkbox" id="col-toggle-dateadded" onchange="Members.toggleCol('dateadded')"> Date Added</label>
           </div>
         </div>
-        <button class="btn btn-outline btn-sm" id="member-export-btn">⬇ Export CSV</button>
-        <button class="btn btn-outline btn-sm" onclick="Members.bulkSendVerification()">✉ Send Verification</button>
+        <div style="position:relative;">
+          <button class="btn btn-outline btn-sm" onclick="Members.toggleMorePanel()" id="members-more-btn">⋯ More</button>
+          <div id="members-more-panel" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);min-width:180px;z-index:100;padding:4px 0;">
+            <button class="members-more-item" id="member-export-btn">⬇ Export CSV</button>
+            <button class="members-more-item" onclick="Members.bulkSendVerification();Members.toggleMorePanel()">✉ Send Verification</button>
+          </div>
+        </div>
         <button class="btn btn-primary btn-sm" id="add-member-btn">+ Add Member</button>
       </div>
       <div id="families-list-controls" style="display:none;align-items:center;gap:10px;">

@@ -1110,6 +1110,24 @@ const Members = (() => {
     _applyColVisibility();
   }
 
+  function toggleMorePanel() {
+    const panel = document.getElementById('members-more-panel');
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (!open) {
+      setTimeout(() => {
+        const close = e => {
+          if (!panel.contains(e.target) && !e.target.closest('[onclick*="toggleMorePanel"]')) {
+            panel.style.display = 'none';
+          }
+          document.removeEventListener('click', close);
+        };
+        document.addEventListener('click', close);
+      }, 0);
+    }
+  }
+
   function toggleColPanel() {
     const panel = document.getElementById('members-col-panel');
     if (!panel) return;
@@ -1495,7 +1513,7 @@ const Members = (() => {
     openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
-    applyStatusFilter, toggleCol, toggleColPanel,
+    applyStatusFilter, toggleCol, toggleColPanel, toggleMorePanel,
     openMerge, onMergeSearch, selectMergeDup, mergeNext, _mergePickChoice, executeMerge,
     sendVerification, bulkSendVerification,
   };

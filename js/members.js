@@ -181,6 +181,7 @@ const Members = (() => {
         <td class="col-type">${Utils.typeBadge(m[C.TYPE])}</td>
         <td class="col-family">${famCell}</td>
         <td class="amount col-ytd">${Utils.formatPHP(ytd)}</td>
+        <td class="col-dateadded" style="font-size:12px;color:var(--text-muted);">${m[C.DATE_ADDED] ? Utils.formatDate(m[C.DATE_ADDED]) : '—'}</td>
         <td class="actions">
           <button class="btn-icon btn-history" title="Transaction history" onclick="Members.openDetail('${key}')">🧾</button>
           <button class="btn-icon" title="Edit" onclick="Members.openEdit('${key}')">✏️</button>
@@ -1082,8 +1083,9 @@ const Members = (() => {
 
   // ── Init ──────────────────────────────────────────────────────────────────
   // ── Column visibility ─────────────────────────────────────────────────────
-  const _ALL_COLS = ['first','last','email','location','status','type','family','ytd'];
-  let _hiddenCols = new Set(JSON.parse(localStorage.getItem('members-hidden-cols') || '[]'));
+  const _ALL_COLS = ['first','last','email','location','status','type','family','ytd','dateadded'];
+  const _savedHiddenCols = localStorage.getItem('members-hidden-cols');
+  let _hiddenCols = new Set(_savedHiddenCols ? JSON.parse(_savedHiddenCols) : ['dateadded']);
 
   function _applyColVisibility() {
     let el = document.getElementById('members-col-style');

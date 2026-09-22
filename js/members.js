@@ -318,11 +318,54 @@ const Members = (() => {
           <span class="family-paid-label">${year} membership dues</span>
         </div>
         <button class="btn btn-sm btn-outline"
+                onclick="Members.syncFamilyWithHead('${hk}')"
+                title="Copy Type/Status/Renewal Year/Location from the head to everyone else in this family">
+          🔄 Sync with Head
+        </button>
+        <button class="btn btn-sm btn-outline"
                 onclick="Members.openFamilyStatusModal('${hk}')">
           Update Status
         </button>
       </div>
     </div>`;
+  }
+
+  // Retroactive version of onFamilyHeadChange — bulk-syncs everyone already
+  // in a family to the head's current Type/Status/Renewal Year/Location, for
+  // families that predate that auto-copy behavior.
+  async function syncFamilyWithHead(headKey) {
+    const head = _all.find(m => m[C.KEY] === headKey);
+    if (!head) return;
+    const others = _all.filter(m => m[C.FAM_HEAD] === headKey && m[C.KEY] !== headKey);
+    if (!others.length) { Utils.toast('No other members in this family to sync.'); return; }
+
+    const headName = `${head[C.FIRST]} ${head[C.LAST]}`.trim();
+    const ok = await Utils.confirm(
+      `Copy Membership Type, Status, Renewal Year, and Location from ${headName} to all ${others.length} other member${others.length !== 1 ? 's' : ''} in this family?`
+    );
+    if (!ok) return;
+
+    Utils.setLoading(true, 'Syncing family…');
+    try {
+      for (const m of others) {
+        const updated = {
+          ...m,
+          [C.TYPE]:    'Family',
+          [C.STATUS]:  head[C.STATUS],
+          [C.RENEWAL]: head[C.RENEWAL],
+          [C.LOC]:     head[C.LOC],
+        };
+        await Sheets.update(CONFIG.SHEETS.MEMBERS, m._rowIndex, updated);
+        Object.assign(m, updated);
+      }
+      _renderFamilyGroups();
+      if (_view === 'list') _renderTable();
+      Utils.toast(`Synced ${others.length} member${others.length !== 1 ? 's' : ''} with ${headName}.`);
+    } catch (e) {
+      Utils.toast('Error: ' + e.message, 'error');
+    } finally {
+      Utils.setLoading(false);
+    }
   }
 
   // ── Family assignment / head management ───────────────────────────────────
@@ -1538,6 +1581,7 @@ const Members = (() => {
     openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,
+    syncFamilyWithHead,
     applyStatusFilter, toggleCol, toggleColPanel, toggleMorePanel,
     openMerge, onMergeSearch, selectMergeDup, mergeNext, _mergePickChoice, executeMerge,
     sendVerification, bulkSendVerification,

@@ -574,7 +574,7 @@ const Registrations = (() => {
         const sName = sm ? `${sm['First Name']} ${sm['Last Name']}`.trim() : saved;
         return `
         <div class="edit-member-group" id="edit-slot-${slotIdx}">
-          <div class="edit-member-label" data-slot="${slotIdx + 1}">Member ${slotIdx + 1}</div>
+          <div class="edit-member-label" data-slot="${slotIdx + 1}">Member</div>
           <div class="slot-search-wrap">
             <div class="slot-assigned">
               <span class="slot-name">${Utils.escape(sName)}</span>
@@ -588,7 +588,7 @@ const Registrations = (() => {
       }
       return `
       <div class="edit-member-group" id="edit-slot-${slotIdx}">
-        <div class="edit-member-label" data-slot="${slotIdx + 1}">Member ${slotIdx + 1}</div>
+        <div class="edit-member-label" data-slot="${slotIdx + 1}">Member</div>
         <div class="slot-search-wrap">
           <input type="text" class="form-control slot-search-input"
             placeholder="Search or add member…" autocomplete="off"

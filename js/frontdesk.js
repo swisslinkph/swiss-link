@@ -1255,7 +1255,7 @@ const FrontDesk = (() => {
         'First Name':  first,
         'Last Name':   last,
         'Family Head': famHead,
-        'Membership Status': 'Member',
+        'Membership Status': 'TBC',
       });
 
       // Make the primary member a self-referential head if not already set
@@ -1270,7 +1270,7 @@ const FrontDesk = (() => {
 
       _members.push({
         'Member Key': key, 'First Name': first, 'Last Name': last,
-        'Family Head': famHead, 'Membership Status': 'Member',
+        'Family Head': famHead, 'Membership Status': 'TBC',
       });
 
       Utils.hideModal('fd-add-member-modal');

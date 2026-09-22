@@ -714,7 +714,7 @@ const Registrations = (() => {
         'First Name':        first,
         'Last Name':         last,
         'Family Head':       famHead,
-        'Membership Status': 'Member',
+        'Membership Status': 'TBC',
         'Membership Type':   linkFamily ? 'Family' : '',
         'Timestamp':         new Date().toISOString().slice(0, 10),
       });

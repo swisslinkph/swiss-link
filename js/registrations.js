@@ -67,16 +67,46 @@ const Registrations = (() => {
 
     // Background form sync — page is already visible; update if new rows arrive
     if (_event?.FormSheetID) {
-      _syncFromForm().then(n => {
-        if (!n) return;
-        Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS).then(rows => {
-          _all = rows.filter(r => r[C.EVID] === _eventId);
-          _applyFilter();
-          _renderSummary();
-          _renderTable();
-          Utils.toast(`${n} new registration${n !== 1 ? 's' : ''} synced from Google Form.`);
-        });
-      }).catch(() => {});
+      _syncAndRefresh({ silent: true }).catch(() => {});
+    }
+  }
+
+  // Runs _syncFromForm, refreshes the table if anything changed, and reports
+  // the result. Shared by the background sync (silent on errors/no-op) and
+  // the manual "Resync Form Data" button (always reports, incl. errors).
+  async function _syncAndRefresh({ silent = false } = {}) {
+    const { imported, backfilled } = await _syncFromForm();
+
+    if (!imported && !backfilled) {
+      if (!silent) Utils.toast('Already up to date with Google Form.');
+      return;
+    }
+
+    const rows = await Sheets.getAll(CONFIG.SHEETS.REGISTRATIONS);
+    _all = rows.filter(r => r[C.EVID] === _eventId);
+    _applyFilter();
+    _renderSummary();
+    _renderTable();
+
+    const msgs = [];
+    if (imported)   msgs.push(`${imported} new registration${imported !== 1 ? 's' : ''} synced`);
+    if (backfilled) msgs.push(`${backfilled} form response${backfilled !== 1 ? 's' : ''} updated`);
+    Utils.toast(msgs.join(', ') + ' from Google Form.');
+  }
+
+  async function resyncFormData() {
+    if (!_event?.FormSheetID) {
+      Utils.toast('This event has no Google Form linked.', 'error');
+      return;
+    }
+    const btn = document.getElementById('reg-resync-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '🔄 Syncing…'; }
+    try {
+      await _syncAndRefresh({ silent: false });
+    } catch (e) {
+      Utils.toast(e.message || 'Form sync failed.', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Resync Form Data'; }
     }
   }
 
@@ -168,12 +198,34 @@ const Registrations = (() => {
     const gFee = parseFloat(_event.GuestFee)  || _feeFromHeader(headers[cols.guestQty]);
     const kFee = parseFloat(_event.KidsFee)   || _feeFromHeader(headers[cols.kidsQty]);
 
-    let nextNum  = maxNum;
-    let imported = 0;
+    let nextNum    = maxNum;
+    let imported   = 0;
+    let backfilled = 0;
 
     for (const row of rows) {
       const ts = get(row, cols.ts);
-      if (!ts || seenTs.has(ts)) continue;
+      if (!ts) continue;
+
+      // Full raw response — every column the form asked, mapped or not.
+      // Captured per-row (not per-event) since each event's form can differ.
+      const rawData = {};
+      headers.forEach((h, i) => { if (h && get(row, i)) rawData[h] = get(row, i); });
+      const rawJson = Object.keys(rawData).length ? JSON.stringify(rawData) : '';
+
+      if (seenTs.has(ts)) {
+        // Already imported — backfill FormData for rows synced before this existed.
+        if (rawJson) {
+          const existing = allRegs.find(r => r[C.EVID] === _eventId && r[C.TS] === ts);
+          if (existing && !existing[C.FORM_DATA] && existing._rowIndex) {
+            await Sheets.update(CONFIG.SHEETS.REGISTRATIONS, existing._rowIndex, {
+              ...existing,
+              [C.FORM_DATA]: rawJson,
+            });
+            backfilled++;
+          }
+        }
+        continue;
+      }
 
       const mQty = parseInt(get(row, cols.memQty),   10) || 0;
       const gQty = parseInt(get(row, cols.guestQty), 10) || 0;
@@ -184,15 +236,6 @@ const Registrations = (() => {
       const first = get(row, cols.first);
       const email = get(row, cols.email);
       const mkey  = _matchMember(last, first, email);
-
-      // Collect extra columns not mapped to any known field
-      const mappedIndices = new Set(Object.values(cols).filter(i => i >= 0));
-      const extraData = {};
-      headers.forEach((h, i) => {
-        if (!mappedIndices.has(i) && h && get(row, i)) {
-          extraData[h] = get(row, i);
-        }
-      });
 
       nextNum++;
       await Sheets.append(CONFIG.SHEETS.REGISTRATIONS, {
@@ -217,14 +260,14 @@ const Registrations = (() => {
         [C.NOTES]:     get(row, cols.status) ? `Form status: ${get(row, cols.status)}` : '',
         [C.PAY_PROOF]:      get(row, cols.payProof),
         [C.ATTENDEE_NAMES]: get(row, cols.attendeeNames),
-        [C.FORM_DATA]:      Object.keys(extraData).length ? JSON.stringify(extraData) : '',
+        [C.FORM_DATA]:      rawJson,
       });
 
       seenTs.add(ts); // guard against duplicate timestamps within the same form sheet
       imported++;
     }
 
-    return imported;
+    return { imported, backfilled };
   }
 
   function _renderHeader() {
@@ -1818,5 +1861,6 @@ const Registrations = (() => {
     openAddWalkIn, saveWalkIn, searchWalkInMember, selectWalkInMember, clearWalkInMember,
     backToEvents,
     detectColIndex,
+    resyncFormData,
   };
 })();

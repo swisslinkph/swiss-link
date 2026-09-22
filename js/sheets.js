@@ -291,12 +291,40 @@ const Sheets = (() => {
     clearHeaderCache(sheetName);
   }
 
+  // ── Expand a sheet's grid if it's too narrow for a target column count ────
+  // values.update does NOT auto-expand a sheet's grid — writing past its
+  // current columnCount fails outright, so a sheet that's exactly filled to
+  // its grid (e.g. 26/26 columns, A–Z) silently can't grow any further.
+  async function _ensureGridWidth(sheetName, minCols) {
+    const meta  = await request('');
+    const sheet = meta.sheets.find(s => s.properties.title === sheetName);
+    if (!sheet) throw new Error(`Sheet "${sheetName}" not found`);
+    _sheetIdCache[sheetName] = sheet.properties.sheetId;
+
+    const curCols = sheet.properties.gridProperties?.columnCount || 0;
+    if (curCols >= minCols) return;
+
+    await request(':batchUpdate', {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: [{
+          updateSheetProperties: {
+            properties: { sheetId: sheet.properties.sheetId, gridProperties: { columnCount: minCols } },
+            fields: 'gridProperties.columnCount',
+          },
+        }],
+      }),
+    });
+  }
+
   // ── ADD a column header to a sheet if it doesn't already exist ───────────
   async function ensureColumn(sheetName, columnName) {
     clearHeaderCache(sheetName); // always fetch fresh so stale cache never hides a missing column
     const headers = await getHeaders(sheetName);
     if (headers.includes(columnName)) return;
-    const nextCol = colLetter(headers.length + 1);
+    const nextColNum = headers.length + 1;
+    await _ensureGridWidth(sheetName, nextColNum);
+    const nextCol = colLetter(nextColNum);
     const range   = encodeURIComponent(`${sheetName}!${nextCol}1`);
     await request(`/values/${range}?valueInputOption=USER_ENTERED`, {
       method: 'PUT',

@@ -1829,7 +1829,10 @@
     document.getElementById('nav-user-email').textContent  = userEmail;
 
     // Ensure Events + Transactions sheet tabs exist (skipped silently in demo)
-    if (!_isDemo) Sheets.ensureSheets().catch(e => console.warn('ensureSheets:', e.message));
+    if (!_isDemo) Sheets.ensureSheets().catch(e => {
+      console.warn('ensureSheets:', e.message);
+      Utils.toast('Sheet setup check failed: ' + e.message, 'error');
+    });
 
     // Register routes
     Router.register('dashboard',     Dashboard.render);

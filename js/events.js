@@ -31,14 +31,31 @@ const Events = (() => {
     const container = document.getElementById('events-list');
     if (!container) return;
 
-    const sorted = [..._all].sort((a, b) => new Date(b.Date) - new Date(a.Date));
-
-    if (!sorted.length) {
+    if (!_all.length) {
       container.innerHTML = '<p class="empty-state">No events yet. Create your first event!</p>';
       return;
     }
 
-    container.innerHTML = sorted.map(e => {
+    // Group by day (not exact time) so a same-day event never gets bucketed
+    // into "Past" just because part of today has already elapsed.
+    const dayDiff = e => Math.round((new Date(e.Date) - new Date()) / 86400000);
+    const upcoming = _all.filter(e => dayDiff(e) >= 0).sort((a, b) => new Date(a.Date) - new Date(b.Date));
+    const past     = _all.filter(e => dayDiff(e) <  0).sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+    const groups = [
+      upcoming.length ? { label: `Upcoming (${upcoming.length})`,    events: upcoming } : null,
+      past.length     ? { label: `Past Events (${past.length})`,     events: past }     : null,
+    ].filter(Boolean);
+
+    container.innerHTML = groups.map(g => `
+      <div class="events-group">
+        <div class="events-group-label">${g.label}</div>
+        ${g.events.map(e => _renderCard(e)).join('')}
+      </div>
+    `).join('');
+  }
+
+  function _renderCard(e) {
       const eventRegs  = _regs.filter(r => r.EventID === e.EventID);
       const hasRegs    = eventRegs.length > 0;
       const isPast     = new Date(e.Date) < new Date();
@@ -110,11 +127,11 @@ const Events = (() => {
       // Money group
       const moneyStats = (collected > 0 || outstanding > 0) ? `
         <div class="ec-stat-divider"></div>
-        <div class="ec-stat ec-stat-green">
+        <div class="ec-stat ec-stat-money ec-stat-green">
           <span class="ec-stat-num">${Utils.formatPHP(collected)}</span>
           <span class="ec-stat-label">Collected</span>
         </div>
-        ${outstanding > 0 ? `<div class="ec-stat ec-stat-amber">
+        ${outstanding > 0 ? `<div class="ec-stat ec-stat-money ec-stat-amber">
           <span class="ec-stat-num">${Utils.formatPHP(outstanding)}</span>
           <span class="ec-stat-label">Outstanding</span>
         </div>` : ''}` : '';
@@ -177,7 +194,6 @@ const Events = (() => {
           </div>
         </div>
       </div>`;
-    }).join('');
   }
 
   // ── Open Add modal ────────────────────────────────────────────────────────

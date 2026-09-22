@@ -574,7 +574,7 @@ const Registrations = (() => {
         const sName = sm ? `${sm['First Name']} ${sm['Last Name']}`.trim() : saved;
         return `
         <div class="edit-member-group" id="edit-slot-${slotIdx}">
-          <div class="edit-member-label">Member ${slotIdx + 1}</div>
+          <div class="edit-member-label" data-slot="${slotIdx + 1}">Member ${slotIdx + 1}</div>
           <div class="slot-search-wrap">
             <div class="slot-assigned">
               <span class="slot-name">${Utils.escape(sName)}</span>
@@ -588,7 +588,7 @@ const Registrations = (() => {
       }
       return `
       <div class="edit-member-group" id="edit-slot-${slotIdx}">
-        <div class="edit-member-label">Member ${slotIdx + 1}</div>
+        <div class="edit-member-label" data-slot="${slotIdx + 1}">Member ${slotIdx + 1}</div>
         <div class="slot-search-wrap">
           <input type="text" class="form-control slot-search-input"
             placeholder="Search or add member…" autocomplete="off"
@@ -1251,7 +1251,7 @@ const Registrations = (() => {
 
     // Show Edit-mode structural elements (hidden by default)
     const m1Head = document.getElementById('reg-edit-member1-head');
-    if (m1Head) m1Head.style.display = 'block';
+    if (m1Head) m1Head.style.display = 'inline-flex';
 
     // Load members, then render unified slot section
     if (!_members.length) {

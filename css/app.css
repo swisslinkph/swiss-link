@@ -612,7 +612,18 @@ select.form-control { cursor: pointer; }
 textarea.form-control { resize: vertical; min-height: 80px; }
 
 /* ── Events page ──────────────────────────────────────────────────────────── */
-.events-list { display: flex; flex-direction: column; gap: 16px; }
+.events-list  { display: flex; flex-direction: column; gap: 28px; }
+.events-group { display: flex; flex-direction: column; gap: 16px; }
+
+.events-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
 
 .event-card {
   background: var(--card);
@@ -620,6 +631,11 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   box-shadow: var(--shadow);
   overflow: hidden;
   border-left: 5px solid var(--red);
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+.event-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 .event-card-past    { border-left-color: #9ca3af; }
 .event-card-upcoming { border-left-color: #2563eb; }
@@ -689,6 +705,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .ec-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
 .ec-stat-green .ec-stat-num { color: #16a34a; }
 .ec-stat-amber .ec-stat-num { color: #d97706; }
+/* Money stats (Collected/Outstanding) get slightly more visual weight than
+   plain headcounts, since they're usually what admins scan for first */
+.ec-stat-money .ec-stat-num { font-size: 22px; }
 
 /* Progress bars */
 .ec-bars {
@@ -1234,15 +1253,58 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .edit-member-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+/* Slot 0 (the registrant's own member link) always comes right after the
+   Members count row, so it doesn't need a divider above it — only slots 2+ do */
+.edit-member-group-slot0 {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 .edit-member-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+/* Small numbered circle in front of "Member 1", "Member 2" ... labels —
+   gives slot labels weight without adding another card/box layer */
+.edit-member-label::before {
+  content: attr(data-slot);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+.edit-member-label:not([data-slot])::before { display: none; }
+
+/* "Registrant" role tag — reuses the app's existing pill/badge look */
+.badge-registrant { background: var(--red-light); color: var(--red-dark); }
+#reg-edit-member1-head {
+  display: inline-flex;
+  width: fit-content;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--red-light);
+  color: var(--red-dark);
   margin-bottom: 2px;
 }
 

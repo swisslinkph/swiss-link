@@ -898,6 +898,30 @@ const Members = (() => {
     if (sel && sel.dataset.lockedHead !== 'true') sel.disabled = type !== 'Family';
   }
 
+  // A Family membership is one payment covering everyone in it, so joining
+  // a family should carry over the head's Status/Renewal Year/Location —
+  // names, email, and mobile stay per-person.
+  function onFamilyHeadChange() {
+    const headKey = document.getElementById('mf-fam-head')?.value || '';
+    if (!headKey) return;
+
+    const head = _all.find(m => m[C.KEY] === headKey);
+    if (!head) return;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('mf-type',    'Family');
+    set('mf-status',  head[C.STATUS]);
+    set('mf-renewal', head[C.RENEWAL]);
+    set('mf-loc',     head[C.LOC]);
+    onTypeChange();
+
+    const myKey = document.getElementById('mf-key')?.value || '';
+    if (headKey !== myKey) {
+      const headName = `${head[C.FIRST]} ${head[C.LAST]}`.trim();
+      Utils.toast(`Membership Status and Location copied from ${headName}'s membership.`);
+    }
+  }
+
   function _buildFamilySelect(memberKey, currentHeadKey) {
     const sel  = document.getElementById('mf-fam-head');
     const hint = document.getElementById('mf-fam-hint');
@@ -973,6 +997,7 @@ const Members = (() => {
     set('mf-mobile', m[C.MOBILE]);
     set('mf-loc',    m[C.LOC]);
     set('mf-status', m[C.STATUS]);
+    set('mf-renewal',m[C.RENEWAL]);
     set('mf-type',   m[C.TYPE]);
     _buildFamilySelect(m[C.KEY], m[C.FAM_HEAD]);
     onTypeChange();
@@ -998,7 +1023,7 @@ const Members = (() => {
         [C.MOBILE]:  get('mf-mobile'),
         [C.LOC]:     get('mf-loc'),
         [C.STATUS]:  get('mf-status'),
-        [C.RENEWAL]: existing?.[C.RENEWAL] || '',
+        [C.RENEWAL]: get('mf-renewal') || existing?.[C.RENEWAL] || '',
         [C.TYPE]:     get('mf-type'),
         [C.FAM_HEAD]: get('mf-fam-head'),
         // FAM (legacy) preserved from existing via merge below
@@ -1509,7 +1534,7 @@ const Members = (() => {
   return {
     render, init, switchView,
     openDetail, closeDetail,
-    openAdd, openEdit, confirmDelete, exportCSV, onTypeChange,
+    openAdd, openEdit, confirmDelete, exportCSV, onTypeChange, onFamilyHeadChange,
     openRecordDues, onDuesCategoryChange, onDuesTierChange,
     openEditTxn, confirmDeleteTxn,
     assignToFamily, removeFromFamily, setAsHead, createFamily, openFamilyStatusModal,

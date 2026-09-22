@@ -504,6 +504,7 @@
         <div class="form-grid">
           <input type="hidden" id="mf-key">
           <input type="hidden" id="mf-name">
+          <input type="hidden" id="mf-renewal">
           <div class="form-group">
             <label for="mf-first">First Name</label>
             <input type="text" id="mf-first" class="form-control">
@@ -554,7 +555,7 @@
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label for="mf-fam-head">Family</label>
-            <select id="mf-fam-head" class="form-control">
+            <select id="mf-fam-head" class="form-control" onchange="Members.onFamilyHeadChange()">
               <option value="">— No family —</option>
             </select>
             <p id="mf-fam-hint" class="settings-hint" style="display:none;margin-top:6px;"></p>

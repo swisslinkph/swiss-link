@@ -1184,6 +1184,42 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 .slot-add-fam-label input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
 
+/* Edit Registration — Form Response Fields collapsible arrow */
+#reg-form-data-section summary span {
+  display: inline-block;
+  transition: transform .15s ease;
+}
+#reg-form-data-section[open] summary span { transform: rotate(90deg); }
+
+/* Edit Registration — grouped section cards (Attendees, Booking, ...) */
+.reg-section-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 16px;
+}
+.reg-section-card + .reg-section-card,
+.reg-section-card + .reg-payment-card {
+  margin-top: 14px;
+}
+.reg-section-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--navy);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .reg-section-card { background: #1c2333; border-color: #313a4d; }
+}
+:root[data-theme="dark"] .reg-section-card { background: #1c2333; border-color: #313a4d; }
+
 /* Edit Registration — member section headers and slot groups */
 .edit-member-section-header {
   font-size: 11px;

@@ -41,6 +41,12 @@ const Registrations = (() => {
     FORM_DATA:      'FormData',
   };
 
+  // Legacy registrations (from before the Source value was standardized)
+  // stored 'Form' instead of 'Google Form' — treat them as equivalent.
+  function _normalizeSource(source) {
+    return source === 'Form' ? 'Google Form' : source;
+  }
+
   // ── Render (called by Router) ─────────────────────────────────────────────
   async function render() {
     _eventId = sessionStorage.getItem('reg_event');
@@ -434,7 +440,7 @@ const Registrations = (() => {
 
     _filtered = _all.filter(r => {
       if (status && r[C.STATUS] !== status) return false;
-      if (source && r[C.SOURCE] !== source) return false;
+      if (source && _normalizeSource(r[C.SOURCE]) !== source) return false;
       if (checkin) {
         const ci = _checkinStatus(r);
         if (checkin !== ci.state) return false;
@@ -1215,7 +1221,7 @@ const Registrations = (() => {
     set('reg-add-first',      r[C.FIRST]);
     set('reg-add-email',      r[C.EMAIL]);
     set('reg-add-member-key', r[C.MKEY]);
-    set('reg-add-source',     r[C.SOURCE] || 'Manual');
+    set('reg-add-source',     _normalizeSource(r[C.SOURCE]) || 'Manual');
     set('reg-add-member-qty', r[C.MEM_QTY]   || 0);
     set('reg-add-guest-qty',  r[C.GUEST_QTY] || 0);
     set('reg-add-kids-qty',   r[C.KIDS_QTY]  || 0);

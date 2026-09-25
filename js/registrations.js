@@ -905,6 +905,101 @@ const Registrations = (() => {
     }
   }
 
+  // ── Export CSV ────────────────────────────────────────────────────────────
+  // One row per registration (respecting the current filters), joined with the
+  // linked Member record(s) so contact details come through even when the
+  // registration itself only has a name.
+  async function exportCSV() {
+    if (!_filtered.length) { Utils.toast('No registrations to export.', 'error'); return; }
+
+    Utils.setLoading(true, 'Preparing export…');
+    try {
+      if (!_members.length) {
+        _members = await Sheets.getAll(CONFIG.SHEETS.MEMBERS).catch(() => []);
+      }
+      const byKey = new Map(_members.map(m => [m['Member Key'], m]));
+      const memName = m => `${m['First Name'] || ''} ${m['Last Name'] || ''}`.trim();
+
+      // Form questions vary per event — one extra column per distinct question,
+      // skipping ones already covered by a standard column above.
+      const covered = Object.entries(_FUZZY)
+        .filter(([k]) => k !== 'comments' && k !== 'status').map(([, fn]) => fn);
+      covered.push(k => k.includes('payment note'));
+      const parseForm = r => { try { return JSON.parse(r[C.FORM_DATA] || '{}'); } catch { return {}; } };
+      const formCols = [];
+      _filtered.forEach(r => Object.keys(parseForm(r)).forEach(k => {
+        const s = k.toLowerCase().trim();
+        if (!formCols.includes(k) && !covered.some(fn => fn(s))) formCols.push(k);
+      }));
+
+      const fixed = [
+        ['Registration ID',  r => r[C.ID]],
+        ['Registered On',    r => r[C.TS]],
+        ['Source',           r => _normalizeSource(r[C.SOURCE])],
+        ['Last Name',        r => r[C.LAST]],
+        ['First Name',       r => r[C.FIRST]],
+        ['Email',            (r, m) => r[C.EMAIL] || m?.['Email']],
+        ['Mobile',           (r, m) => m?.['Mobile']],
+        ['Location',         (r, m) => m?.['Location (Metro Manila/Province)']],
+        ['Member Key',       r => r[C.MKEY]],
+        ['Membership Status',(r, m) => m?.['Membership Status']],
+        ['Membership Type',  (r, m) => m?.['Membership Type']],
+        ['Renewal Year',     (r, m) => m?.['Renewal Year']],
+        ['Members',          r => r[C.MEM_QTY]],
+        ['Guests',           r => r[C.GUEST_QTY]],
+        ['Kids',             r => r[C.KIDS_QTY]],
+        ['Total Pax',        r => (parseInt(r[C.MEM_QTY], 10) || 0) + (parseInt(r[C.GUEST_QTY], 10) || 0) + (parseInt(r[C.KIDS_QTY], 10) || 0)],
+        ['Attendee Names',   r => r[C.ATTENDEE_NAMES]],
+        ['Attendee Contacts', r => {
+          const keys = [r[C.MKEY], ...(r[C.SLOTS] || '').split(',').map(s => s.trim())].filter(Boolean);
+          return [...new Set(keys)].map(k => {
+            const m = byKey.get(k);
+            return m ? [memName(m), m['Email'], m['Mobile']].filter(Boolean).join(' · ') : k;
+          }).join(' | ');
+        }],
+        ['Guest Names',      r => r['GuestNames']],
+        ['Kids Names',       r => r['KidsNames']],
+        ['Walk-in',          r => (r[C.WALKIN] === 'Yes' || r['IsWalkIn'] === 'Yes') ? 'Yes' : 'No'],
+        ['Payment Status',   r => r[C.STATUS]],
+        ['Total Due',        r => r[C.TOTAL]],
+        ['Amount Paid',      r => r[C.AMOUNT]],
+        ['Payment Mode',     r => r[C.PAY_MODE]],
+        ['Payment Note',     r => r[C.PAY_NOTE]],
+        ['Admin Notes',      r => r[C.NOTES]],
+        ['Payment Proof',    r => r[C.PAY_PROOF]],
+        ['Checked In',       r => { const c = _checkinStatus(r); return `${c.checked}/${c.total}`; }],
+      ];
+
+      // Quote everything; neutralize cells a spreadsheet would run as a formula
+      // (form answers are public input).
+      const cell = v => {
+        let s = String(v ?? '');
+        if (/^[=@]|^[+\-][A-Za-z(]/.test(s)) s = "'" + s;
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+
+      const lines = [[...fixed.map(f => f[0]), ...formCols.map(k => `Form: ${k}`)].map(cell).join(',')];
+      _filtered.forEach(r => {
+        const m    = byKey.get(r[C.MKEY]);
+        const form = parseForm(r);
+        lines.push([...fixed.map(f => f[1](r, m)), ...formCols.map(k => form[k])].map(cell).join(','));
+      });
+
+      // BOM so Excel reads names like "Küpfer" as UTF-8
+      const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const slug = (_event?.Title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const a    = Object.assign(document.createElement('a'), { href: url, download: `${slug}-registrations-${Utils.today()}.csv` });
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      Utils.toast(`Exported ${_filtered.length} registration${_filtered.length !== 1 ? 's' : ''}.`);
+    } catch (e) {
+      Utils.toast(e.message || 'Export failed.', 'error');
+    } finally {
+      Utils.setLoading(false);
+    }
+  }
+
   // ── Print Roster ──────────────────────────────────────────────────────────
   function printRoster() {
     if (!_event) { Utils.toast('No event selected.', 'error'); return; }
@@ -1867,6 +1962,6 @@ const Registrations = (() => {
     openAddWalkIn, saveWalkIn, searchWalkInMember, selectWalkInMember, clearWalkInMember,
     backToEvents,
     detectColIndex,
-    resyncFormData,
+    resyncFormData, exportCSV,
   };
 })();

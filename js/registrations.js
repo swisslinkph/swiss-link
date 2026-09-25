@@ -280,6 +280,9 @@ const Registrations = (() => {
     const titleEl = document.getElementById('reg-event-title');
     if (titleEl) titleEl.textContent = _event ? _event.Title : (_eventId || 'Registrations');
 
+    const resyncBtn = document.getElementById('reg-resync-btn');
+    if (resyncBtn) resyncBtn.style.display = _event?.FormSheetID ? '' : 'none';
+
     // Show/hide Kids column based on whether KidsFee is set
     const hasKids = _event && parseFloat(_event.KidsFee) > 0;
     document.querySelectorAll('.reg-kids-col').forEach(el => {
@@ -902,6 +905,22 @@ const Registrations = (() => {
       Utils.toast(e.message, 'error');
     } finally {
       btn.disabled = false;
+    }
+  }
+
+  function toggleMorePanel() {
+    const panel = document.getElementById('reg-more-panel');
+    if (!panel) return;
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (!open) {
+      setTimeout(() => {
+        const close = e => {
+          if (!panel.contains(e.target) && !e.target.closest('#reg-more-btn')) panel.style.display = 'none';
+          document.removeEventListener('click', close);
+        };
+        document.addEventListener('click', close);
+      }, 0);
     }
   }
 
@@ -1962,6 +1981,6 @@ const Registrations = (() => {
     openAddWalkIn, saveWalkIn, searchWalkInMember, selectWalkInMember, clearWalkInMember,
     backToEvents,
     detectColIndex,
-    resyncFormData, exportCSV,
+    resyncFormData, exportCSV, toggleMorePanel,
   };
 })();
